@@ -8,13 +8,30 @@ the rest of the code.
 """
 
 import abc
+from typing import Float
+
+import numpy as np
+
+from treeffuser.sde import SDE
 
 
-class ScoreModel(abc.ABC):
+class Score(abc.ABC):
     @abc.abstractmethod
-    def score(self, X, y):
+    def score(self, X: Float[np.ndarray, "batch x_dim"], y: Float[np.ndarray, "batch y_dim"]):
         pass
 
     @abc.abstractmethod
-    def fit(self, X, y):
+    def fit(self, X: Float[np.ndarray, "batch x_dim"], y: Float[np.ndarray, "batch y_dim"]):
+        pass
+
+
+# lightgbm score
+class LightGBMScore(Score):
+    def __init__(self, sde: SDE):
+        self.sde = sde
+
+    def score(self, X: Float[np.ndarray, "batch x_dim"], y: Float[np.ndarray, "batch y_dim"]):
+        pass
+
+    def fit(self, X: Float[np.ndarray, "batch x_dim"], y: Float[np.ndarray, "batch y_dim"]):
         pass
