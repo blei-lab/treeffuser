@@ -2,4 +2,5 @@
 Authors
 =======
 
-* Nicolas Beltran - https://blog.ionelmc.ro
+* Nicolas Beltran - https://github.com/velezbeltran
+* Alessandro Grande - https://github.com/aagrande
