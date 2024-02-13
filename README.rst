@@ -32,7 +32,7 @@ To run all the tests run::
     tox
 
 However, this is usually excessive so it is easier to use pytest with
-your environment. When you push tox will run automatically. 
+your environment. When you push tox will run automatically.
 
 Note, to combine the coverage data from all the tox environments run:
 
@@ -53,7 +53,7 @@ Note, to combine the coverage data from all the tox environments run:
 
 
 
-Before committing it is important to run pre-commit (github will check that you 
+Before committing it is important to run pre-commit (github will check that you
 did). `pre-commit` will run automatically as a hook so that to commit things need
 to adhere to the linter. To make sure this is the case you can use the following
 work-stream. Assume there are files `file.txt` and `scripty.py`. Then the workflows is::
@@ -66,7 +66,7 @@ work-stream. Assume there are files `file.txt` and `scripty.py`. Then the workfl
     git add script.txt
     git commit -m "some message"
 
-    
+
 
 Note, to combine the coverage data from all the tox environments run:
 
