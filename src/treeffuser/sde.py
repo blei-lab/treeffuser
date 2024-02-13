@@ -1,17 +1,34 @@
 """
 Abstract SDE classes, Reverse SDE, and VE/VP SDEs.
 Adapted from: http://tinyurl.com/torch-sde-lib-song
+The notice from the original code is as follows:
+
+ coding=utf-8
+ Copyright 2020 The Google Research Authors.
+
+ Licensed under the Apache License, Version 2.0 (the "License");
+ you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at
+
+     http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software
+ distributed under the License is distributed on an "AS IS" BASIS,
+ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and
+ limitations under the License.
 """
 
 import abc
 
 import numpy as np
+from jaxtyping import Float
 
 
 class SDE(abc.ABC):
     """SDE abstract class. Functions are designed for a mini-batch of inputs."""
 
-    def __init__(self, N):
+    def __init__(self, N: int):
         """Construct an SDE.
 
         Args:
@@ -26,11 +43,12 @@ class SDE(abc.ABC):
         """End time of the SDE."""
 
     @abc.abstractmethod
-    def sde(self, x, t):
+    def sde(self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch"]):
+
         pass
 
     @abc.abstractmethod
-    def marginal_prob(self, x, t):
+    def marginal_prob(self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch"]):
         """Parameters to determine the marginal distribution of the SDE, $p_t(x)$."""
 
     @abc.abstractmethod

@@ -13,6 +13,8 @@ ignore = [
     "S101", # flake8-bandit assert
     "S308", # flake8-bandit suspicious-mark-safe-usage
     "E501", # pycodestyle line-too-long
+    "F722", # Syntax error (issue with jaxtyping)
+    "F821", # Issue with jax typing
 ]
 line-length = 140
 select = [
