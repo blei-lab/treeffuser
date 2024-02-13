@@ -83,3 +83,18 @@ To run a subset of tests::
 To run all the test environments in *parallel*::
 
     tox -p auto
+
+Before committing it is important to run pre-commit (github will check that you
+did). Running tox does this but if you want to dot it manually here is a short blurb
+of what is and how it works.
+`pre-commit` is tool that runs checks on your code before you commit it. It is great!
+Here is the workflow on how to use it:
+Assume there are files `file.txt` and `scripty.py`. Then the workflows is::
+
+    git add file.txt
+    git add scripty.py
+    pre-commit
+    ... [fix all of the things that can't be automatically fixed ] ...
+    git add file.txt
+    git add script.txt
+    git commit -m "some message"
