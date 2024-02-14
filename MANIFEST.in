@@ -22,3 +22,4 @@ include Makefile
 include *.txt
 
 global-exclude *.py[cod] __pycache__/* *.so *.dylib
+global-exclude paper/*
