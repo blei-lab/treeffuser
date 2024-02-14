@@ -22,8 +22,14 @@ version = release = "0.0.0"
 pygments_style = "trac"
 templates_path = ["."]
 extlinks = {
-    "issue": ("https://https://github.com/blei-lab/tree-diffuser/blei-lab/treeffuser/issues/%s", "#"),
-    "pr": ("https://https://github.com/blei-lab/tree-diffuser/blei-lab/treeffuser/pull/%s", "PR #"),
+    "issue": (
+        "https://https://github.com/blei-lab/tree-diffuser/blei-lab/treeffuser/issues/%s",
+        "#",
+    ),
+    "pr": (
+        "https://https://github.com/blei-lab/tree-diffuser/blei-lab/treeffuser/pull/%s",
+        "PR #",
+    ),
 }
 # on_rtd is whether we are on readthedocs.org
 on_rtd = os.environ.get("READTHEDOCS", None) == "True"

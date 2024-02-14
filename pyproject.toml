@@ -13,9 +13,11 @@ ignore = [
     "S101", # flake8-bandit assert
     "S308", # flake8-bandit suspicious-mark-safe-usage
     "E501", # pycodestyle line-too-long
+    "F722", # Syntax error (issue with jaxtyping)
+    "F821", # Issue with jax typing
 ]
-line-length = 140
-select = [
+line-length = 95
+lint.select = [
     "B", # flake8-bugbear
     "C4", # flake8-comprehensions
     "DTZ", # flake8-datetimez
@@ -39,14 +41,14 @@ select = [
 src = ["src", "tests"]
 target-version = "py38"
 
-[tool.ruff.flake8-pytest-style]
+[tool.ruff.lint.flake8-pytest-style]
 fixture-parentheses = false
 mark-parentheses = false
 
-[tool.ruff.isort]
-forced-separate = ["conftest"]
-force-single-line = true
+#[tool.ruff.lint.isort]
+#forced-separate = ["conftest"]
+#force-single-line = true
 
 [tool.black]
-line-length = 140
+line-length = 95
 target-version = ["py38"]
