@@ -114,9 +114,9 @@ class SDE(abc.ABC):
                 """Create the drift and diffusion functions for the reverse SDE/ODE."""
                 drift, diffusion = sde_fn(x, t)
                 score = score_fn(x, t)
-                drift = drift - diffusion[:, None, None, None] ** 2 * score * (
-                    0.5 if self.probability_flow else 1.0
-                )
+                drift = drift - diffusion.reshape(
+                    (-1,) + (1,) * (len(score.shape) - 1)
+                ) ** 2 * score * (0.5 if self.probability_flow else 1.0)
                 # Set the diffusion function to zero for ODEs.
                 diffusion = 0.0 if self.probability_flow else diffusion
                 return drift, diffusion
@@ -124,7 +124,8 @@ class SDE(abc.ABC):
             def discretize(self, x, t):
                 """Create discretized iteration rules for the reverse diffusion sampler."""
                 f, G = discretize_fn(x, t)
-                rev_f = f - G[:, None, None, None] ** 2 * score_fn(x, t) * (
+                score = score_fn(x, t)
+                rev_f = f - G.reshape((-1,) + (1,) * (len(score.shape) - 1)) ** 2 * score * (
                     0.5 if self.probability_flow else 1.0
                 )
                 rev_G = np.zeros_like(G) if self.probability_flow else G
@@ -158,7 +159,7 @@ class VPSDE(SDE):
 
     def sde(self, x, t):
         beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
-        drift = -0.5 * beta_t[:, None, None, None] * x
+        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         diffusion = np.sqrt(beta_t)
         return drift, diffusion
 
@@ -183,7 +184,7 @@ class VPSDE(SDE):
         beta = self.discrete_betas[timestep]
         alpha = self.alphas[timestep]
         sqrt_beta = np.sqrt(beta)
-        f = np.sqrt(alpha)[:, None, None, None] * x - x
+        f = np.sqrt(alpha).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x - x
         G = sqrt_beta
         return f, G
 
@@ -208,7 +209,7 @@ class subVPSDE(SDE):
 
     def sde(self, x, t):
         beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
-        drift = -0.5 * beta_t[:, None, None, None] * x
+        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         discount = 1.0 - np.exp(-2 * self.beta_0 * t - (self.beta_1 - self.beta_0) * t**2)
         diffusion = np.sqrt(beta_t * discount)
         return drift, diffusion
