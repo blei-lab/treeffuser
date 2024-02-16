@@ -76,8 +76,8 @@ class SDE(abc.ABC):
         Defaults to Euler-Maruyama discretization.
 
         Args:
-          x: a np array
-          t: a np float representing the time step (from 0 to `self.T`)
+          x: a NumPy array
+          t: a NumPy float representing the time step (from 0 to `self.T`)
 
         Returns:
           f, G
@@ -164,7 +164,7 @@ class VPSDE(SDE):
 
     def marginal_prob(self, x, t):
         log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
-        mean = np.exp(log_mean_coeff.reshape((-1,) + (1,) * (len(x.shape) - 1))) * x
+        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         std = np.sqrt(1.0 - np.exp(2.0 * log_mean_coeff))
         return mean, std
 
