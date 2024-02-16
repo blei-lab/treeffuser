@@ -32,6 +32,15 @@ def _score_normal_distribution(
     return (y - mean) / (std**2)
 
 
+def _lgbm_loss(y_true, y_pred, weights):
+    """
+    Compute the score matching loss for lightgbm.
+    """
+    grad = y_true - y_pred
+    hess = np.ones_like(grad)
+    return grad, hess
+
+
 def _fit_one_lgbm_model(
     X: Float[np.ndarray, "batch x_dim"],
     y: Float[np.ndarray, "batch y_dim"],
