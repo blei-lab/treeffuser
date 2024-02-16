@@ -22,7 +22,6 @@ The notice from the original code is as follows:
 import abc
 
 import numpy as np
-import torch
 
 import treeffuser.sde as sde_lib
 
@@ -91,12 +90,12 @@ class Predictor(abc.ABC):
         """One update of the predictor.
 
         Args:
-          x: A PyTorch tensor representing the current state
-          t: A Pytorch tensor representing the current time step.
+          x: A NumPy array representing the current state
+          t: A NumPy array representing the current time step.
 
         Returns:
-          x: A PyTorch tensor of the next state.
-          x_mean: A PyTorch tensor. The next state without random noise. Useful for denoising.
+          x: A NumPy array of the next state.
+          x_mean: A NumPy array. The next state without random noise. Useful for denoising.
         """
 
 
@@ -115,12 +114,12 @@ class Corrector(abc.ABC):
         """One update of the corrector.
 
         Args:
-          x: A PyTorch tensor representing the current state
-          t: A PyTorch tensor representing the current time step.
+          x: A NumPy array representing the current state
+          t: A NumPy array representing the current time step.
 
         Returns:
-          x: A PyTorch tensor of the next state.
-          x_mean: A PyTorch tensor. The next state without random noise. Useful for denoising.
+          x: A NumPy array of the next state.
+          x_mean: A NumPy array. The next state without random noise. Useful for denoising.
         """
 
 
@@ -131,10 +130,10 @@ class EulerMaruyamaPredictor(Predictor):
 
     def update_fn(self, x, t):
         dt = -1.0 / self.rsde.N
-        z = torch.randn_like(x)
+        z = np.random.randn(*x.shape)
         drift, diffusion = self.rsde.sde(x, t)
         x_mean = x + drift * dt
-        x = x_mean + diffusion[:, None, None, None] * np.sqrt(-dt) * z
+        x = x_mean + diffusion.reshape((-1,) + (1,) * (len(z.shape) - 1)) * np.sqrt(-dt) * z
         return x, x_mean
 
 
@@ -145,9 +144,9 @@ class ReverseDiffusionPredictor(Predictor):
 
     def update_fn(self, x, t):
         f, G = self.rsde.discretize(x, t)
-        z = torch.randn_like(x)
+        z = np.random.randn(*x.shape)
         x_mean = x - f
-        x = x_mean + G[:, None, None, None] * z
+        x = x_mean + G.reshape((-1,) + (1,) * (len(z.shape) - 1)) * z
         return x, x_mean
 
 
@@ -171,16 +170,19 @@ class LangevinCorrector(Corrector):
             timestep = (t * (sde.N - 1) / sde.T).long()
             alpha = sde.alphas[timestep]
         else:
-            alpha = torch.ones_like(t)
+            alpha = np.ones_like(t)
 
         for _ in range(n_steps):
             grad = score_fn(x, t)
-            noise = torch.randn_like(x)
-            grad_norm = torch.norm(grad.reshape(grad.shape[0], -1), dim=-1).mean()
-            noise_norm = torch.norm(noise.reshape(noise.shape[0], -1), dim=-1).mean()
+            noise = np.random.randn(*x.shape)
+            grad_norm = np.linalg.norm(grad.reshape(grad.shape[0], -1), dim=-1).mean()
+            noise_norm = np.linalg.norm(noise.reshape(noise.shape[0], -1), dim=-1).mean()
             step_size = (target_snr * noise_norm / grad_norm) ** 2 * 2 * alpha
-            x_mean = x + step_size[:, None, None, None] * grad
-            x = x_mean + torch.sqrt(step_size * 2)[:, None, None, None] * noise
+            x_mean = x + step_size.reshape((-1,) + (1,) * (len(grad) - 1)) * grad
+            x = (
+                x_mean
+                + np.sqrt(step_size * 2).reshape((-1,) + (1,) * (len(noise.shape) - 1)) * noise
+            )
 
         return x, x_mean
 
@@ -207,15 +209,18 @@ class AnnealedLangevinDynamics(Corrector):
             timestep = (t * (sde.N - 1) / sde.T).long()
             alpha = sde.alphas[timestep]
         else:
-            alpha = torch.ones_like(t)
+            alpha = np.ones_like(t)
 
         std = self.sde.marginal_prob(x, t)[1]
 
         for _ in range(n_steps):
             grad = score_fn(x, t)
-            noise = torch.randn_like(x)
+            noise = np.random.randn(*x.shape)
             step_size = (target_snr * std) ** 2 * 2 * alpha
-            x_mean = x + step_size[:, None, None, None] * grad
-            x = x_mean + noise * torch.sqrt(step_size * 2)[:, None, None, None]
+            x_mean = x + step_size.reshape((-1,) + (1,) * (len(grad.shape) - 1)) * grad
+            x = (
+                x_mean
+                + np.sqrt(step_size * 2).reshape((-1,) + (1,) * (len(noise.shape) - 1)) * noise
+            )
 
         return x, x_mean
