@@ -23,6 +23,7 @@ import abc
 
 import numpy as np
 from jaxtyping import Float
+from numpy import ndarray
 
 
 class SDE(abc.ABC):
@@ -43,15 +44,15 @@ class SDE(abc.ABC):
         """End time of the SDE."""
 
     @abc.abstractmethod
-    def sde(self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch"]):
+    def sde(self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]):
 
         pass
 
     @abc.abstractmethod
     def marginal_prob(
-        self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch"]
+        self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]
     ):
-        """Parameters to determine the marginal distribution of the SDE, $p_t(x)$."""
+        """Parameters to determine the marginal distribution of the SDE, $p_t( |x)$."""
 
     @abc.abstractmethod
     def prior_sampling(self, shape):
@@ -157,13 +158,13 @@ class VPSDE(SDE):
     def T(self):
         return 1
 
-    def sde(self, x, t):
+    def sde(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
         beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
         drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         diffusion = np.sqrt(beta_t)
         return drift, diffusion
 
-    def marginal_prob(self, x, t):
+    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
         log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
         mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         std = np.sqrt(1.0 - np.exp(2.0 * log_mean_coeff))
@@ -214,7 +215,7 @@ class subVPSDE(SDE):
         diffusion = np.sqrt(beta_t * discount)
         return drift, diffusion
 
-    def marginal_prob(self, x, t):
+    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
         log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
         mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
         std = 1 - np.exp(2.0 * log_mean_coeff)
@@ -256,7 +257,7 @@ class VESDE(SDE):
         diffusion = sigma * np.sqrt(2 * (np.log(self.sigma_max) - np.log(self.sigma_min)))
         return drift, diffusion
 
-    def marginal_prob(self, x, t):
+    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
         std = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
         mean = x
         return mean, std

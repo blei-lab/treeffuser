@@ -35,4 +35,5 @@ def generate_bimodal_linear_regression_data(
     else:
         y = X @ np.random.normal(size=p)
     y += np.random.normal(scale=sigma, size=n)
+    y = y[:, None]
     return X, y

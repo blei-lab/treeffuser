@@ -8,10 +8,11 @@ the rest of the code.
 """
 
 import abc
-from typing import Float, Long, Optional
+from typing import Optional
 
 import lightgbm as lgb
 import numpy as np
+from jaxtyping import Float, Int
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
@@ -100,7 +101,7 @@ class Score(abc.ABC):
         self,
         X: Float[np.ndarray, "batch x_dim"],
         y: Float[np.ndarray, "batch y_dim"],
-        t: Long[np.ndarray, "batch"],
+        t: Int[np.ndarray, "batch"],
     ):
 
         pass
@@ -201,13 +202,13 @@ class LightGBMScore(Score):
 
     def score(
         self,
-        X: Float[np.ndarray, "batch x_dim"],
         y: Float[np.ndarray, "batch y_dim"],
-        t: Long[np.ndarray, "batch"],
+        X: Float[np.ndarray, "batch x_dim"],
+        t: Int[np.ndarray, "batch 1"],
     ) -> Float[np.ndarray, "batch y_dim"]:
         scores = []
         for i in range(y.shape[1]):
-            predictors = np.concatenate([y, X, t], axis=1)
+            predictors = np.concatenate([y, X, t.reshape(-1, 1)], axis=1)
             scores.append(self.models[i].predict(predictors))
         return np.array(scores).T
 
@@ -241,7 +242,7 @@ class LightGBMScore(Score):
         X_train: Float[ndarray, "batch x_dim"] = np.tile(X, (self._n_repeats, 1))
         y_train: Float[ndarray, "batch y_dim"] = np.tile(y, (self._n_repeats, 1))
         t_train: Float[ndarray, "batch"] = (
-            np.random.uniform(0, 1, size=(y_train.shape[0])) * (T - EPS) + EPS
+            np.random.uniform(0, 1, size=(y_train.shape[0], 1)) * (T - EPS) + EPS
         )
         z_train: Float[ndarray, "batch y_dim"] = np.random.normal(
             size=(y_train.shape[0], y_train.shape[1])
@@ -259,10 +260,14 @@ class LightGBMScore(Score):
         if self._eval_percent is not None:
             perturbed_y_val = val_mean + val_std * z_val
 
-        predictors_train = np.concatenate([perturbed_y_train, X_train, t_train], axis=1)
+        predictors_train = np.concatenate(
+            [perturbed_y_train, X_train, t_train.reshape(-1, 1)], axis=1
+        )
         predictors_val = None
         if self._eval_percent is not None:
-            predictors_val = np.concatenate([perturbed_y_val, X_test, t_val], axis=1)
+            predictors_val = np.concatenate(
+                [perturbed_y_val, X_test, t_val.reshape(-1, 1)], axis=1
+            )
 
         score_normal_train = _score_normal_distribution(
             perturbed_y_train, train_mean, train_std
@@ -277,12 +282,16 @@ class LightGBMScore(Score):
 
         models = []
         for i in range(y_dim):
+            score_normal_val_i = None
+            if self._eval_percent is not None:
+                score_normal_val_i = score_normal_val[:, i]
             score_model_i = _fit_one_lgbm_model(
                 X=predictors_train,
                 y=score_normal_train[:, i],
                 X_val=predictors_val,
-                y_val=score_normal_val[:, i],
+                y_val=score_normal_val_i,
                 weights=weights,
                 **self._lgbm_args,
             )
             models.append(score_model_i)
+        self.models = models
