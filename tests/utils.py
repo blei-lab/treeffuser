@@ -34,6 +34,6 @@ def generate_bimodal_linear_regression_data(
         y = y * (X @ np.random.normal(size=p)) + (1 - y) * (X @ np.random.normal(size=p))
     else:
         y = X @ np.random.normal(size=p)
-    y += np.random.normal(scale=sigma, size=n)
+    y += np.random.normal(size=n) * sigma
     y = y[:, None]
     return X, y

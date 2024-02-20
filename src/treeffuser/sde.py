@@ -20,8 +20,10 @@ The notice from the original code is as follows:
 """
 
 import abc
+from typing import Tuple
 
 import numpy as np
+from einops import repeat
 from jaxtyping import Float
 from numpy import ndarray
 
@@ -257,8 +259,12 @@ class VESDE(SDE):
         diffusion = sigma * np.sqrt(2 * (np.log(self.sigma_max) - np.log(self.sigma_min)))
         return drift, diffusion
 
-    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
+    def marginal_prob(
+        self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[Float[ndarray, "batch x_dim"], Float[ndarray, "batch x_dim"]]:
+
         std = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
+        std = repeat(std, "b 1 -> b x_dim", x_dim=x.shape[1])
         mean = x
         return mean, std
 

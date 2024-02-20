@@ -29,7 +29,8 @@ def _score_normal_distribution(
 ) -> Float[np.ndarray, "batch y_dim"]:
     """Compute the score of a normal distribution."""
     # TODO: We might have issues if the std is too small
-    # might need to consider
+    # might need to consider implementing a custom loss
+    # for lightgbm
     return (y - mean) / (std**2)
 
 
@@ -278,7 +279,8 @@ class LightGBMScore(Score):
 
         weights = np.ones(score_normal_train.shape[0])
         if self._likelihood_reweighting:
-            weights = 1 / np.norm(score_normal_train, axis=1)
+            norm = np.sum(score_normal_train**2, axis=1)
+            weights = 1 / (norm + 1e-6)
 
         models = []
         for i in range(y_dim):
