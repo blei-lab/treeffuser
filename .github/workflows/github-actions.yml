@@ -178,6 +178,7 @@ jobs:
         pip --version
         tox --version
         pip list --format=freeze
+        sudo apt-get update && sudo apt-get install libopenblas-dev
     - name: test
       env:
         TOXPYTHON: '${{ matrix.toxpython }}'
