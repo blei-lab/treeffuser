@@ -12,7 +12,8 @@ from typing import Optional
 
 import lightgbm as lgb
 import numpy as np
-from jaxtyping import Float, Int
+from jaxtyping import Float
+from jaxtyping import Int
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 

@@ -24,7 +24,7 @@ lint.select = [
     "E", # pycodestyle errors
     "EXE", # flake8-executable
     "F", # pyflakes
-    "I", # isort
+    "I001", # isort
     "INT", # flake8-gettext
     "PIE", # flake8-pie
     "PLC", # pylint convention
@@ -45,10 +45,13 @@ target-version = "py38"
 fixture-parentheses = false
 mark-parentheses = false
 
-#[tool.ruff.lint.isort]
-#forced-separate = ["conftest"]
-#force-single-line = true
+[tool.ruff.lint.isort]
+forced-separate = ["conftest"]
+force-single-line = true
 
 [tool.black]
 line-length = 95
 target-version = ["py38"]
+
+[tool.ruff.format]
+indent-style="space"
