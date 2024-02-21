@@ -4,7 +4,7 @@ jobs:
   test:
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -127,12 +127,12 @@ jobs:
           #  python_arch: 'x64'
           #  tox_env: 'pypy38'
           #  os: 'macos-latest'
-          - name: 'pypy39 (ubuntu)'
-            python: 'pypy-3.9'
-            toxpython: 'pypy3.9'
-            python_arch: 'x64'
-            tox_env: 'pypy39'
-            os: 'ubuntu-latest'
+          #- name: 'pypy39 (ubuntu)'
+          #  python: 'pypy-3.9'
+          #  toxpython: 'pypy3.9'
+          #  python_arch: 'x64'
+          #  tox_env: 'pypy39'
+          #  os: 'ubuntu-latest'
           #- name: 'pypy39 (windows)'
           #  python: 'pypy-3.9'
           #  toxpython: 'pypy3.9'
@@ -145,24 +145,24 @@ jobs:
           #  python_arch: 'x64'
           #  tox_env: 'pypy39'
           #  os: 'macos-latest'
-          - name: 'pypy310 (ubuntu)'
-            python: 'pypy-3.10'
-            toxpython: 'pypy3.10'
-            python_arch: 'x64'
-            tox_env: 'pypy310'
-            os: 'ubuntu-latest'
+          #- name: 'pypy310 (ubuntu)'
+          #  python: 'pypy-3.10'
+          #  toxpython: 'pypy3.10'
+          #  python_arch: 'x64'
+          #  tox_env: 'pypy310'
+          #  os: 'ubuntu-latest'
           #- name: 'pypy310 (windows)'
           #  python: 'pypy-3.10'
           #  toxpython: 'pypy3.10'
           #  python_arch: 'x64'
           #  tox_env: 'pypy310'
           #  os: 'windows-latest'
-          #- name: 'pypy310 (macos)'
-          #  python: 'pypy-3.10'
-          #  toxpython: 'pypy3.10'
-          #  python_arch: 'x64'
-          #  tox_env: 'pypy310'
-          #  os: 'macos-latest'
+          - name: 'pypy310 (macos)'
+            python: 'pypy-3.10'
+            toxpython: 'pypy3.10'
+            python_arch: 'x64'
+            tox_env: 'pypy310'
+            os: 'macos-latest'
     steps:
     - uses: actions/checkout@v4
       with:
