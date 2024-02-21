@@ -173,7 +173,6 @@ jobs:
         architecture: ${{ matrix.python_arch }}
     - name: install dependencies
       run: |
-        sudo apt-get update && sudo apt-get install libopenblas-dev
         python -mpip install --progress-bar=off -r ci/requirements.txt
         virtualenv --version
         pip --version
