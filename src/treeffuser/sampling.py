@@ -21,12 +21,16 @@ The notice from the original code is as follows:
 
 import abc
 import functools
+from typing import Callable
+from typing import Float
 from typing import Literal
 
 import numpy as np
+from einops import rearrange
+from einops import repeat
+from numpy import ndarray
 
 import treeffuser.sde as sde_lib
-import treeffuser.utils as utils
 
 _PREDICTORS = {}
 _CORRECTORS = {}
@@ -84,50 +88,55 @@ def get_corrector(name):
     return _CORRECTORS[name]
 
 
-def get_sampling_fn(
-    predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
-    corrector_name: Literal["langevin", "ald", "none"],
-    snr: float,
-    n_steps: int,
-    sde: sde_lib.SDE,
-    inverse_scaler,
-    probability_flow: bool = False,
-    denoise: bool = True,
-    eps: float = 1e-3,
-):
-    """Create a sampling function.
-
-    Args:
-        predictor_name: A string representing the name of the predictor algorithm.
-        corrector_name: A string representing the name of the corrector algorithm.
-        snr: The signal-to-noise ratio for configuring correctors.
-        n_steps: The number of corrector steps per predictor update.
-        sde: A `sde_lib.SDE` object that represents the forward SDE.
-        shape: A sequence of integers representing the eypected shape of a single sample.
-        denoise: If `True`, add one-step denoising to the final samples.
-        inverse_scaler: The inverse data normalizer function.
-        eps: A `float` number. The reverse-time SDE is only integrated to `eps` for numerical stability.
-
-    Returns:
-        A function that takes random states and a replicated training state and outputs samples with the
-        trailing dimensions matching `shape`.
-    """
-    predictor = get_predictor(predictor_name)
-    corrector = get_corrector(corrector_name)
-
-    sampling_fn = get_pc_sampler(
-        sde=sde,
-        predictor=predictor,
-        corrector=corrector,
-        inverse_scaler=inverse_scaler,
-        snr=snr,
-        n_steps=n_steps,
-        probability_flow=probability_flow,
-        denoise=denoise,
-        eps=eps,
-    )
-
-    return sampling_fn
+#############################################################################
+# DEPRECATED
+#############################################################################
+#
+# def get_sampling_fn(
+#    predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
+#    corrector_name: Literal["langevin", "ald", "none"],
+#    snr: float,
+#    n_steps: int,
+#    sde: sde_lib.SDE,
+#    inverse_scaler,
+#    probability_flow: bool = False,
+#    denoise: bool = True,
+#    eps: float = 1e-3,
+# ):
+#    """Create a sampling function.
+#
+#    Args:
+#        predictor_name: A string representing the name of the predictor algorithm.
+#        corrector_name: A string representing the name of the corrector algorithm.
+#        snr: The signal-to-noise ratio for configuring correctors.
+#        n_steps: The number of corrector steps per predictor update.
+#        sde: A `sde_lib.SDE` object that represents the forward SDE.
+#        shape: A sequence of integers representing the eypected shape of a single sample.
+#        denoise: If `True`, add one-step denoising to the final samples.
+#        inverse_scaler: The inverse data normalizer function.
+#        eps: A `float` number. The reverse-time SDE is only integrated to `eps` for numerical stability.
+#
+#    Returns:
+#        A function that takes random states and a replicated training state and outputs samples with the
+#        trailing dimensions matching `shape`.
+#    """
+#    predictor = get_predictor(predictor_name)
+#    corrector = get_corrector(corrector_name)
+#
+#    sampling_fn = get_pc_sampler(
+#        sde=sde,
+#        predictor=predictor,
+#        corrector=corrector,
+#        inverse_scaler=inverse_scaler,
+#        snr=snr,
+#        n_steps=n_steps,
+#        probability_flow=probability_flow,
+#        denoise=denoise,
+#        eps=eps,
+#    )
+#
+#    return sampling_fn
+#
 
 
 class Predictor(abc.ABC):
@@ -141,11 +150,17 @@ class Predictor(abc.ABC):
         self.score_fn = score_fn
 
     @abc.abstractmethod
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         """One update of the predictor.
 
         Args:
-          y: A NumPy array representing the current state
+          y: A NumPy array representing the current state.
+          X: A NumPy array representing the covariates.
           t: A NumPy array representing the current time step.
 
         Returns:
@@ -165,11 +180,17 @@ class Corrector(abc.ABC):
         self.n_steps = n_steps
 
     @abc.abstractmethod
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         """One update of the corrector.
 
         Args:
-          y: A NumPy array representing the current state
+          y: A NumPy array representing the current state.
+          X: A NumPy array representing the covariates.
           t: A NumPy array representing the current time step.
 
         Returns:
@@ -183,7 +204,12 @@ class EulerMaruyamaPredictor(Predictor):
     def __init__(self, sde, score_fn, probability_flow=False):
         super().__init__(sde, score_fn, probability_flow)
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         dt = -1.0 / self.rsde.N
         z = np.random.randn(*y.shape)
         drift, diffusion = self.rsde.sde(y, t)
@@ -197,7 +223,12 @@ class ReverseDiffusionPredictor(Predictor):
     def __init__(self, sde, score_fn, probability_flow=False):
         super().__init__(sde, score_fn, probability_flow)
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         f, G = self.rsde.discretize(y, t)
         z = np.random.randn(*y.shape)
         y_mean = y - f
@@ -212,7 +243,12 @@ class NonePredictor(Predictor):
     def __init__(self, sde, score_fn, probability_flow=False):
         pass
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         return y, y
 
 
@@ -227,7 +263,12 @@ class LangevinCorrector(Corrector):
         ):
             raise NotImplementedError(f"SDE class {sde.__class__.__name__} not yet supported.")
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         sde = self.sde
         score_fn = self.score_fn
         n_steps = self.n_steps
@@ -239,7 +280,7 @@ class LangevinCorrector(Corrector):
             alpha = np.ones_like(t)
 
         for _ in range(n_steps):
-            grad = score_fn(y, t)
+            grad = score_fn(y, X, t)
             noise = np.random.randn(*y.shape)
             grad_norm = np.linalg.norm(grad.reshape(grad.shape[0], -1), dim=-1).mean()
             noise_norm = np.linalg.norm(noise.reshape(noise.shape[0], -1), dim=-1).mean()
@@ -266,7 +307,12 @@ class AnnealedLangevinDynamics(Corrector):
         ):
             raise NotImplementedError(f"SDE class {sde.__class__.__name__} not yet supported.")
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         sde = self.sde
         score_fn = self.score_fn
         n_steps = self.n_steps
@@ -280,7 +326,7 @@ class AnnealedLangevinDynamics(Corrector):
         std = self.sde.marginal_prob(y, t)[1]
 
         for _ in range(n_steps):
-            grad = score_fn(y, t)
+            grad = score_fn(y, X, t)
             noise = np.random.randn(*y.shape)
             step_size = (target_snr * std) ** 2 * 2 * alpha
             y_mean = y + step_size.reshape((-1,) + (1,) * (len(grad.shape) - 1)) * grad
@@ -299,98 +345,210 @@ class NoneCorrector(Corrector):
     def __init__(self, sde, score_fn, snr, n_steps):
         pass
 
-    def update_fn(self, y, t):
+    def update_fn(
+        self,
+        y: Float[ndarray, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        t: Float[ndarray, "batch 1"],
+    ):
         return y, y
 
 
-def shared_predictor_update_fn(y, t, sde, model, predictor, probability_flow, continuous):
+def shared_predictor_update_fn(y, X, t, sde, score_fn, predictor, probability_flow):
     """A wrapper that configures and returns the update function of predictors."""
-    score_fn = utils.get_score_fn(sde, model, train=False, continuous=continuous)
     if predictor is None:
         # Corrector-only sampler
         predictor_obj = NonePredictor(sde, score_fn, probability_flow)
     else:
         predictor_obj = predictor(sde, score_fn, probability_flow)
-    return predictor_obj.update_fn(y, t)
+    return predictor_obj.update_fn(y, X, t)
 
 
-def shared_corrector_update_fn(y, t, sde, model, corrector, continuous, snr, n_steps):
+def shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps):
     """A wrapper tha configures and returns the update function of correctors."""
-    score_fn = utils.get_score_fn(sde, model, train=False, continuous=continuous)
     if corrector is None:
         # Predictor-only sampler
         corrector_obj = NoneCorrector(sde, score_fn, snr, n_steps)
     else:
         corrector_obj = corrector(sde, score_fn, snr, n_steps)
-    return corrector_obj.update_fn(y, t)
+    return corrector_obj.update_fn(y, X, t)
 
 
-def get_pc_sampler(
-    sde,
-    shape,
-    predictor,
-    corrector,
-    inverse_scaler,
-    snr,
-    n_steps=1,
-    probability_flow=False,
-    continuous=False,
-    denoise=True,
-    eps=1e-3,
+##############################################################################
+# DEPRECATED
+##############################################################################
+#
+# def get_pc_sampler(
+#    sde,
+#    shape,
+#    predictor,
+#    corrector,
+#    inverse_scaler,
+#    snr,
+#    n_steps=1,
+#    probability_flow=False,
+#    continuous=False,
+#    denoise=True,
+#    eps=1e-3,
+# ):
+#    """Create a Predictor-Corrector (PC) sampler.
+#
+#    Args:
+#      sde: An `sde_lib.SDE` object representing the forward SDE.
+#      shape: A sequence of integers. The eypected shape of a single sample.
+#      predictor: A subclass of `sampling.Predictor` representing the predictor algorithm.
+#      corrector: A subclass of `sampling.Corrector` representing the corrector algorithm.
+#      inverse_scaler: The inverse data normalizer.
+#      snr: A `float` number. The signal-to-noise ratio for configuring correctors.
+#      n_steps: An integer. The number of corrector steps per predictor update.
+#      probability_flow: If `True`, solve the reverse-time probability flow ODE when running the predictor.
+#      continuous: `True` indicates that the score model was continuously trained.
+#      denoise: If `True`, add one-step denoising to the final samples.
+#      eps: A `float` number. The reverse-time SDE and ODE are integrated to `epsilon` to avoid numerical issues.
+#
+#    Returns:
+#      A sampling function that returns samples and the number of function evaluations during sampling.
+#    """
+#    # Create predictor & corrector update functions
+#    predictor_update_fn = functools.partial(
+#        shared_predictor_update_fn,
+#        sde=sde,
+#        predictor=predictor,
+#        probability_flow=probability_flow,
+#        continuous=continuous,
+#    )
+#    corrector_update_fn = functools.partial(
+#        shared_corrector_update_fn,
+#        sde=sde,
+#        corrector=corrector,
+#        continuous=continuous,
+#        snr=snr,
+#        n_steps=n_steps,
+#    )
+#
+#    def pc_sampler(model):
+#        """The PC sampler funciton.
+#
+#        Args:
+#          model: A score model.
+#        Returns:
+#          Samples, number of function evaluations.
+#        """
+#        # Initial sample
+#        y = sde.prior_sampling(shape)
+#        timesteps = np.linspace(sde.T, eps, sde.N)
+#
+#        for i in range(sde.N):
+#            t = timesteps[i]
+#            vec_t = np.ones(shape[0]) * t
+#            y, y_mean = corrector_update_fn(y, vec_t, model=model)
+#            y, y_mean = predictor_update_fn(y, vec_t, model=model)
+#
+#        return inverse_scaler(y_mean if denoise else y), sde.N * (n_steps + 1)
+#
+#    return pc_sampler
+
+
+def batch_sample(
+    X_batch: Float[np.ndarray, "batch x_dim"],
+    y_dim: int,
+    sde: sde_lib.SDE,
+    eps: float,
+    denoise: bool,
+    predictor_update_fn: Callable,
+    corrector_update_fn: Callable,
 ):
-    """Create a Predictor-Corrector (PC) sampler.
+    timesteps = np.linspace(sde.T, eps, sde.N)
+
+    y = sde.prior_sampling((X_batch.shape[0], y_dim))
+    for i in range(sde.N):
+        t = timesteps[i]
+        vec_t = np.ones((X_batch.shape[0], 1)) * t
+        y, y_mean = corrector_update_fn(y, X_batch, vec_t)
+        y, y_mean = predictor_update_fn(y, X_batch, vec_t)
+
+    return y_mean if denoise else y
+
+
+def sample(
+    X: Float[np.ndarray, "batch x_dim"],
+    n_samples: int,
+    score_fn: Callable,
+    sde: sde_lib.SDE,
+    y_dim: int,
+    predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
+    corrector_name: Literal["langevin", "ald", "none"],
+    snr: float,
+    n_steps: int,
+    n_batches: int = 10,
+    probability_flow: bool = False,
+    denoise: bool = True,
+    eps: float = 1e-3,
+):
+    """Create a sampling function.
 
     Args:
-      sde: An `sde_lib.SDE` object representing the forward SDE.
-      shape: A sequence of integers. The eypected shape of a single sample.
-      predictor: A subclass of `sampling.Predictor` representing the predictor algorithm.
-      corrector: A subclass of `sampling.Corrector` representing the corrector algorithm.
-      inverse_scaler: The inverse data normalizer.
-      snr: A `float` number. The signal-to-noise ratio for configuring correctors.
-      n_steps: An integer. The number of corrector steps per predictor update.
-      probability_flow: If `True`, solve the reverse-time probability flow ODE when running the predictor.
-      continuous: `True` indicates that the score model was continuously trained.
-      denoise: If `True`, add one-step denoising to the final samples.
-      eps: A `float` number. The reverse-time SDE and ODE are integrated to `epsilon` to avoid numerical issues.
+        X: The data to sample from.
+        n_samples: The number of samples to generate.
+        predictor_name: A string representing the name of the predictor algorithm.
+        corrector_name: A string representing the name of the corrector algorithm.
+        score: A callalbe that takes input y[batch, x_dim], X[batch, x_dim] and
+            t[batch, 1] and returns the score at the given time.
+        snr: The signal-to-noise ratio for configuring correctors.
+        n_steps: The number of corrector steps per predictor update.
+        n_batches: The number of batches to sample in parallel.
+        sde: A `sde_lib.SDE` object that represents the forward SDE.
+        n_batches: The number of parallel draws to sample. This is useful for efficiency.
+        shape: A sequence of integers representing the eypected shape of a single sample.
+        denoise: If `True`, add one-step denoising to the final samples.
+        eps: A `float` number. The reverse-time SDE is only integrated to `eps`
+            for numerical stability.
 
     Returns:
-      A sampling function that returns samples and the number of function evaluations during sampling.
+        A function that takes random states and a replicated training state and outputs
+        samples with the
     """
-    # Create predictor & corrector update functions
+    # For efficiency we will sample multiple samples in parallel
+    # and then stack them together. A batch is a single sample.
+
+    total_samples = n_samples * X.shape[0]
+
+    predictor = get_predictor(predictor_name)
+    corrector = get_corrector(corrector_name)
+
     predictor_update_fn = functools.partial(
         shared_predictor_update_fn,
+        score_fn=score_fn,
         sde=sde,
         predictor=predictor,
         probability_flow=probability_flow,
-        continuous=continuous,
     )
     corrector_update_fn = functools.partial(
         shared_corrector_update_fn,
+        score_fn=score_fn,
         sde=sde,
         corrector=corrector,
-        continuous=continuous,
         snr=snr,
         n_steps=n_steps,
     )
 
-    def pc_sampler(model):
-        """The PC sampler funciton.
+    sampled = 0
+    y_samples = np.zeros((X.shape[0], n_samples, y_dim))
+    while sampled < total_samples:
+        X_batches = repeat(X, "x_dim -> (b x_dim)", b=n_batches)
+        y_batch_samples = batch_sample(
+            X_batches=X_batches,
+            y_dim=y_dim,
+            sde=sde,
+            eps=eps,
+            denoise=denoise,
+            predictor_update_fn=predictor_update_fn,
+            corrector_update_fn=corrector_update_fn,
+        )
 
-        Args:
-          model: A score model.
-        Returns:
-          Samples, number of function evaluations.
-        """
-        # Initial sample
-        y = sde.prior_sampling(shape)
-        timesteps = np.linspace(sde.T, eps, sde.N)
+        y_batch_samples = rearrange(y_batch_samples, "(b n) d -> b n d", b=X.shape[0])
+        start, end = sampled, min(sampled + y_batch_samples.shape[1], total_samples)
+        y_samples[:, start:end] = y_batch_samples[:, : end - start]
+        sampled += y_batch_samples.shape[1]
 
-        for i in range(sde.N):
-            t = timesteps[i]
-            vec_t = np.ones(shape[0]) * t
-            y, y_mean = corrector_update_fn(y, vec_t, model=model)
-            y, y_mean = predictor_update_fn(y, vec_t, model=model)
-
-        return inverse_scaler(y_mean if denoise else y), sde.N * (n_steps + 1)
-
-    return pc_sampler
+    return y_samples
