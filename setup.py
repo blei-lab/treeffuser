@@ -2,7 +2,8 @@
 import re
 from pathlib import Path
 
-from setuptools import find_packages, setup
+from setuptools import find_packages
+from setuptools import setup
 
 
 def read(*names, **kwargs):
@@ -65,6 +66,11 @@ setup(
     ],
     python_requires=">=3.8",
     install_requires=[
+        "numpy",
+        "einops",
+        "jaxtyping",
+        "scikit-learn",
+        "lightgbm",
         # eg: "aspectlib==1.1.1", "six>=1.7",
     ],
     extras_require={
