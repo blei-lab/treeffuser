@@ -372,7 +372,7 @@ def sample(
         corrector_name: A string representing the name of the corrector algorithm.
         snr: The signal-to-noise ratio for configuring correctors.
         n_steps: The number of corrector steps per predictor update.
-        n_batches: The number of batches to sample in parallel.
+        n_batches: The number of batches to sample in parallel. This should be less than or equal to the batch size `X.shape[0]`.
         denoise: If `True`, add one-step denoising to the final samples.
         eps: A `float` number. The reverse-time SDE is only integrated to `eps`
             for numerical stability.
@@ -415,7 +415,9 @@ def sample(
             corrector_update_fn=corrector_update_fn,
         )
 
-        y_batch_samples = rearrange(y_batch_samples, "(b n) d -> b n d", b=X.shape[0])
+        y_batch_samples = rearrange(
+            y_batch_samples, "(b n_samples) y_dim -> b n_samples y_dim", b=X.shape[0]
+        )
         start, end = sampled, min(sampled + y_batch_samples.shape[1], total_samples)
         y_samples[:, start:end] = y_batch_samples[:, : end - start]
         sampled += y_batch_samples.shape[1]
