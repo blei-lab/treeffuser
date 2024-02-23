@@ -36,7 +36,7 @@ _PREDICTORS = {}
 _CORRECTORS = {}
 
 
-def register_predictor(cls=None, *, name=None):
+def _register_predictor(cls=None, *, name=None):
     """A decorator for registering predictor classes."""
 
     def _register(cls):
@@ -55,7 +55,7 @@ def register_predictor(cls=None, *, name=None):
         return _register(cls)
 
 
-def register_corrector(cls=None, *, name=None):
+def _register_corrector(cls=None, *, name=None):
     """A decorator for registering corrector classes."""
 
     def _register(cls):
@@ -74,21 +74,21 @@ def register_corrector(cls=None, *, name=None):
         return _register(cls)
 
 
-def get_predictor(name):
+def _get_predictor(name):
     if name not in _PREDICTORS:
         msg = f"Predictor {name} not found. Available predictors: {list(_PREDICTORS.keys())}"
         raise ValueError(msg)
     return _PREDICTORS[name]
 
 
-def get_corrector(name):
+def _get_corrector(name):
     if name not in _CORRECTORS:
         msg = f"Corrector {name} not found. Available correctors: {list(_CORRECTORS.keys())}"
         raise ValueError(msg)
     return _CORRECTORS[name]
 
 
-class Predictor(abc.ABC):
+class _Predictor(abc.ABC):
     """The abstract class for a predictor algorithm."""
 
     def __init__(self, sde, score_fn, probability_flow=False):
@@ -118,7 +118,7 @@ class Predictor(abc.ABC):
         """
 
 
-class Corrector(abc.ABC):
+class _Corrector(abc.ABC):
     """The abstract class for a corrector algorithm."""
 
     def __init__(self, sde, score_fn, snr, n_steps):
@@ -148,8 +148,8 @@ class Corrector(abc.ABC):
         """
 
 
-@register_predictor(name="euler_maruyama")
-class EulerMaruyamaPredictor(Predictor):
+@_register_predictor(name="euler_maruyama")
+class _EulerMaruyamaPredictor(_Predictor):
     def __init__(self, sde, score_fn, probability_flow=False):
         super().__init__(sde, score_fn, probability_flow)
 
@@ -167,8 +167,8 @@ class EulerMaruyamaPredictor(Predictor):
         return y, y_mean
 
 
-@register_predictor(name="reverse_diffusion")
-class ReverseDiffusionPredictor(Predictor):
+@_register_predictor(name="reverse_diffusion")
+class _ReverseDiffusionPredictor(_Predictor):
     def __init__(self, sde, score_fn, probability_flow=False):
         super().__init__(sde, score_fn, probability_flow)
 
@@ -185,8 +185,8 @@ class ReverseDiffusionPredictor(Predictor):
         return y, y_mean
 
 
-@register_predictor(name="none")
-class NonePredictor(Predictor):
+@_register_predictor(name="none")
+class _NonePredictor(_Predictor):
     """An empty predictor that does nothing."""
 
     def __init__(self, sde, score_fn, probability_flow=False):
@@ -201,8 +201,8 @@ class NonePredictor(Predictor):
         return y, y
 
 
-@register_corrector(name="langevin")
-class LangevinCorrector(Corrector):
+@_register_corrector(name="langevin")
+class _LangevinCorrector(_Corrector):
     def __init__(self, sde, score_fn, snr, n_steps):
         super().__init__(sde, score_fn, snr, n_steps)
         if (
@@ -243,8 +243,8 @@ class LangevinCorrector(Corrector):
         return y, y_mean
 
 
-@register_corrector(name="ald")
-class AnnealedLangevinDynamics(Corrector):
+@_register_corrector(name="ald")
+class _AnnealedLangevinDynamics(_Corrector):
     """The original annealed Langevin dynamics predictor in NCSN/NCSNv2."""
 
     def __init__(self, sde, score_fn, snr, n_steps):
@@ -287,8 +287,8 @@ class AnnealedLangevinDynamics(Corrector):
         return y, y_mean
 
 
-@register_corrector(name="none")
-class NoneCorrector(Corrector):
+@_register_corrector(name="none")
+class _NoneCorrector(_Corrector):
     """An empty corrector that does nothing."""
 
     def __init__(self, sde, score_fn, snr, n_steps):
@@ -303,21 +303,21 @@ class NoneCorrector(Corrector):
         return y, y
 
 
-def shared_predictor_update_fn(y, X, t, sde, score_fn, predictor, probability_flow):
+def _shared_predictor_update_fn(y, X, t, sde, score_fn, predictor, probability_flow):
     """A wrapper that configures and returns the update function of predictors."""
     if predictor is None:
         # Corrector-only sampler
-        predictor_obj = NonePredictor(sde, score_fn, probability_flow)
+        predictor_obj = _NonePredictor(sde, score_fn, probability_flow)
     else:
         predictor_obj = predictor(sde, score_fn, probability_flow)
     return predictor_obj.update_fn(y, X, t)
 
 
-def shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps):
+def _shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps):
     """A wrapper tha configures and returns the update function of correctors."""
     if corrector is None:
         # Predictor-only sampler
-        corrector_obj = NoneCorrector(sde, score_fn, snr, n_steps)
+        corrector_obj = _NoneCorrector(sde, score_fn, snr, n_steps)
     else:
         corrector_obj = corrector(sde, score_fn, snr, n_steps)
     return corrector_obj.update_fn(y, X, t)
@@ -345,7 +345,7 @@ def batch_sample(
 
 
 def sample(
-    X: Float[np.ndarray, "batch x_dim"],
+    X: Float[np.ndarray, "n_pred x_dim"],
     y_dim: int,
     n_samples: int,
     score_fn: Callable,
@@ -354,7 +354,7 @@ def sample(
     corrector_name: Literal["langevin", "ald", "none"],
     snr: float,
     n_steps: int,
-    n_batches: int = 10,
+    n_parallel: int = 10,
     probability_flow: bool = False,
     denoise: bool = True,
     eps: float = 1e-3,
@@ -372,7 +372,7 @@ def sample(
         corrector_name: A string representing the name of the corrector algorithm.
         snr: The signal-to-noise ratio for configuring correctors.
         n_steps: The number of corrector steps per predictor update.
-        n_batches: The number of batches to sample in parallel. This should be less than or equal to the batch size `X.shape[0]`.
+        n_parallel: How many samples of y to draw in parallel.
         denoise: If `True`, add one-step denoising to the final samples.
         eps: A `float` number. The reverse-time SDE is only integrated to `eps`
             for numerical stability.
@@ -382,18 +382,18 @@ def sample(
 
     total_samples = n_samples * X.shape[0]
 
-    predictor = get_predictor(predictor_name)
-    corrector = get_corrector(corrector_name)
+    predictor = _get_predictor(predictor_name)
+    corrector = _get_corrector(corrector_name)
 
     predictor_update_fn = functools.partial(
-        shared_predictor_update_fn,
+        _shared_predictor_update_fn,
         score_fn=score_fn,
         sde=sde,
         predictor=predictor,
         probability_flow=probability_flow,
     )
     corrector_update_fn = functools.partial(
-        shared_corrector_update_fn,
+        _shared_corrector_update_fn,
         score_fn=score_fn,
         sde=sde,
         corrector=corrector,
@@ -401,12 +401,16 @@ def sample(
         n_steps=n_steps,
     )
 
-    sampled = 0
-    y_samples = np.zeros((X.shape[0], n_samples, y_dim))
-    while sampled < total_samples:
-        X_batches = repeat(X, "x_dim -> (b x_dim)", b=n_batches)
+    n_sampled = 0
+    n_pred, _ = X.shape
+    y_samples = np.zeros((n_pred, n_samples, y_dim))
+    while n_sampled < total_samples:
+        # This funny code is simple meant to make sampling a bit more efficient by grouping
+        # parallel samples and treating them all as a single "batch".
+        X_batch = repeat(X, "n_pred x_dim -> (n_parallel n_pred x_dim)", n_parallel=n_parallel)
+        X_batch = rearrange(X_batch, "n_parallel n_pred x_dim -> (n_parallel n_pred) x_dim")
         y_batch_samples = batch_sample(
-            X_batch=X_batches,
+            X_batch=X_batch,
             y_dim=y_dim,
             sde=sde,
             eps=eps,
@@ -416,10 +420,12 @@ def sample(
         )
 
         y_batch_samples = rearrange(
-            y_batch_samples, "(b n_samples) y_dim -> b n_samples y_dim", b=X.shape[0]
+            y_batch_samples,
+            "(n_parallel n_pred) y_dim -> n_pred n_parallel y_dim",
+            n_parallel=n_parallel,
         )
-        start, end = sampled, min(sampled + y_batch_samples.shape[1], total_samples)
+        start, end = n_sampled, min(n_sampled + y_batch_samples.shape[1], total_samples)
         y_samples[:, start:end] = y_batch_samples[:, : end - start]
-        sampled += y_batch_samples.shape[1]
+        n_sampled += y_batch_samples.shape[1]
 
     return y_samples
