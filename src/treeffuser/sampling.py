@@ -22,12 +22,12 @@ The notice from the original code is as follows:
 import abc
 import functools
 from typing import Callable
-from typing import Float
 from typing import Literal
 
 import numpy as np
 from einops import rearrange
 from einops import repeat
+from jaxtyping import Float
 from numpy import ndarray
 
 import treeffuser.sde as sde_lib
@@ -86,57 +86,6 @@ def get_corrector(name):
         msg = f"Corrector {name} not found. Available correctors: {list(_CORRECTORS.keys())}"
         raise ValueError(msg)
     return _CORRECTORS[name]
-
-
-#############################################################################
-# DEPRECATED
-#############################################################################
-#
-# def get_sampling_fn(
-#    predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
-#    corrector_name: Literal["langevin", "ald", "none"],
-#    snr: float,
-#    n_steps: int,
-#    sde: sde_lib.SDE,
-#    inverse_scaler,
-#    probability_flow: bool = False,
-#    denoise: bool = True,
-#    eps: float = 1e-3,
-# ):
-#    """Create a sampling function.
-#
-#    Args:
-#        predictor_name: A string representing the name of the predictor algorithm.
-#        corrector_name: A string representing the name of the corrector algorithm.
-#        snr: The signal-to-noise ratio for configuring correctors.
-#        n_steps: The number of corrector steps per predictor update.
-#        sde: A `sde_lib.SDE` object that represents the forward SDE.
-#        shape: A sequence of integers representing the eypected shape of a single sample.
-#        denoise: If `True`, add one-step denoising to the final samples.
-#        inverse_scaler: The inverse data normalizer function.
-#        eps: A `float` number. The reverse-time SDE is only integrated to `eps` for numerical stability.
-#
-#    Returns:
-#        A function that takes random states and a replicated training state and outputs samples with the
-#        trailing dimensions matching `shape`.
-#    """
-#    predictor = get_predictor(predictor_name)
-#    corrector = get_corrector(corrector_name)
-#
-#    sampling_fn = get_pc_sampler(
-#        sde=sde,
-#        predictor=predictor,
-#        corrector=corrector,
-#        inverse_scaler=inverse_scaler,
-#        snr=snr,
-#        n_steps=n_steps,
-#        probability_flow=probability_flow,
-#        denoise=denoise,
-#        eps=eps,
-#    )
-#
-#    return sampling_fn
-#
 
 
 class Predictor(abc.ABC):
@@ -374,81 +323,6 @@ def shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps):
     return corrector_obj.update_fn(y, X, t)
 
 
-##############################################################################
-# DEPRECATED
-##############################################################################
-#
-# def get_pc_sampler(
-#    sde,
-#    shape,
-#    predictor,
-#    corrector,
-#    inverse_scaler,
-#    snr,
-#    n_steps=1,
-#    probability_flow=False,
-#    continuous=False,
-#    denoise=True,
-#    eps=1e-3,
-# ):
-#    """Create a Predictor-Corrector (PC) sampler.
-#
-#    Args:
-#      sde: An `sde_lib.SDE` object representing the forward SDE.
-#      shape: A sequence of integers. The eypected shape of a single sample.
-#      predictor: A subclass of `sampling.Predictor` representing the predictor algorithm.
-#      corrector: A subclass of `sampling.Corrector` representing the corrector algorithm.
-#      inverse_scaler: The inverse data normalizer.
-#      snr: A `float` number. The signal-to-noise ratio for configuring correctors.
-#      n_steps: An integer. The number of corrector steps per predictor update.
-#      probability_flow: If `True`, solve the reverse-time probability flow ODE when running the predictor.
-#      continuous: `True` indicates that the score model was continuously trained.
-#      denoise: If `True`, add one-step denoising to the final samples.
-#      eps: A `float` number. The reverse-time SDE and ODE are integrated to `epsilon` to avoid numerical issues.
-#
-#    Returns:
-#      A sampling function that returns samples and the number of function evaluations during sampling.
-#    """
-#    # Create predictor & corrector update functions
-#    predictor_update_fn = functools.partial(
-#        shared_predictor_update_fn,
-#        sde=sde,
-#        predictor=predictor,
-#        probability_flow=probability_flow,
-#        continuous=continuous,
-#    )
-#    corrector_update_fn = functools.partial(
-#        shared_corrector_update_fn,
-#        sde=sde,
-#        corrector=corrector,
-#        continuous=continuous,
-#        snr=snr,
-#        n_steps=n_steps,
-#    )
-#
-#    def pc_sampler(model):
-#        """The PC sampler funciton.
-#
-#        Args:
-#          model: A score model.
-#        Returns:
-#          Samples, number of function evaluations.
-#        """
-#        # Initial sample
-#        y = sde.prior_sampling(shape)
-#        timesteps = np.linspace(sde.T, eps, sde.N)
-#
-#        for i in range(sde.N):
-#            t = timesteps[i]
-#            vec_t = np.ones(shape[0]) * t
-#            y, y_mean = corrector_update_fn(y, vec_t, model=model)
-#            y, y_mean = predictor_update_fn(y, vec_t, model=model)
-#
-#        return inverse_scaler(y_mean if denoise else y), sde.N * (n_steps + 1)
-#
-#    return pc_sampler
-
-
 def batch_sample(
     X_batch: Float[np.ndarray, "batch x_dim"],
     y_dim: int,
@@ -472,10 +346,10 @@ def batch_sample(
 
 def sample(
     X: Float[np.ndarray, "batch x_dim"],
+    y_dim: int,
     n_samples: int,
     score_fn: Callable,
     sde: sde_lib.SDE,
-    y_dim: int,
     predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
     corrector_name: Literal["langevin", "ald", "none"],
     snr: float,
@@ -485,28 +359,23 @@ def sample(
     denoise: bool = True,
     eps: float = 1e-3,
 ):
-    """Create a sampling function.
+    """Sampling.
 
     Args:
-        X: The data to sample from.
+        X: The data to condition on when sampling y.
+        y_dim: The dimension of a single sample.
         n_samples: The number of samples to generate.
-        predictor_name: A string representing the name of the predictor algorithm.
-        corrector_name: A string representing the name of the corrector algorithm.
         score: A callalbe that takes input y[batch, x_dim], X[batch, x_dim] and
             t[batch, 1] and returns the score at the given time.
+        sde: A `sde_lib.SDE` object that represents the forward SDE.
+        predictor_name: A string representing the name of the predictor algorithm.
+        corrector_name: A string representing the name of the corrector algorithm.
         snr: The signal-to-noise ratio for configuring correctors.
         n_steps: The number of corrector steps per predictor update.
-        n_batches: The number of batches to sample in parallel.
-        sde: A `sde_lib.SDE` object that represents the forward SDE.
-        n_batches: The number of parallel draws to sample. This is useful for efficiency.
-        shape: A sequence of integers representing the eypected shape of a single sample.
+        n_batches: The number of batches to sample in parallel. This should be less than or equal to the batch size `X.shape[0]`.
         denoise: If `True`, add one-step denoising to the final samples.
         eps: A `float` number. The reverse-time SDE is only integrated to `eps`
             for numerical stability.
-
-    Returns:
-        A function that takes random states and a replicated training state and outputs
-        samples with the
     """
     # For efficiency we will sample multiple samples in parallel
     # and then stack them together. A batch is a single sample.
@@ -537,7 +406,7 @@ def sample(
     while sampled < total_samples:
         X_batches = repeat(X, "x_dim -> (b x_dim)", b=n_batches)
         y_batch_samples = batch_sample(
-            X_batches=X_batches,
+            X_batch=X_batches,
             y_dim=y_dim,
             sde=sde,
             eps=eps,
@@ -546,7 +415,9 @@ def sample(
             corrector_update_fn=corrector_update_fn,
         )
 
-        y_batch_samples = rearrange(y_batch_samples, "(b n) d -> b n d", b=X.shape[0])
+        y_batch_samples = rearrange(
+            y_batch_samples, "(b n_samples) y_dim -> b n_samples y_dim", b=X.shape[0]
+        )
         start, end = sampled, min(sampled + y_batch_samples.shape[1], total_samples)
         y_samples[:, start:end] = y_batch_samples[:, : end - start]
         sampled += y_batch_samples.shape[1]
