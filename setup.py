@@ -71,7 +71,7 @@ setup(
         "jaxtyping",
         "scikit-learn",
         "lightgbm",
-        # eg: "aspectlib==1.1.1", "six>=1.7",
+        "tqdm",
     ],
     extras_require={
         # eg:
