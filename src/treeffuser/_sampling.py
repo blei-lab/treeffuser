@@ -1,6 +1,8 @@
 """
 Abstract classes for sampling methods.
 Adapted from: http://tinyurl.com/torch-sampling-song
+
+
 The notice from the original code is as follows:
 
  coding=utf-8
@@ -30,6 +32,7 @@ from einops import rearrange
 from einops import repeat
 from jaxtyping import Float
 from numpy import ndarray
+from tqdm import tqdm
 
 import treeffuser._sdes as _sdes
 
@@ -151,6 +154,11 @@ class _Corrector(abc.ABC):
 
 @_register_predictor(name="euler_maruyama")
 class _EulerMaruyamaPredictor(_Predictor):
+    """
+    See:
+        http://tinyurl.com/wiki-euler-maruyama
+    """
+
     def __init__(self, sde, score_fn, probability_flow=False):
         super().__init__(sde, score_fn, probability_flow)
 
@@ -162,9 +170,9 @@ class _EulerMaruyamaPredictor(_Predictor):
     ):
         dt = -1.0 / self.rsde.N
         z = np.random.randn(*y.shape)
-        drift, diffusion = self.rsde.sde(y, t)
+        drift, diffusion = self.rsde.sde(y, X, t)
         y_mean = y + drift * dt
-        y = y_mean + diffusion.reshape((-1,) + (1,) * (len(z.shape) - 1)) * np.sqrt(-dt) * z
+        y = y_mean + diffusion * np.sqrt(-dt) * z
         return y, y_mean
 
 
@@ -306,21 +314,13 @@ class _NoneCorrector(_Corrector):
 
 def _shared_predictor_update_fn(y, X, t, sde, score_fn, predictor, probability_flow):
     """A wrapper that configures and returns the update function of predictors."""
-    if predictor is None:
-        # Corrector-only sampler
-        predictor_obj = _NonePredictor(sde, score_fn, probability_flow)
-    else:
-        predictor_obj = predictor(sde, score_fn, probability_flow)
+    predictor_obj = predictor(sde, score_fn, probability_flow)
     return predictor_obj.update_fn(y, X, t)
 
 
 def _shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps):
     """A wrapper tha configures and returns the update function of correctors."""
-    if corrector is None:
-        # Predictor-only sampler
-        corrector_obj = _NoneCorrector(sde, score_fn, snr, n_steps)
-    else:
-        corrector_obj = corrector(sde, score_fn, snr, n_steps)
+    corrector_obj = corrector(sde, score_fn, snr, n_steps)
     return corrector_obj.update_fn(y, X, t)
 
 
@@ -333,7 +333,7 @@ def batch_sample(
     predictor_update_fn: Callable,
     corrector_update_fn: Callable,
     seed=None,
-):
+) -> Float[np.ndarray, "batch y_dim"]:
     if seed is not None:
         np.random.seed(seed)
     timesteps = np.linspace(sde.T, eps, sde.N)
@@ -362,9 +362,10 @@ def sample(
     n_parallel: int = 10,
     probability_flow: bool = False,
     denoise: bool = True,
-    eps: float = 1e-3,
+    eps: float = 1e-5,
     seed=None,
-):
+    verbose: int = 0,
+) -> Float[np.ndarray, "n_predictions n_samples y_dim"]:
     """Sampling.
 
     Args:
@@ -382,12 +383,10 @@ def sample(
         denoise: If `True`, add one-step denoising to the final samples.
         eps: A `float` number. The reverse-time SDE is only integrated to `eps`
             for numerical stability.
+        verbose: A `int` number. The verbosity level.
     """
     # For efficiency we will sample multiple samples in parallel
     # and then stack them together. A batch is a single sample.
-
-    total_samples = n_samples * X.shape[0]
-
     predictor = _get_predictor(predictor_name)
     corrector = _get_corrector(corrector_name)
 
@@ -410,7 +409,9 @@ def sample(
     n_sampled = 0
     n_predictions, _ = X.shape
     y_samples = np.zeros((n_predictions, n_samples, y_dim))
-    while n_sampled < total_samples:
+
+    pbar = tqdm(total=n_samples, disable=verbose == 0)
+    while n_sampled < n_samples:
         # This funny code is simple meant to make sampling a bit more efficient by grouping
         # parallel samples and treating them all as a single "batch".
         X_batch = repeat(
@@ -432,8 +433,11 @@ def sample(
             "(n_parallel n_predict) y_dim -> n_predict n_parallel y_dim",
             n_parallel=n_parallel,
         )
-        start, end = n_sampled, min(n_sampled + y_batch_samples.shape[1], total_samples)
+        n_samples_batch = y_batch_samples.shape[1]
+        start, end = n_sampled, min(n_sampled + n_samples_batch, n_samples)
         y_samples[:, start:end] = y_batch_samples[:, : end - start]
-        n_sampled += y_batch_samples.shape[1]
+        n_sampled += n_samples_batch
+
+        pbar.update(n_samples_batch)
 
     return y_samples
