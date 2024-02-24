@@ -23,6 +23,7 @@ import abc
 import functools
 from typing import Callable
 from typing import Literal
+from typing import Optional
 
 import numpy as np
 from einops import rearrange
@@ -30,7 +31,7 @@ from einops import repeat
 from jaxtyping import Float
 from numpy import ndarray
 
-import treeffuser.sde as sde_lib
+import treeffuser._sdes as _sdes
 
 _PREDICTORS = {}
 _CORRECTORS = {}
@@ -206,9 +207,9 @@ class _LangevinCorrector(_Corrector):
     def __init__(self, sde, score_fn, snr, n_steps):
         super().__init__(sde, score_fn, snr, n_steps)
         if (
-            not isinstance(sde, sde_lib.VPSDE)
-            and not isinstance(sde, sde_lib.VESDE)
-            and not isinstance(sde, sde_lib.subVPSDE)
+            not isinstance(sde, _sdes.VPSDE)
+            and not isinstance(sde, _sdes.VESDE)
+            and not isinstance(sde, _sdes.subVPSDE)
         ):
             raise NotImplementedError(f"SDE class {sde.__class__.__name__} not yet supported.")
 
@@ -222,7 +223,7 @@ class _LangevinCorrector(_Corrector):
         score_fn = self.score_fn
         n_steps = self.n_steps
         target_snr = self.snr
-        if isinstance(sde, sde_lib.VPSDE) or isinstance(sde, sde_lib.subVPSDE):
+        if isinstance(sde, _sdes.VPSDE) or isinstance(sde, _sdes.subVPSDE):
             timestep = (t * (sde.N - 1) / sde.T).long()
             alpha = sde.alphas[timestep]
         else:
@@ -250,9 +251,9 @@ class _AnnealedLangevinDynamics(_Corrector):
     def __init__(self, sde, score_fn, snr, n_steps):
         super().__init__(sde, score_fn, snr, n_steps)
         if (
-            not isinstance(sde, sde_lib.VPSDE)
-            and not isinstance(sde, sde_lib.VESDE)
-            and not isinstance(sde, sde_lib.subVPSDE)
+            not isinstance(sde, _sdes.VPSDE)
+            and not isinstance(sde, _sdes.VESDE)
+            and not isinstance(sde, _sdes.subVPSDE)
         ):
             raise NotImplementedError(f"SDE class {sde.__class__.__name__} not yet supported.")
 
@@ -266,7 +267,7 @@ class _AnnealedLangevinDynamics(_Corrector):
         score_fn = self.score_fn
         n_steps = self.n_steps
         target_snr = self.snr
-        if isinstance(sde, sde_lib.VPSDE) or isinstance(sde, sde_lib.subVPSDE):
+        if isinstance(sde, _sdes.VPSDE) or isinstance(sde, _sdes.subVPSDE):
             timestep = (t * (sde.N - 1) / sde.T).long()
             alpha = sde.alphas[timestep]
         else:
@@ -326,18 +327,22 @@ def _shared_corrector_update_fn(y, X, t, score_fn, sde, corrector, snr, n_steps)
 def batch_sample(
     X_batch: Float[np.ndarray, "batch x_dim"],
     y_dim: int,
-    sde: sde_lib.SDE,
+    sde: _sdes.SDE,
     eps: float,
     denoise: bool,
     predictor_update_fn: Callable,
     corrector_update_fn: Callable,
+    seed=None,
 ):
+    if seed is not None:
+        np.random.seed(seed)
     timesteps = np.linspace(sde.T, eps, sde.N)
 
-    y = sde.prior_sampling((X_batch.shape[0], y_dim))
+    batch_dim = X_batch.shape[0]
+    y = sde.prior_sampling((batch_dim, y_dim))
     for i in range(sde.N):
         t = timesteps[i]
-        vec_t = np.ones((X_batch.shape[0], 1)) * t
+        vec_t = np.ones((batch_dim, 1)) * t
         y, y_mean = corrector_update_fn(y, X_batch, vec_t)
         y, y_mean = predictor_update_fn(y, X_batch, vec_t)
 
@@ -345,19 +350,20 @@ def batch_sample(
 
 
 def sample(
-    X: Float[np.ndarray, "n_pred x_dim"],
+    X: Float[np.ndarray, "n_predictions x_dim"],
     y_dim: int,
     n_samples: int,
     score_fn: Callable,
-    sde: sde_lib.SDE,
+    sde: _sdes.SDE,
     predictor_name: Literal["euler_maruyama", "reverse_diffusion", "none"],
     corrector_name: Literal["langevin", "ald", "none"],
-    snr: float,
-    n_steps: int,
+    snr: Optional[float] = None,
+    n_steps: Optional[int] = None,
     n_parallel: int = 10,
     probability_flow: bool = False,
     denoise: bool = True,
     eps: float = 1e-3,
+    seed=None,
 ):
     """Sampling.
 
@@ -367,7 +373,7 @@ def sample(
         n_samples: The number of samples to generate.
         score: A callalbe that takes input y[batch, x_dim], X[batch, x_dim] and
             t[batch, 1] and returns the score at the given time.
-        sde: A `sde_lib.SDE` object that represents the forward SDE.
+        sde: A `_sdes.SDE` object that represents the forward SDE.
         predictor_name: A string representing the name of the predictor algorithm.
         corrector_name: A string representing the name of the corrector algorithm.
         snr: The signal-to-noise ratio for configuring correctors.
@@ -402,13 +408,14 @@ def sample(
     )
 
     n_sampled = 0
-    n_pred, _ = X.shape
-    y_samples = np.zeros((n_pred, n_samples, y_dim))
+    n_predictions, _ = X.shape
+    y_samples = np.zeros((n_predictions, n_samples, y_dim))
     while n_sampled < total_samples:
         # This funny code is simple meant to make sampling a bit more efficient by grouping
         # parallel samples and treating them all as a single "batch".
-        X_batch = repeat(X, "n_pred x_dim -> (n_parallel n_pred x_dim)", n_parallel=n_parallel)
-        X_batch = rearrange(X_batch, "n_parallel n_pred x_dim -> (n_parallel n_pred) x_dim")
+        X_batch = repeat(
+            X, "n_predict x_dim -> (n_parallel n_predict) x_dim", n_parallel=n_parallel
+        )
         y_batch_samples = batch_sample(
             X_batch=X_batch,
             y_dim=y_dim,
@@ -417,11 +424,12 @@ def sample(
             denoise=denoise,
             predictor_update_fn=predictor_update_fn,
             corrector_update_fn=corrector_update_fn,
+            seed=seed + n_sampled if seed is not None else None,
         )
 
         y_batch_samples = rearrange(
             y_batch_samples,
-            "(n_parallel n_pred) y_dim -> n_pred n_parallel y_dim",
+            "(n_parallel n_predict) y_dim -> n_predict n_parallel y_dim",
             n_parallel=n_parallel,
         )
         start, end = n_sampled, min(n_sampled + y_batch_samples.shape[1], total_samples)

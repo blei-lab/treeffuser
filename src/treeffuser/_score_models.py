@@ -17,7 +17,7 @@ from jaxtyping import Int
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
-from treeffuser.sde import SDE
+from treeffuser._sdes import SDE
 
 
 ###################################################
