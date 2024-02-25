@@ -32,7 +32,7 @@ def _score_normal_distribution(
     # TODO: We might have issues if the std is too small
     # might need to consider implementing a custom loss
     # for lightgbm
-    return (y - mean) / (std**2)
+    return -1.0 * (y - mean) / (std**2)
 
 
 def _lgbm_loss(y_true, y_pred, weights):
@@ -231,7 +231,7 @@ class LightGBMScore(Score):
                 matching losses according to https://arxiv.org/abs/2101.09258;
                 otherwise use the weighting recommended in song's SDEs paper.
         """
-        EPS = 1e-6  # smallest step we can sample from
+        EPS = 1e-5  # smallest step we can sample from
         T = self._sde.T
         y_dim = y.shape[1]
 

@@ -31,7 +31,9 @@ def generate_bimodal_linear_regression_data(
     X = np.random.normal(size=(n, p))
     if bimodal:
         y = np.random.choice([0, 1], size=n)
-        y = y * (X @ np.random.normal(size=p)) + (1 - y) * (X @ np.random.normal(size=p))
+        y = y * (X @ np.random.normal(size=p) * 2) + (1 - y) * (
+            X @ np.random.normal(size=p) * 2
+        )
     else:
         y = X @ np.random.normal(size=p)
     y += np.random.normal(size=n) * sigma

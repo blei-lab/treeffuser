@@ -35,6 +35,7 @@ class Preprocessor:
         cat_idx: The indices of the categorical features.
         """
         self._reset()
+        cat_idx = cat_idx if cat_idx is not None else []
 
         X_non_cat = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
 
@@ -67,7 +68,7 @@ class Preprocessor:
         X_non_cat = X[:, non_cat_idx]
         X_non_cat = self._scaler.transform(X_non_cat)
         X[:, non_cat_idx] = X_non_cat
-        return self.scaler.transform(X)
+        return self._scaler.transform(X)
 
     def fit_transform(
         self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None
