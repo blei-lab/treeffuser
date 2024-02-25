@@ -1,5 +1,5 @@
 """
-Contains tests for verifying that the _sampling.py module works as expected.
+Contains tests for _sampling.py module.
 """
 
 from functools import partial
@@ -27,7 +27,7 @@ def _linear_score_vesde(
         for i in 1, ..., n
             x_i ~ N(0, 1)
             eps_i ~ N(0, sigma^2)
-            y_i = beta * x + eps_i *  x_i
+            y_i = beta * x_i + eps_i *  x_i
 
     Furthermore, we assume that the score model is a VESDE
     which noises the data with kernel N(0, std= sigma_min * (sigma_max / sigma_min)^t).
@@ -49,28 +49,26 @@ def test_vesde_linear_model():
         for i in 1, ..., n
             x_i ~ N(0, 1)
             eps_i ~ N(0, sigma^2)
-            y_i = beta * x + eps_i *  x_i
+            y_i = beta * x_i + eps_i *  x_i
 
     This test computes various statistics of the score model
     """
-    # set seed
     np.random.seed(0)
 
+    # Params
     n = 1000
     n_features = 1
     y_dim = 1
 
-    # generate data
+    # Generate data
     sigma = 1
     x = np.random.normal(size=(n, n_features))
     beta = np.random.normal(size=(1, n_features))
 
-    # Move x away from the origin to avoid numerical issues
-    x = x + np.abs(x.min()) + 1
-
-    mean = x * beta[0, 0]
+    mean = x * beta
     y = mean + np.random.normal(size=(n, n_features)) * sigma * x
 
+    # Instantiate score function and SDE
     sigma_min = 0.01
     sigma_max = y.std() * 4
 
@@ -84,6 +82,7 @@ def test_vesde_linear_model():
 
     sde = VESDE(sigma_min=sigma_min, sigma_max=sigma_max, N=100)
 
+    # Draw samples
     y_samples = sample(
         X=x,
         y_dim=y_dim,
