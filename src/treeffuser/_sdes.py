@@ -42,17 +42,21 @@ class SDE(abc.ABC):
 
     @property
     @abc.abstractmethod
-    def T(self):
+    def T(self) -> float:
         """End time of the SDE."""
 
     @abc.abstractmethod
-    def sde(self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]):
-
-        pass
+    def sde(
+        self, y: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]
+    ) -> Tuple[Float[np.ndarray, "batch y_dim"], Float[np.ndarray, "batch y_dim"]]:
+        """
+        Returns the drift and diffusion functions of the SDE which should
+        be of the same shape as the input.
+        """
 
     @abc.abstractmethod
     def marginal_prob(
-        self, x: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]
+        self, y: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]
     ):
         """Parameters to determine the marginal distribution of the SDE, $p_t( |x)$."""
 
@@ -72,7 +76,9 @@ class SDE(abc.ABC):
           log probability density
         """
 
-    def discretize(self, x, t):
+    def discretize(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """Discretize the SDE in the form: x_{i+1} = x_i + f_i(x_i) + G_i z_i.
 
         Useful for reverse diffusion sampling and probabiliy flow sampling.
@@ -86,7 +92,7 @@ class SDE(abc.ABC):
           f, G
         """
         dt = 1 / self.N
-        drift, diffusion = self.sde(x, t)
+        drift, diffusion = self.sde(y, t)
         f = drift * dt
         G = diffusion * np.sqrt(dt)
         return f, G
@@ -113,24 +119,30 @@ class SDE(abc.ABC):
             def T(self):
                 return T
 
-            def sde(self, x, t):
+            def sde(
+                self,
+                y: Float[ndarray, "batch y_dim"],
+                X: Float[ndarray, "batch x_dim"],
+                t: Float[ndarray, "batch 1"],
+            ) -> Tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
                 """Create the drift and diffusion functions for the reverse SDE/ODE."""
-                drift, diffusion = sde_fn(x, t)
-                score = score_fn(x, t)
-                drift = drift - diffusion.reshape(
-                    (-1,) + (1,) * (len(score.shape) - 1)
-                ) ** 2 * score * (0.5 if self.probability_flow else 1.0)
+                drift, diffusion = sde_fn(y, t)
+                score = score_fn(y, X, t)
+                drift = drift - diffusion**2 * score * (0.5 if self.probability_flow else 1.0)
                 # Set the diffusion function to zero for ODEs.
                 diffusion = 0.0 if self.probability_flow else diffusion
                 return drift, diffusion
 
-            def discretize(self, x, t):
+            def discretize(
+                self,
+                y: Float[ndarray, "batch y_dim"],
+                X: Float[ndarray, "batch x_dim"],
+                t: Float[ndarray, "batch 1"],
+            ) -> Tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
                 """Create discretized iteration rules for the reverse diffusion sampler."""
-                f, G = discretize_fn(x, t)
-                score = score_fn(x, t)
-                rev_f = f - G.reshape((-1,) + (1,) * (len(score.shape) - 1)) ** 2 * score * (
-                    0.5 if self.probability_flow else 1.0
-                )
+                f, G = discretize_fn(y, X, t)
+                score = score_fn(y, X, t)
+                rev_f = f - G**2 * score * (0.5 if self.probability_flow else 1.0)
                 rev_G = np.zeros_like(G) if self.probability_flow else G
                 return rev_f, rev_G
 
@@ -160,15 +172,15 @@ class VPSDE(SDE):
     def T(self):
         return 1
 
-    def sde(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
+    def sde(self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]):
         beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
-        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
+        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
         diffusion = np.sqrt(beta_t)
         return drift, diffusion
 
-    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
+    def marginal_prob(self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]):
         log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
-        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
+        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
         std = np.sqrt(1.0 - np.exp(2.0 * log_mean_coeff))
         return mean, std
 
@@ -181,13 +193,13 @@ class VPSDE(SDE):
         logps = -N / 2.0 * np.log(2 * np.pi) - np.sum(z**2, axis=(1, 2, 3)) / 2.0
         return logps
 
-    def discretize(self, x, t):
+    def discretize(self, y, t):
         """DDPM discretization."""
         timestep = (t * (self.N - 1) / self.T).long()
         beta = self.discrete_betas[timestep]
         alpha = self.alphas[timestep]
         sqrt_beta = np.sqrt(beta)
-        f = np.sqrt(alpha).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x - x
+        f = np.sqrt(alpha).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y - y
         G = sqrt_beta
         return f, G
 
@@ -210,16 +222,16 @@ class subVPSDE(SDE):
     def T(self):
         return 1
 
-    def sde(self, x, t):
+    def sde(self, y, t):
         beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
-        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
+        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
         discount = 1.0 - np.exp(-2 * self.beta_0 * t - (self.beta_1 - self.beta_0) * t**2)
         diffusion = np.sqrt(beta_t * discount)
         return drift, diffusion
 
-    def marginal_prob(self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]):
+    def marginal_prob(self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]):
         log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
-        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(x.shape) - 1)) * x
+        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
         std = 1 - np.exp(2.0 * log_mean_coeff)
         return mean, std
 
@@ -253,19 +265,22 @@ class VESDE(SDE):
     def T(self):
         return 1
 
-    def sde(self, x, t):
+    def sde(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         sigma = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
-        drift = np.zeros_like(x)
+        sigma = repeat(sigma, "b 1 -> b y_dim", y_dim=y.shape[1])
+        drift = np.zeros_like(y)
         diffusion = sigma * np.sqrt(2 * (np.log(self.sigma_max) - np.log(self.sigma_min)))
         return drift, diffusion
 
     def marginal_prob(
-        self, x: Float[ndarray, "batch x_dim"], t: Float[ndarray, "batch 1"]
-    ) -> Tuple[Float[ndarray, "batch x_dim"], Float[ndarray, "batch x_dim"]]:
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
 
         std = self.sigma_min * (self.sigma_max / self.sigma_min) ** t
-        std = repeat(std, "b 1 -> b x_dim", x_dim=x.shape[1])
-        mean = x
+        std = repeat(std, "b 1 -> b y_dim", y_dim=y.shape[1])
+        mean = y
         return mean, std
 
     def prior_sampling(self, shape):
@@ -278,13 +293,13 @@ class VESDE(SDE):
             z**2, axis=(1, 2, 3)
         ) / (2 * self.sigma_max**2)
 
-    def discretize(self, x, t):
+    def discretize(self, y, t):
         """SMLD(NCSN) discretization."""
         timestep = (t * (self.N - 1) / self.T).long()
         sigma = self.discrete_sigmas[timestep]
         adjacent_sigma = np.where(
             timestep == 0, np.zeros_like(t), self.discrete_sigmas[timestep - 1]
         )
-        f = np.zeros_like(x)
+        f = np.zeros_like(y)
         G = np.sqrt(sigma**2 - adjacent_sigma**2)
         return f, G

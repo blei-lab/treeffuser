@@ -8,9 +8,10 @@ from einops import repeat
 # get r2
 from sklearn.metrics import r2_score
 
-from treeffuser.score_models import LightGBMScore
-from treeffuser.sde import VESDE
-from utils import generate_bimodal_linear_regression_data
+from treeffuser._score_models import LightGBMScore
+from treeffuser._sdes import VESDE
+
+from .utils import generate_bimodal_linear_regression_data
 
 
 def test_linear_regression():

@@ -11,7 +11,7 @@ from numpy import ndarray
 from sklearn.base import BaseEstimator
 
 from treeffuser._preprocessors import Preprocessor
-from treeffuser.score_models import ScoreModel
+from treeffuser._score_models import ScoreModel
 
 
 def _check_arguments(
