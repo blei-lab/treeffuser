@@ -85,6 +85,7 @@ def _fit_one_lgbm_model(
         random_state=seed,
         verbose=verbose,
         n_jobs=n_jobs,
+        linear_tree=False,
     )
     eval_set = None if X_val is None else (X_val, y_val)
     model.fit(X=X, y=y, sample_weight=weights, eval_set=eval_set, callbacks=callbacks)
@@ -174,6 +175,8 @@ class LightGBMScore(Score):
             n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
                 number of available cores.
         """
+        if early_stopping_rounds is not None:
+            eval_percent = eval_percent if eval_percent is not None else 0.1
 
         # Diffusion model args
         self._sde = sde
@@ -251,7 +254,7 @@ class LightGBMScore(Score):
         )
 
         if self._eval_percent is not None:
-            t_val = np.random.uniform(0, 1, size=(y_test.shape[0])) * (T - EPS) + EPS
+            t_val = np.random.uniform(0, 1, size=(y_test.shape[0], 1)) * (T - EPS) + EPS
             z_val = np.random.normal(size=(y_test.shape[0], y_test.shape[1]))
 
         train_mean, train_std = self._sde.marginal_prob(y_train, t_train)
