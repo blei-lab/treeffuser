@@ -24,3 +24,4 @@ include *.txt
 global-exclude *.py[cod] __pycache__/* *.so *.dylib
 global-exclude paper/*
 global-exclude dev_tools/*
+global-exclude notebooks/*
