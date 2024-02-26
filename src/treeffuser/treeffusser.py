@@ -45,7 +45,7 @@ class Treeffusser(BaseEstimator, abc.ABC):
         self._y_dim = None
 
         # TODO: For the moment this is only supporting VESDEs
-        self._sde = _sdes.get_sde(sde_name)(sigma_max=4.0, sigma_min=0.01)
+        self._sde = _sdes.get_sde(sde_name)(sigma_max=50.0, sigma_min=0.01)
         self._sde_name = sde_name
 
     @property
@@ -104,7 +104,7 @@ class Treeffusser(BaseEstimator, abc.ABC):
         x_transformed = X
         # We don't have this infor since the beggining so we need to create
         # the sde again
-        sde = _sdes.get_sde(self._sde_name)(N=100, sigma_min=0.01, sigma_max=4.0)
+        sde = _sdes.get_sde(self._sde_name)(N=100, sigma_min=0.01, sigma_max=50)
 
         y_untransformed = _sampling.sample(
             X=x_transformed,

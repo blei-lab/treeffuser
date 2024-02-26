@@ -214,7 +214,9 @@ class LightGBMScore(Score):
         scores = []
         for i in range(y.shape[1]):
             predictors = np.concatenate([y, X, t.reshape(-1, 1)], axis=1)
-            scores.append(self.models[i].predict(predictors))
+            scores.append(
+                self.models[i].predict(predictors, num_threads=self._lgbm_args["n_jobs"])
+            )
         return np.array(scores).T
 
     def fit(
