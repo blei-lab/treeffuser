@@ -75,8 +75,8 @@ class Treeffusser(BaseEstimator, abc.ABC):
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
 
-        x_transformed = X
-        y_transformed = y
+        # x_transformed = X
+        # y_transformed = y
 
         self._score_model = self._score_model_class(**self.score_config)
         self._score_model.fit(x_transformed, y_transformed)
@@ -100,11 +100,10 @@ class Treeffusser(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        # x_transformed = self._x_preprocessor.transform(X)
-        x_transformed = X
+        x_transformed = self._x_preprocessor.transform(X)
         # We don't have this infor since the beggining so we need to create
         # the sde again
-        sde = _sdes.get_sde(self._sde_name)(N=100, sigma_min=0.01, sigma_max=50)
+        sde = _sdes.get_sde(self._sde_name)(N=n_steps, sigma_min=0.01, sigma_max=50)
 
         y_untransformed = _sampling.sample(
             X=x_transformed,
@@ -120,10 +119,10 @@ class Treeffusser(BaseEstimator, abc.ABC):
             corrector_name="none",  # TODO: This should be a parameter
             verbose=1,
         )
+
         y_untransformed = rearrange(
             y_untransformed, "n_preds n_samples y_dim -> (n_preds n_samples) y_dim"
         )
-        y_transformed = y_untransformed
         y_transformed = self._y_preprocessor.inverse_transform(y_untransformed)
         y_transformed = rearrange(
             y_transformed,
@@ -163,7 +162,6 @@ class LightGBMTreeffusser(Treeffusser):
         checked that the inputs are valid.
         Diffusion model args
         -------------------------------
-        likelihood_reweighting (bool): Whether to reweight the likelihoods.
         n_repeats (int): How many times to repeat the training dataset. i.e how
          many noisy versions of a point to generate for training.
         LightGBM args
@@ -195,7 +193,6 @@ class LightGBMTreeffusser(Treeffusser):
         self._score_config = FrozenConfigDict(
             {
                 "sde": self._sde,
-                "likelihood_reweighting": likelihood_reweighting,
                 "n_repeats": n_repeats,
                 "n_estimators": n_estimators,
                 "eval_percent": eval_percent,

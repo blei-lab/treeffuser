@@ -68,7 +68,7 @@ class Preprocessor:
         X_non_cat = X[:, non_cat_idx]
         X_non_cat = self._scaler.transform(X_non_cat)
         X[:, non_cat_idx] = X_non_cat
-        return self._scaler.transform(X)
+        return X
 
     def fit_transform(
         self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None
