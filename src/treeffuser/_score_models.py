@@ -1,10 +1,6 @@
 """
 This file should contain a general abstraction of the score models and
 should function as a wrapper for different models we might want to use.
-
-The idea is to "hide" the particular tree we want to use so that
-we can easily switch between different models without having to change
-the rest of the code.
 """
 
 import abc
@@ -18,29 +14,9 @@ from sklearn.model_selection import train_test_split
 
 from treeffuser._sdes import SDE
 
-
 ###################################################
 # Helper functions
 ###################################################
-def _score_normal_distribution(
-    y: Float[np.ndarray, "batch y_dim"],
-    mean: Float[np.ndarray, "batch y_dim"],
-    std: Float[np.ndarray, "batch y_dim"],
-) -> Float[np.ndarray, "batch y_dim"]:
-    """Compute the score of a normal distribution."""
-    # TODO: We might have issues if the std is too small
-    # might need to consider implementing a custom loss
-    # for lightgbm
-    return -1.0 * (y - mean) / (std**2)
-
-
-def _lgbm_loss(y_true, y_pred, sde, reweight):
-    """
-    Compute the score matching loss for lightgbm.
-    """
-    grad = y_true - y_pred
-    hess = np.ones_like(grad)
-    return grad, hess
 
 
 def _fit_one_lgbm_model(
@@ -48,7 +24,6 @@ def _fit_one_lgbm_model(
     y: Float[np.ndarray, "batch y_dim"],
     X_val: Float[np.ndarray, "batch x_dim"],
     y_val: Float[np.ndarray, "batch y_dim"],
-    weights: Float[np.ndarray, "batch"],
     n_estimators: int,
     num_leaves: int,
     max_depth: int,
@@ -87,7 +62,7 @@ def _fit_one_lgbm_model(
         linear_tree=False,
     )
     eval_set = None if X_val is None else (X_val, y_val)
-    model.fit(X=X, y=y, sample_weight=weights, eval_set=eval_set, callbacks=callbacks)
+    model.fit(X=X, y=y, eval_set=eval_set, callbacks=callbacks)
 
     return model
 
@@ -100,7 +75,20 @@ def _make_training_data(
     eval_percent: Optional[float],
 ):
     """
-    Creates the training data for the score model.
+    Creates the training data for the score model. This functions assumes that
+    1.  Score is parametrized as score(y, x, t) = GBT(y, x, t) / std(t)
+    2.  The loss that we want to use is
+        || sigma(t) * score(y_perturbed, x, t) - (mean(y, t) - y_perturbed)/sigma ||^2
+        Which corresponds to the standard denoising objective with weights sigma(t)**2
+        This ends up meaning that we optimize
+        || GBT(y_perturbed, x, t) - (-z)||^2
+        where z is the noise added to y_perturbed.
+
+    Returns:
+    - predictors_train: X_train for lgbm
+    - predictors_val: X_val for lgbm
+    - predicted_train: y_train for lgbm
+    - predicted_val: y_val for lgbm
     """
     EPS = 1e-5  # smallest step we can sample from
     T = sde.T
@@ -260,7 +248,9 @@ class LightGBMScore(Score):
         for i in range(y.shape[1]):
             predictors = np.concatenate([y, X, t], axis=1)
             score_p = self.models[i].predict(predictors, num_threads=self._lgbm_args["n_jobs"])
-            score = score_p / std[:, i]
+            score = (
+                score_p / std[:, i]
+            )  # Score is parametrized as score(y, x, t) = GBT(y, x, t) / std(t)
             scores.append(score)
         return np.array(scores).T
 
@@ -293,16 +283,12 @@ class LightGBMScore(Score):
 
         models = []
         for i in range(y_dim):
-            weights_i = np.ones(lgb_y_train.shape[0])
-            lgb_y_val_i = None
-            if self._eval_percent is not None:
-                lgb_y_val_i = lgb_y_val[:, i]
+            lgb_y_val_i = lgb_y_val[:, i] if lgb_y_val else None
             score_model_i = _fit_one_lgbm_model(
                 X=lgb_X_train,
                 y=lgb_y_train[:, i],
                 X_val=lgb_X_val,
                 y_val=lgb_y_val_i,
-                weights=weights_i,
                 **self._lgbm_args,
             )
             models.append(score_model_i)
