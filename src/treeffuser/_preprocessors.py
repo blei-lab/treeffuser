@@ -35,6 +35,7 @@ class Preprocessor:
         cat_idx: The indices of the categorical features.
         """
         self._reset()
+        cat_idx = cat_idx if cat_idx is not None else []
 
         X_non_cat = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
 
@@ -67,7 +68,7 @@ class Preprocessor:
         X_non_cat = X[:, non_cat_idx]
         X_non_cat = self._scaler.transform(X_non_cat)
         X[:, non_cat_idx] = X_non_cat
-        return self.scaler.transform(X)
+        return X
 
     def fit_transform(
         self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None
@@ -84,6 +85,25 @@ class Preprocessor:
         """
         self.fit(X, cat_idx)
         return self.transform(X)
+
+    def inverse_transform(
+        self, X: Float[ndarray, "batch x_dim"]
+    ) -> Float[ndarray, "batch x_dim"]:
+        """
+        Takes the data back to the original scale.
+        """
+        if not self._is_fitted:
+            raise ValueError("The preprocessor has not been fitted yet.")
+
+        if X.shape[1] != self._x_dim:
+            raise ValueError("The input data has a different dimension than the fitted data.")
+
+        X = X.copy()
+        non_cat_idx = [i for i in range(X.shape[1]) if i not in self._cat_idx]
+        X_non_cat = X[:, non_cat_idx]
+        X_non_cat = self._scaler.inverse_transform(X_non_cat)
+        X[:, non_cat_idx] = X_non_cat
+        return X
 
     def _reset(self):
         """

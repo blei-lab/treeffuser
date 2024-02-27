@@ -72,6 +72,7 @@ setup(
         "scikit-learn",
         "lightgbm",
         "tqdm",
+        "ml-collections",
     ],
     extras_require={
         # eg:

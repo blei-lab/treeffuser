@@ -18,10 +18,10 @@ def test_linear_regression():
     """
     This test checks that the score model can fit a simple linear regression model.
     We do this by using the fact that for the VESDE model the score
-    is (y_perturbed - y_true)/sigma^2.  Hence
+    is -(y_perturbed - y_true)/sigma^2.  Hence
 
     Hence
-        y_true = score(y_perturbed; x, t) * sigma^2 + y_perturbed
+        y_true = -score(y_perturbed; x, t) * sigma^2 + y_perturbed
     """
 
     # Params
@@ -31,7 +31,6 @@ def test_linear_regression():
     sigma = 0.00001
     n_estimators = 100
     learning_rate = 0.01
-    likelihood_reweighting = True
     n_repeats = 10
 
     X, y = generate_bimodal_linear_regression_data(n, x_dim, sigma, bimodal=False, seed=0)
@@ -48,7 +47,6 @@ def test_linear_regression():
         verbose=1,
         n_estimators=n_estimators,
         learning_rate=learning_rate,
-        likelihood_reweighting=likelihood_reweighting,
         n_repeats=n_repeats,
     )
     score_model.fit(X, y)
@@ -63,7 +61,7 @@ def test_linear_regression():
     y_perturbed = mean + z * std
 
     scores = score_model.score(y=y_perturbed, X=X, t=random_t)
-    y_pred = scores * sigma**2 + y_perturbed
+    y_pred = (-1.0) * scores * sigma**2 + y_perturbed
 
     # Check that the R^2 is close to 1
     r2 = r2_score(y.flatten(), y_pred.flatten())

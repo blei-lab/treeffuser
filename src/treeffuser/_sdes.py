@@ -1,8 +1,15 @@
 """
 Abstract SDE classes, Reverse SDE, and VE/VP SDEs.
 Adapted from: http://tinyurl.com/torch-sde-lib-song
-The notice from the original code is as follows:
 
+The preferred way to use this module is to use the `get_sde` function to
+get the SDE class by name. For example:
+
+```python
+sde = get_sde("vesde")(sigma_min=0.01, sigma_max=50, N=1000)
+```
+
+The notice from the original code is as follows:
  coding=utf-8
  Copyright 2020 The Google Research Authors.
 
@@ -26,6 +33,39 @@ import numpy as np
 from einops import repeat
 from jaxtyping import Float
 from numpy import ndarray
+
+_SDES = {}
+
+
+def _register_sde(cls=None, *, name=None):
+    """
+    A simple decorator to register SDE classes.
+    """
+
+    def _register(cls):
+        if name is None:
+            local_name = cls.__name__.lower()
+        else:
+            local_name = name
+        if local_name in _SDES:
+            raise ValueError(f"Duplicate SDE name: {local_name}")
+
+        _SDES[local_name] = cls
+        return cls
+
+    if cls is None:
+        return _register
+    return _register(cls)
+
+
+def get_sde(name):
+    """
+    Get the SDE class by name.
+    """
+    if name not in _SDES:
+        msg = f"SDE {name} not found. Available SDEs: {list(_SDES.keys())}"
+        raise ValueError(msg)
+    return _SDES[name]
 
 
 class SDE(abc.ABC):
@@ -149,6 +189,7 @@ class SDE(abc.ABC):
         return RSDE()
 
 
+@_register_sde(name="vpsde")
 class VPSDE(SDE):
     def __init__(self, beta_min=0.1, beta_max=20, N=1000):
         """Construct a Variance Preserving SDE.
@@ -204,6 +245,7 @@ class VPSDE(SDE):
         return f, G
 
 
+@_register_sde(name="subvpsde")
 class subVPSDE(SDE):
     def __init__(self, beta_min=0.1, beta_max=20, N=1000):
         """Construct the sub-VP SDE that excels at likelihoods.
@@ -244,6 +286,7 @@ class subVPSDE(SDE):
         return -N / 2.0 * np.log(2 * np.pi) - np.sum(z**2, axis=(1, 2, 3)) / 2.0
 
 
+@_register_sde(name="vesde")
 class VESDE(SDE):
     def __init__(self, sigma_min=0.01, sigma_max=50, N=1000):
         """Construct a Variance Exploding SDE.
