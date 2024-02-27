@@ -3,9 +3,8 @@ Contains all of the test for the different score model classes.
 """
 
 import numpy as np
+import pytest
 from einops import repeat
-
-# get r2
 from sklearn.metrics import r2_score
 
 from treeffuser._score_models import LightGBMScore
@@ -68,7 +67,8 @@ def test_linear_regression():
     assert r2 > 0.95, f"R^2 is {r2}"
 
 
-def test_is_deterministic():
+@pytest.mark.parametrize("seed", [None, 0])
+def test_is_deterministic(seed):
     # Params
     n = 1000
     x_dim = 1
@@ -95,6 +95,7 @@ def test_is_deterministic():
         n_estimators=n_estimators,
         learning_rate=learning_rate,
         n_repeats=n_repeats,
+        seed=seed,
     )
     score_model_a.fit(X, y)
 
@@ -105,10 +106,11 @@ def test_is_deterministic():
         n_estimators=n_estimators,
         learning_rate=learning_rate,
         n_repeats=n_repeats,
+        seed=seed,
     )
     score_model_b.fit(X, y)
 
-    # Check that the score model is able to fit the data
+    # Check that the two results are the same
     random_t = np.random.uniform(0, sde.T // 2, size=n)
     random_t = repeat(random_t, "n -> n 1")
     z = np.random.randn(n)
@@ -119,7 +121,12 @@ def test_is_deterministic():
 
     scores_a = score_model_a.score(y=y_perturbed, X=X, t=random_t)
     scores_b = score_model_b.score(y=y_perturbed, X=X, t=random_t)
-    print(scores_a[:10])
-    print(scores_b[:10])
 
-    assert np.allclose(scores_a, scores_b), "The score model is not deterministic"
+    if seed is None:
+        # Check that the score model gives different results
+        msg = "The score model is deterministic when it shouldn't be"
+        assert not np.allclose(scores_a, scores_b), msg
+    else:
+        # Check that the score model gives the same results
+        msg = "The score model is not deterministic"
+        assert np.allclose(scores_a, scores_b), msg

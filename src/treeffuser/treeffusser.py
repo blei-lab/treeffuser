@@ -148,7 +148,7 @@ class LightGBMTreeffusser(Treeffusser):
         subsample: Optional[float] = 1.0,
         subsample_freq: Optional[int] = 0,
         verbose: Optional[int] = 0,
-        seed: Optional[int] = 0,
+        seed: Optional[int] = None,
         n_jobs: Optional[int] = -1,
     ):
         """
