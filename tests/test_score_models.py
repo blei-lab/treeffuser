@@ -66,3 +66,60 @@ def test_linear_regression():
     # Check that the R^2 is close to 1
     r2 = r2_score(y.flatten(), y_pred.flatten())
     assert r2 > 0.95, f"R^2 is {r2}"
+
+
+def test_is_deterministic():
+    # Params
+    n = 1000
+    x_dim = 1
+    y_dim = 1
+    sigma = 0.00001
+    n_estimators = 100
+    learning_rate = 0.01
+    n_repeats = 10
+
+    X, y = generate_bimodal_linear_regression_data(n, x_dim, sigma, bimodal=False, seed=0)
+
+    assert X.shape == (n, x_dim)
+    assert y.shape == (n, y_dim)
+
+    # Fit a score model
+    sigma_min = 0.01
+    sigma_max = y.std()
+    sde = VESDE(sigma_min=sigma_min, sigma_max=sigma_max)
+
+    # First fit
+    score_model_a = LightGBMScore(
+        sde=sde,
+        verbose=1,
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        n_repeats=n_repeats,
+    )
+    score_model_a.fit(X, y)
+
+    # Second fit
+    score_model_b = LightGBMScore(
+        sde=sde,
+        verbose=1,
+        n_estimators=n_estimators,
+        learning_rate=learning_rate,
+        n_repeats=n_repeats,
+    )
+    score_model_b.fit(X, y)
+
+    # Check that the score model is able to fit the data
+    random_t = np.random.uniform(0, sde.T // 2, size=n)
+    random_t = repeat(random_t, "n -> n 1")
+    z = np.random.randn(n)
+    z = repeat(z, "n -> n y_dim", y_dim=y_dim)
+
+    mean, std = sde.marginal_prob(y, random_t)
+    y_perturbed = mean + z * std
+
+    scores_a = score_model_a.score(y=y_perturbed, X=X, t=random_t)
+    scores_b = score_model_b.score(y=y_perturbed, X=X, t=random_t)
+    print(scores_a[:10])
+    print(scores_b[:10])
+
+    assert np.allclose(scores_a, scores_b), "The score model is not deterministic"
