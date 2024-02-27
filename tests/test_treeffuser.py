@@ -1,27 +1,56 @@
+import numpy as np
+from scipy.stats import ks_2samp
+
+from treeffuser import LightGBMTreeffusser
+
+
 def test_treeffuser_bimodal_linear_regression():
     """
+    We do a very simple sanity check that for a very simple model
+    with not enough data the samples from the model should
+    be statistically indistinguishable from the data.
+    """
     n = 1000
-    p = 1
-    sigma = 0.1
-    n_samples = 10
+    n_samples = 1
+    X_1 = np.random.rand(n, 1)
+    y_1 = X_1 + np.random.randn(n, 1) * 0.05 * (X_1 + 1) ** 2
 
-    X, y = generate_bimodal_linear_regression_data(n, p, sigma, bimodal=True, seed=0)
+    X_2 = np.random.rand(n, 1)
+    y_2 = X_2 + np.random.randn(n, 1) * 0.05 * (X_2 + 1) ** 2
+
+    X = np.concatenate([X_1, X_2], axis=0)
+    y = np.concatenate([y_1, y_2], axis=0)
+
+    # Shuffle and split the data
+    idx = np.random.permutation(2 * n)
+    X = X[idx]
+    y = y[idx]
+
+    X_train = X[:n]
+    y_train = y[:n]
+
+    X_test = X[n:]
+    y_test = y[n:]
 
     model = LightGBMTreeffusser(
         verbose=1,
         n_repeats=100,
-        n_estimators=200,
-        likelihood_reweighting=True,
+        n_estimators=10000,
         sde_name="vesde",
-        learning_rate=0.01,
+        learning_rate=0.09,
+        early_stopping_rounds=50,
+        seed=0,
     )
-    model.fit(X, y)
+    model.fit(X_train, y_train)
 
-    # shape (n , n_samples, y_dim)
     y_samples = model.sample(
-        X, n_samples=n_samples, n_parallel=100, denoise=False, n_steps=100, seed=0
+        X_test, n_samples=n_samples, n_parallel=50, denoise=True, n_steps=30, seed=0
     )
-    X_repeated = np.repeat(X, n_samples, axis=0)
-    """
 
-    assert True
+    y_samples = y_samples.flatten()
+    y_test = y_test.flatten()
+
+    # Check that the samples are statistically indistinguishable from the data
+    result = ks_2samp(y_samples, y_test)
+    print(result)
+    assert result.pvalue > 0.05

@@ -283,7 +283,7 @@ class LightGBMScore(Score):
 
         models = []
         for i in range(y_dim):
-            lgb_y_val_i = lgb_y_val[:, i] if lgb_y_val else None
+            lgb_y_val_i = lgb_y_val[:, i] if lgb_y_val is not None else None
             score_model_i = _fit_one_lgbm_model(
                 X=lgb_X_train,
                 y=lgb_y_train[:, i],
