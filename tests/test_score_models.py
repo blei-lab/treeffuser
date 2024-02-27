@@ -31,7 +31,6 @@ def test_linear_regression():
     sigma = 0.00001
     n_estimators = 100
     learning_rate = 0.01
-    likelihood_reweighting = True
     n_repeats = 10
 
     X, y = generate_bimodal_linear_regression_data(n, x_dim, sigma, bimodal=False, seed=0)
@@ -48,7 +47,6 @@ def test_linear_regression():
         verbose=1,
         n_estimators=n_estimators,
         learning_rate=learning_rate,
-        likelihood_reweighting=likelihood_reweighting,
         n_repeats=n_repeats,
     )
     score_model.fit(X, y)

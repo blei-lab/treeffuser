@@ -44,8 +44,8 @@ class Treeffusser(BaseEstimator, abc.ABC):
         self._y_preprocessor = Preprocessor()
         self._y_dim = None
 
-        # TODO: For the moment this is only supporting VESDEs
-        self._sde = _sdes.get_sde(sde_name)(sigma_max=50.0, sigma_min=0.01)
+        # TODO: We are using the defaults but we should change this
+        self._sde = _sdes.get_sde(sde_name)()
         self._sde_name = sde_name
 
     @property
@@ -75,9 +75,6 @@ class Treeffusser(BaseEstimator, abc.ABC):
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
 
-        # x_transformed = X
-        # y_transformed = y
-
         self._score_model = self._score_model_class(**self.score_config)
         self._score_model.fit(x_transformed, y_transformed)
 
@@ -100,10 +97,10 @@ class Treeffusser(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
+        # We need a new SDE in case we change discretization steps
+        sde = _sdes.get_sde(self._sde_name)(N=n_steps)
+
         x_transformed = self._x_preprocessor.transform(X)
-        # We don't have this infor since the beggining so we need to create
-        # the sde again
-        sde = _sdes.get_sde(self._sde_name)(N=n_steps, sigma_min=0.01, sigma_max=50)
 
         y_untransformed = _sampling.sample(
             X=x_transformed,
@@ -138,7 +135,6 @@ class LightGBMTreeffusser(Treeffusser):
         # Diffusion model args
         sde_name: Optional[str] = "vesde",
         # Score estimator args
-        likelihood_reweighting: Optional[bool] = False,
         n_repeats: Optional[int] = 10,
         n_estimators: Optional[int] = 100,
         eval_percent: Optional[float] = None,
@@ -156,10 +152,6 @@ class LightGBMTreeffusser(Treeffusser):
         n_jobs: Optional[int] = -1,
     ):
         """
-        Args:
-        This model doesn't do any model checking or validation. It's assumed that
-        that the main user is the `Treeffuser` class and that the user has already
-        checked that the inputs are valid.
         Diffusion model args
         -------------------------------
         n_repeats (int): How many times to repeat the training dataset. i.e how
