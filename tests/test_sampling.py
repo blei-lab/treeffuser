@@ -72,7 +72,7 @@ def test_vesde_linear_model():
     We assume that the diffusion model is either a VESDE, VPSDE, or subVPSDE.
     """
     # Set seed
-    np.random.seed(42)
+    np.random.seed(0)
 
     # Generate data
     n = 1000
@@ -122,7 +122,7 @@ def test_vesde_linear_model():
 
         # Check that the samples are roughly correct
         true_mean = gamma * x
-        true_std = sigma * x
+        true_std = sigma * np.abs(x)
 
         pred_mean = y_samples.mean(axis=1)
         pred_std = y_samples.std(axis=1)
@@ -131,4 +131,4 @@ def test_vesde_linear_model():
         diff_std = np.abs(pred_std - true_std)
 
         assert diff_mean.mean() < 0.1, f"{sde_name} diff_mean.mean() = {diff_mean.mean()}"
-        assert diff_std.mean() < 1, f"{sde_name} diff_std.mean() = {diff_std.mean()}"
+        assert diff_std.mean() < 0.1, f"{sde_name} diff_std.mean() = {diff_std.mean()}"
