@@ -130,9 +130,5 @@ def test_vesde_linear_model():
         diff_mean = np.abs(pred_mean - true_mean)
         diff_std = np.abs(pred_std - true_std)
 
-        print(f"sde: {sde_name}")
-        print(f"average difference in mean estimates: {diff_mean.mean()}")
-        print(f"average difference in std estimates: {diff_std.mean()}")
-
         assert diff_mean.mean() < 0.1, f"{sde_name} diff_mean.mean() = {diff_mean.mean()}"
         assert diff_std.mean() < 1, f"{sde_name} diff_std.mean() = {diff_std.mean()}"
