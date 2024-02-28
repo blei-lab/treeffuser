@@ -30,7 +30,7 @@ def _check_arguments(
     return
 
 
-class Treeffusser(BaseEstimator, abc.ABC):
+class Treeffuser(BaseEstimator, abc.ABC):
     """
     Abstract class for the Treeffuser model. Every particular
     score function has a slightly different implementation with
@@ -129,7 +129,7 @@ class Treeffusser(BaseEstimator, abc.ABC):
         return y_transformed
 
 
-class LightGBMTreeffusser(Treeffusser):
+class LightGBMTreeffuser(Treeffuser):
     def __init__(
         self,
         # Diffusion model args
