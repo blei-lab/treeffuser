@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import ks_2samp
 
-from treeffuser import LightGBMTreeffusser
+from treeffuser import LightGBMTreeffuser
 
 
 def test_treeffuser_bimodal_linear_regression():
@@ -32,7 +32,7 @@ def test_treeffuser_bimodal_linear_regression():
     X_test = X[n:]
     y_test = y[n:]
 
-    model = LightGBMTreeffusser(
+    model = LightGBMTreeffuser(
         verbose=1,
         n_repeats=100,
         n_estimators=10000,
