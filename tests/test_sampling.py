@@ -6,32 +6,32 @@ from functools import partial
 
 import numpy as np
 from jaxtyping import Float
-from ml_collections import ConfigDict
 from numpy import ndarray
 
 from treeffuser._sampling import sample
-from treeffuser._sdes import get_sde
+from treeffuser._sdes import VESDE
+from treeffuser._sdes import VPSDE
+from treeffuser._sdes import subVPSDE
 
 
-def _score_linear(
+def _score_linear_vesde(
     y: Float[ndarray, "batch 1"],
     x: Float[ndarray, "batch 1"],
     t: Float[ndarray, "batch 1"],
+    alpha: Float[ndarray, "1 1"],
     gamma: Float[ndarray, "1 1"],
-    sigma: Float[ndarray, "1 1"],
-    sde_name: str,
-    sde_params: ConfigDict,
+    sigma_min: Float[ndarray, "1 1"],
+    sigma_max: Float[ndarray, "1 1"],
 ) -> Float[ndarray, "batch 1"]:
     """
-    This function returns the score of the perturbation kernel under the data generating process:
-        gamma ~ N(0, 1)
+    This function computes the score under the data generating process:
+        alpha ~ N(0, 1)
         for i in 1, ..., n
             x_i ~ N(0, 1)
-            eps_i ~ N(0, sigma^2)
-            y_i = gamma * x_i + eps_i *  x_i
+            eps_i ~ N(0, gamma^2)
+            y_i = alpha * x_i + eps_i *  x_i
 
-    We assume that the diffusion model is either a VESDE, VPSDE, or subVPSDE. For these models,
-    the perturbation kernels are Gaussian. Their mean and variances can be found in
+    We assume that the diffusion model is a VESDE. The resulting perturbation kernel is Gaussian
     Song et al. (2021), Appendix B,  Eq. 29.
 
     Reference:
@@ -39,37 +39,69 @@ def _score_linear(
         Score-based generative modeling through stochastic differential equations.
         ICLR 2021.
     """
-    # Compute mean and std for each diffusion model
-    if sde_name.lower() == "vesde":
-        mean = gamma * x
-        kernel_std = sde_params.sigma_min * (sde_params.sigma_max / sde_params.sigma_min) ** t
-        std = np.sqrt((sigma * x) ** 2 + kernel_std**2)
-    else:
-        beta_integral = t * sde_params.beta_min + 0.5 * t**2 * (
-            sde_params.beta_max - sde_params.beta_min
-        )
-        mean = gamma * x * np.exp(-0.5 * beta_integral)
-        if sde_name.lower() == "vpsde":
-            kernel_std = np.sqrt(1 - np.exp(-beta_integral))
-        elif sde_name.lower() == "subvpsde":
-            kernel_std = 1 - np.exp(-beta_integral)
-        std = np.sqrt((sigma * x * np.exp(-0.5 * beta_integral)) ** 2 + kernel_std**2)
+    kernel_std = sigma_min * (sigma_max / sigma_min) ** t
 
-    # Compute the score
+    mean = alpha * x
+    std = np.sqrt((gamma * x) ** 2 + kernel_std**2)
+
     score = (mean - y) / (std**2)
     return score
 
 
-def test_vesde_linear_model():
+def _score_linear_vpsde(
+    y: Float[ndarray, "batch 1"],
+    x: Float[ndarray, "batch 1"],
+    t: Float[ndarray, "batch 1"],
+    alpha: Float[ndarray, "1 1"],
+    gamma: Float[ndarray, "1 1"],
+    beta_min: Float[ndarray, "1 1"],
+    beta_max: Float[ndarray, "1 1"],
+) -> Float[ndarray, "batch 1"]:
+    """
+    Same as _score_linear_vesde but for VPSDE.
+    """
+    beta_integral = t * beta_min + 0.5 * t**2 * (beta_max - beta_min)
+    kernel_std = np.sqrt(1 - np.exp(-beta_integral))
+
+    mean = alpha * x * np.exp(-0.5 * beta_integral)
+    std = np.sqrt((gamma * x * np.exp(-0.5 * beta_integral)) ** 2 + kernel_std**2)
+
+    score = (mean - y) / (std**2)
+    return score
+
+
+def _score_linear_subvpsde(
+    y: Float[ndarray, "batch 1"],
+    x: Float[ndarray, "batch 1"],
+    t: Float[ndarray, "batch 1"],
+    alpha: Float[ndarray, "1 1"],
+    gamma: Float[ndarray, "1 1"],
+    beta_min: Float[ndarray, "1 1"],
+    beta_max: Float[ndarray, "1 1"],
+) -> Float[ndarray, "batch 1"]:
+    """
+    Same as _score_linear_vesde but for subVPSDE.
+    """
+    beta_integral = t * beta_min + 0.5 * t**2 * (beta_max - beta_min)
+    kernel_std = 1 - np.exp(-beta_integral)
+
+    mean = alpha * x * np.exp(-0.5 * beta_integral)
+    std = np.sqrt((gamma * x * np.exp(-0.5 * beta_integral)) ** 2 + kernel_std**2)
+
+    score = (mean - y) / (std**2)
+    return score
+
+
+def test_linear_vesde():
     """
     We assume that the data come from a linear model with data generating process:
-        gamma ~ N(0, 1)
+        alpha ~ N(0, 1)
         for i in 1, ..., n
             x_i ~ N(0, 1)
-            eps_i ~ N(0, sigma^2)
-            y_i = gamma * x_i + eps_i *  x_i
+            eps_i ~ N(0, gamma^2)
+            y_i = alpha * x_i + eps_i *  x_i
 
-    We assume that the diffusion model is either a VESDE, VPSDE, or subVPSDE.
+    We assume that the diffusion model is either a VESDE.
     """
     # Set seed
     np.random.seed(0)
@@ -78,57 +110,172 @@ def test_vesde_linear_model():
     n = 1000
     n_features = 1
     y_dim = 1
-    sigma = 1
+    alpha = np.random.normal(size=(1, n_features))
+    gamma = 1
     x = np.random.normal(size=(n, n_features))
-    gamma = np.random.normal(size=(1, n_features))
 
-    # Define parameters for SDEs
-    sde_params = ConfigDict()
-    sde_params.vesde = vesde = ConfigDict()
-    sde_params.vpsde = vpsde = ConfigDict()
-    sde_params.subvpsde = subvpsde = ConfigDict()
-
-    y = gamma * x + np.random.normal(size=(n, n_features)) * sigma * x
-
-    vesde.sigma_min, vesde.sigma_max, vesde.N = 0.01, y.std() + 4, 100
-    vpsde.beta_min, vpsde.beta_max, vpsde.N = 0.01, 20, 100
-    subvpsde.beta_min, subvpsde.beta_max, subvpsde.N = 0.01, 20, 100
+    # Define SDE
+    y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
+    sigma_min = 0.01
+    sigma_max = y.std() + 4
+    N = 100
+    sde = VESDE(sigma_min, sigma_max, N)
 
     # Run test for each diffusion model
-    for sde_name in ["vesde", "subvpsde", "vpsde"]:
-        score_fn = partial(
-            _score_linear,
-            gamma=gamma,
-            sigma=sigma,
-            sde_name=sde_name,
-            sde_params=sde_params[sde_name],
-        )
+    score_fn = partial(
+        _score_linear_vesde,
+        alpha=alpha,
+        gamma=gamma,
+        sigma_min=sigma_min,
+        sigma_max=sigma_max,
+    )
 
-        sde = get_sde(sde_name)(**sde_params[sde_name])
+    y_samples = sample(
+        X=x,
+        y_dim=y_dim,
+        score_fn=score_fn,
+        n_samples=100,
+        n_parallel=100,
+        sde=sde,
+        predictor_name="euler_maruyama",
+        corrector_name="none",
+        denoise=False,
+        seed=0,
+        verbose=0,
+    )  # shape: (n_preds, n_samples, y_dim)
 
-        y_samples = sample(
-            X=x,
-            y_dim=y_dim,
-            score_fn=score_fn,
-            n_samples=100,
-            n_parallel=100,
-            sde=sde,
-            predictor_name="euler_maruyama",
-            corrector_name="none",
-            denoise=False,
-            seed=0,
-            verbose=0,
-        )  # shape: (n_preds, n_samples, y_dim)
+    # Check that the samples are roughly correct
+    true_mean = alpha * x
+    true_std = gamma * np.abs(x)
 
-        # Check that the samples are roughly correct
-        true_mean = gamma * x
-        true_std = sigma * np.abs(x)
+    pred_mean = y_samples.mean(axis=1)
+    pred_std = y_samples.std(axis=1)
 
-        pred_mean = y_samples.mean(axis=1)
-        pred_std = y_samples.std(axis=1)
+    diff_mean = np.abs(pred_mean - true_mean)
+    diff_std = np.abs(pred_std - true_std)
 
-        diff_mean = np.abs(pred_mean - true_mean)
-        diff_std = np.abs(pred_std - true_std)
+    assert diff_mean.mean() < 0.1, f"VESDE: diff_mean.mean() = {diff_mean.mean()}"
+    assert diff_std.mean() < 0.1, f"VESDE: diff_std.mean() = {diff_std.mean()}"
 
-        assert diff_mean.mean() < 0.1, f"{sde_name} diff_mean.mean() = {diff_mean.mean()}"
-        assert diff_std.mean() < 0.1, f"{sde_name} diff_std.mean() = {diff_std.mean()}"
+
+def test_linear_vpsde():
+    """
+    Same as test_linear_vesde, but for VPSDE.
+    """
+    # Set seed
+    np.random.seed(0)
+
+    # Generate data
+    n = 1000
+    n_features = 1
+    y_dim = 1
+    alpha = np.random.normal(size=(1, n_features))
+    gamma = 1
+    x = np.random.normal(size=(n, n_features))
+
+    # Define SDE
+    y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
+    beta_min = 0.01
+    beta_max = 20
+    N = 100
+    sde = VPSDE(beta_min, beta_max, N)
+
+    # Run test for each diffusion model
+    score_fn = partial(
+        _score_linear_vpsde,
+        alpha=alpha,
+        gamma=gamma,
+        beta_min=beta_min,
+        beta_max=beta_max,
+    )
+
+    y_samples = sample(
+        X=x,
+        y_dim=y_dim,
+        score_fn=score_fn,
+        n_samples=100,
+        n_parallel=100,
+        sde=sde,
+        predictor_name="euler_maruyama",
+        corrector_name="none",
+        denoise=False,
+        seed=0,
+        verbose=0,
+    )  # shape: (n_preds, n_samples, y_dim)
+
+    # Check that the samples are roughly correct
+    true_mean = alpha * x
+    true_std = gamma * np.abs(x)
+
+    pred_mean = y_samples.mean(axis=1)
+    pred_std = y_samples.std(axis=1)
+
+    diff_mean = np.abs(pred_mean - true_mean)
+    diff_std = np.abs(pred_std - true_std)
+
+    assert diff_mean.mean() < 0.1, f"VPSDE: diff_mean.mean() = {diff_mean.mean()}"
+    assert diff_std.mean() < 0.1, f"VPSDE: diff_std.mean() = {diff_std.mean()}"
+
+
+def test_linear_subvpsde():
+    """
+    Same as test_linear_vesde, but for subVPSDE.
+    """
+    # Set seed
+    np.random.seed(0)
+
+    # Generate data
+    n = 1000
+    n_features = 1
+    y_dim = 1
+    alpha = np.random.normal(size=(1, n_features))
+    gamma = 1
+    x = np.random.normal(size=(n, n_features))
+
+    # Define SDE
+    y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
+    beta_min = 0.01
+    beta_max = 20
+    N = 100
+    sde = subVPSDE(beta_min, beta_max, N)
+
+    # Run test for each diffusion model
+    score_fn = partial(
+        _score_linear_subvpsde,
+        alpha=alpha,
+        gamma=gamma,
+        beta_min=beta_min,
+        beta_max=beta_max,
+    )
+
+    y_samples = sample(
+        X=x,
+        y_dim=y_dim,
+        score_fn=score_fn,
+        n_samples=100,
+        n_parallel=100,
+        sde=sde,
+        predictor_name="euler_maruyama",
+        corrector_name="none",
+        denoise=False,
+        seed=0,
+        verbose=0,
+    )  # shape: (n_preds, n_samples, y_dim)
+
+    # Check that the samples are roughly correct
+    true_mean = alpha * x
+    true_std = gamma * np.abs(x)
+
+    pred_mean = y_samples.mean(axis=1)
+    pred_std = y_samples.std(axis=1)
+
+    diff_mean = np.abs(pred_mean - true_mean)
+    diff_std = np.abs(pred_std - true_std)
+
+    assert diff_mean.mean() < 0.1, f"subVPSDE: diff_mean.mean() = {diff_mean.mean()}"
+    assert diff_std.mean() < 0.1, f"subVPSDE: diff_std.mean() = {diff_std.mean()}"
+
+
+test_linear_vesde()
+test_linear_vpsde()
+test_linear_subvpsde()
