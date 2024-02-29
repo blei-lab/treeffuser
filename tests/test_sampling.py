@@ -174,7 +174,6 @@ def test_linear_vpsde():
     x = np.random.normal(size=(n, n_features))
 
     # Define SDE
-    y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
     beta_min = 0.01
     beta_max = 20
     N = 100
@@ -233,7 +232,6 @@ def test_linear_subvpsde():
     x = np.random.normal(size=(n, n_features))
 
     # Define SDE
-    y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
     beta_min = 0.01
     beta_max = 20
     N = 100
@@ -274,8 +272,3 @@ def test_linear_subvpsde():
 
     assert diff_mean.mean() < 0.1, f"subVPSDE: diff_mean.mean() = {diff_mean.mean()}"
     assert diff_std.mean() < 0.1, f"subVPSDE: diff_std.mean() = {diff_std.mean()}"
-
-
-test_linear_vesde()
-test_linear_vpsde()
-test_linear_subvpsde()
