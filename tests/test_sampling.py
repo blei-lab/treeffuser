@@ -114,14 +114,13 @@ def test_linear_vesde():
     gamma = 1
     x = np.random.normal(size=(n, n_features))
 
-    # Define SDE
+    # Define SDE and score
     y = alpha * x + np.random.normal(size=(n, n_features)) * gamma * x
     sigma_min = 0.01
     sigma_max = y.std() + 4
     N = 100
     sde = VESDE(sigma_min, sigma_max, N)
 
-    # Run test for each diffusion model
     score_fn = partial(
         _score_linear_vesde,
         alpha=alpha,
@@ -130,6 +129,7 @@ def test_linear_vesde():
         sigma_max=sigma_max,
     )
 
+    # Generate samples
     y_samples = sample(
         X=x,
         y_dim=y_dim,
@@ -173,13 +173,12 @@ def test_linear_vpsde():
     gamma = 1
     x = np.random.normal(size=(n, n_features))
 
-    # Define SDE
+    # Define SDE and score
     beta_min = 0.01
     beta_max = 20
     N = 100
     sde = VPSDE(beta_min, beta_max, N)
 
-    # Run test for each diffusion model
     score_fn = partial(
         _score_linear_vpsde,
         alpha=alpha,
@@ -188,6 +187,7 @@ def test_linear_vpsde():
         beta_max=beta_max,
     )
 
+    # Generate samples
     y_samples = sample(
         X=x,
         y_dim=y_dim,
@@ -231,13 +231,12 @@ def test_linear_subvpsde():
     gamma = 1
     x = np.random.normal(size=(n, n_features))
 
-    # Define SDE
+    # Define SDE and score
     beta_min = 0.01
     beta_max = 20
     N = 100
     sde = subVPSDE(beta_min, beta_max, N)
 
-    # Run test for each diffusion model
     score_fn = partial(
         _score_linear_subvpsde,
         alpha=alpha,
@@ -246,6 +245,7 @@ def test_linear_subvpsde():
         beta_max=beta_max,
     )
 
+    # Generate samples
     y_samples = sample(
         X=x,
         y_dim=y_dim,
