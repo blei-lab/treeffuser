@@ -73,6 +73,7 @@ def _make_training_data(
     sde: SDE,
     n_repeats: int,
     eval_percent: Optional[float],
+    seed: Optional[int] = None,
 ):
     """
     Creates the training data for the score model. This functions assumes that
@@ -92,13 +93,17 @@ def _make_training_data(
     """
     EPS = 1e-5  # smallest step we can sample from
     T = sde.T
+    if seed is not None:
+        np.random.seed(seed)
 
     X_train, X_test, y_train, y_test = X, None, y, None
     predictors_train, predictors_val = None, None
     predicted_val, predicted_train = None, None
 
     if eval_percent is not None:
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=eval_percent)
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, y, test_size=eval_percent, random_state=seed
+        )
 
     # TRAINING DATA
     X_train = np.tile(X, (n_repeats, 1))
@@ -166,7 +171,7 @@ class LightGBMScore(Score):
         subsample: Optional[float] = 1.0,
         subsample_freq: Optional[int] = 0,
         verbose: Optional[int] = 0,
-        seed: Optional[int] = 0,
+        seed: Optional[int] = None,
         n_jobs: Optional[int] = -1,
     ) -> None:
         """
@@ -279,6 +284,7 @@ class LightGBMScore(Score):
             sde=self._sde,
             n_repeats=self._n_repeats,
             eval_percent=self._eval_percent,
+            seed=self._lgbm_args["seed"],
         )
 
         models = []
