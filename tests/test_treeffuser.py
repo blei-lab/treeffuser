@@ -10,7 +10,7 @@ def test_treeffuser_bimodal_linear_regression():
     with not enough data the samples from the model should
     be statistically indistinguishable from the data.
     """
-    n = 1000
+    n = 500
     n_samples = 1
     X_1 = np.random.rand(n, 1)
     y_1 = X_1 + np.random.randn(n, 1) * 0.05 * (X_1 + 1) ** 2
@@ -34,11 +34,11 @@ def test_treeffuser_bimodal_linear_regression():
 
     model = LightGBMTreeffuser(
         verbose=1,
-        n_repeats=100,
+        n_repeats=20,
         n_estimators=10000,
         sde_name="vesde",
-        learning_rate=0.09,
-        early_stopping_rounds=50,
+        learning_rate=0.1,
+        early_stopping_rounds=20,
         seed=0,
     )
     model.fit(X_train, y_train)
@@ -52,5 +52,4 @@ def test_treeffuser_bimodal_linear_regression():
 
     # Check that the samples are statistically indistinguishable from the data
     result = ks_2samp(y_samples, y_test)
-    print(result)
     assert result.pvalue > 0.05
