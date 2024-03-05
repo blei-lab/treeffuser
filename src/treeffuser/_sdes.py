@@ -102,7 +102,7 @@ class SDE(abc.ABC):
 
     def marginalized_perturbation_kernel(self, y0: Float[np.ndarray, "batch y_dim"]):
         """Compute the perturbation kernel density function induced by the data `y0`.
-        Defined as: `p(y', t | y0) = \frac{1}{n}\sum_{y \in y0}p_t(y' | y)` where
+        Defined as: `p(y', t | y0) = \frac{1}{n}\\sum_{y \\in y0}p_t(y' | y)` where
         `n` is the number of data points in `y0`. Each `p_t(y' | y)` is a Gaussian
         density with conditional mean and standard deviation given by `marginal_prob`.
 
@@ -289,7 +289,7 @@ class VPSDE(SDE):
         return f, G
 
     def __str__(self):
-        return "VPSDE(beta_min={}, beta_max={})".format(self.beta_0, self.beta_1)
+        return f"VPSDE(beta_min={self.beta_0}, beta_max={self.beta_1})"
 
 
 @_register_sde(name="subvpsde")
@@ -395,4 +395,4 @@ class VESDE(SDE):
         return f, G
 
     def __str__(self):
-        return "VESDE(sigma_min={}, sigma_max={})".format(self.sigma_min, self.sigma_max)
+        return f"VESDE(sigma_min={self.sigma_min}, sigma_max={self.sigma_max})"
