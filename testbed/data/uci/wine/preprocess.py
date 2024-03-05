@@ -16,7 +16,7 @@ def main():
     x = np.concatenate((x, red_color), axis=1)
 
     # extract outcome and covariates
-    y = x[:, -2].copy()
+    y = x[:, -2].copy().reshape((-1, 1))
     x = np.delete(x, -2, 1)
     categorical = [x.shape[1]]
 

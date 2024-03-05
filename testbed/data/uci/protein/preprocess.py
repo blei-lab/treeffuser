@@ -6,7 +6,7 @@ def main():
     x = np.genfromtxt("original/CASP.csv", delimiter=",", skip_header=True)
 
     # extract outcome and covariates
-    y = x[:, 0].copy()
+    y = x[:, 0].copy().reshape((-1, 1))
     x = np.delete(x, 0, 1)
     categorical = []
 
