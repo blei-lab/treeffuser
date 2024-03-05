@@ -117,7 +117,9 @@ class SDE(abc.ABC):
         if len(y0.shape) == 1:
             y0 = y0[:, None]
 
-        def kernel_density_fn(y_prime: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]):
+        def kernel_density_fn(
+            y_prime: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]
+        ):
             if t is None:
                 t = self.T
             if len(y_prime.shape) == 1:
@@ -133,7 +135,7 @@ class SDE(abc.ABC):
             stds = stds[:, None, :]
 
             return np.mean(
-                np.exp(-0.5 * ((y_prime - means) / stds)**2) / (stds * np.sqrt(2 * np.pi)),
+                np.exp(-0.5 * ((y_prime - means) / stds) ** 2) / (stds * np.sqrt(2 * np.pi)),
                 axis=0,
             ).sum(axis=-1)
 
@@ -285,7 +287,6 @@ class VPSDE(SDE):
         f = np.sqrt(alpha).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y - y
         G = sqrt_beta
         return f, G
-
 
     def __str__(self):
         return "VPSDE(beta_min={}, beta_max={})".format(self.beta_0, self.beta_1)
