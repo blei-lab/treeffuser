@@ -98,7 +98,46 @@ class SDE(abc.ABC):
     def marginal_prob(
         self, y: Float[np.ndarray, "batch y_dim"], t: Float[np.ndarray, "batch 1"]
     ):
-        """Parameters to determine the marginal distribution of the SDE, $p_t( |x)$."""
+        """Parameters to determine the marginal distribution of the SDE, $p_t( |y)$."""
+
+    def marginalized_perturbation_kernel(self, y0: Float[np.ndarray, "batch y_dim"]):
+        """Compute the perturbation kernel density function induced by the data `y0`.
+        Defined as: `p(y', t | y0) = \frac{1}{n}\sum_{y \in y0}p_t(y' | y)` where
+        `n` is the number of data points in `y0`. Each `p_t(y' | y)` is a Gaussian
+        density with conditional mean and standard deviation given by `marginal_prob`.
+
+        Args:
+            y0: data
+        Returns:
+            kernel_density_fn: function taking `y_prime` and `t` as input and returning
+            the perturbation kernel density function induced by the diffusion of data `y0`
+            for time `t`.
+
+        """
+        if len(y0.shape) == 1:
+            y0 = y0[:, None]
+
+        def kernel_density_fn(y_prime: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]):
+            if t is None:
+                t = self.T
+            if len(y_prime.shape) == 1:
+                y_prime = y_prime[:, None]
+            if isinstance(t, float):
+                t = np.ones_like(y_prime) * t
+            means, stds = self.marginal_prob(y0, t)
+            if isinstance(means, float):
+                means = np.ones_like(y_prime) * means
+            if isinstance(stds, float):
+                stds = np.ones_like(y_prime) * stds
+            means = means[:, None, :]
+            stds = stds[:, None, :]
+
+            return np.mean(
+                np.exp(-0.5 * ((y_prime - means) / stds)**2) / (stds * np.sqrt(2 * np.pi)),
+                axis=0,
+            ).sum(axis=-1)
+
+        return kernel_density_fn
 
     @abc.abstractmethod
     def prior_sampling(self, shape):
@@ -188,6 +227,9 @@ class SDE(abc.ABC):
 
         return RSDE()
 
+    def __str__(self):
+        return self.__class__.__name__
+
 
 @_register_sde(name="vpsde")
 class VPSDE(SDE):
@@ -243,6 +285,10 @@ class VPSDE(SDE):
         f = np.sqrt(alpha).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y - y
         G = sqrt_beta
         return f, G
+
+
+    def __str__(self):
+        return "VPSDE(beta_min={}, beta_max={})".format(self.beta_0, self.beta_1)
 
 
 @_register_sde(name="subvpsde")
@@ -346,3 +392,6 @@ class VESDE(SDE):
         f = np.zeros_like(y)
         G = np.sqrt(sigma**2 - adjacent_sigma**2)
         return f, G
+
+    def __str__(self):
+        return "VESDE(sigma_min={}, sigma_max={})".format(self.sigma_min, self.sigma_max)
