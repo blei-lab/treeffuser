@@ -2,7 +2,7 @@ graft docs
 graft src
 graft ci
 graft tests
-graft data
+graft testbed
 
 include .bumpversion.cfg
 include .cookiecutterrc
