@@ -34,7 +34,6 @@ def compare_accuracy(
         in `y_preds` and each value is another dictionary containing the accuracy
         metrics.
     """
-
     metrics = {method: compute_accuracy(y, y_true) for method, y in y_preds.items()}
 
     if print_table:
@@ -90,7 +89,7 @@ def compute_accuracy(
     return metrics
 
 
-def _make_pretty_table(metrics):
+def _make_pretty_table(metrics: Dict[str, Dict[str, float]]) -> PrettyTable:
     metrics_name = next(iter(metrics.values()))
     metrics_name = list(metrics_name.keys())
 
