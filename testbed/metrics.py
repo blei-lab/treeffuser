@@ -8,6 +8,7 @@ from typing import Dict
 import numpy as np
 from jaxtyping import Float
 from numpy import ndarray
+from prettytable import PrettyTable
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import median_absolute_error
@@ -15,7 +16,9 @@ from sklearn.metrics import r2_score
 
 
 def compare_accuracy(
-    y_preds: Dict[str, Float[ndarray, "batch y_dim"]], y_true: Float[ndarray, "batch y_dim"]
+    y_preds: Dict[str, Float[ndarray, "batch y_dim"]],
+    y_true: Float[ndarray, "batch y_dim"],
+    print_table: bool = True,
 ) -> Dict[str, Dict[str, float]]:
     """
     Computes error metrics for different prediciton methods.
@@ -33,6 +36,9 @@ def compare_accuracy(
     """
 
     metrics = {method: compute_accuracy(y, y_true) for method, y in y_preds.items()}
+
+    if print_table:
+        print(_make_pretty_table(metrics))
     return metrics
 
 
@@ -53,6 +59,7 @@ def compute_accuracy(
         relative percent difference ('marpd'), r^2 ('r2'), and Pearson's
         correlation coefficient ('corr').
     """
+    # Check shapes
     if y_pred.shape != y_true.shape:
         raise ValueError("Mismatch in shape between predicted and true values.")
 
@@ -81,3 +88,14 @@ def compute_accuracy(
         )
 
     return metrics
+
+
+def _make_pretty_table(metrics):
+    metrics_name = next(iter(metrics.values()))
+    metrics_name = list(metrics_name.keys())
+
+    table = PrettyTable(["Method", *metrics_name])
+    for method in metrics:
+        table.add_row([method, *metrics[method].values()])
+
+    return table
