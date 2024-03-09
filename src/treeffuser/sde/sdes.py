@@ -10,6 +10,13 @@ from .parameter_schedule import ExponentialSchedule, LinearSchedule
 
 
 class DiffusionSDE(BaseSDE):
+    """
+    Abstract class representing a diffusion SDE:
+    `dY = f(Y, t) dt + \\sigma(t) dW` where `\\sigma(t)` is a time-varying
+    diffusion coefficient independent of `Y`. As a result, the conditional
+    distribution p_t(y | y0) is Gaussian.
+    """
+
     @property
     def T(self) -> float:
         """End time of the SDE."""
@@ -18,7 +25,7 @@ class DiffusionSDE(BaseSDE):
     @abc.abstractmethod
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
-    ) -> Float[ndarray, "batch x_dim y_dim"]:
+    ) -> Float[ndarray, "*shape"]:
         """Sample from the theoretical distribution that p_T(y) converges to.
 
         Parameters
@@ -34,7 +41,7 @@ class DiffusionSDE(BaseSDE):
     def get_mean_std_conditional_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
-        t: float,
+        t: Float[ndarray, "batch 1"],
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """Our diffusion SDEs have conditional distributions p_t(y | y0) that
          are Gaussian. This method returns their mean and standard deviation.
@@ -60,10 +67,10 @@ class DiffusionSDE(BaseSDE):
 class VESDE(DiffusionSDE):
     """
     Variance-exploding SDE (VESDE):
-    `dY = 0 dt + \\sqrt{2 \\sigma(t) \\sigma'(t)} dW`
+        `dY = 0 dt + \\sqrt{2 \\sigma(t) \\sigma'(t)} dW`
     where `sigma(t)` is a time-varying diffusion coefficient.
 
-    The SDE converges to a normal distribution with variance around `sigma_max**2`.
+    The SDE converges to a normal distribution with variance `sigma_max**2`.
 
     Parameters
     ----------
@@ -79,7 +86,7 @@ class VESDE(DiffusionSDE):
         self.sigma_schedule = ExponentialSchedule(sigma_min, sigma_max)
 
     def drift_and_diffusion(
-        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch"]
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         sigma = self.sigma_schedule(t)
         sigma_prime = self.sigma_schedule.get_derivative(t)
@@ -90,7 +97,7 @@ class VESDE(DiffusionSDE):
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
-        # Assume that sigma_max is large enough
+        # This assumes that sigma_max is large enough
         # TODO: maybe (sigma_max**2 + 1 - sigma_min**2)**0.5 would be more accurate
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.sigma_max, shape)
@@ -98,11 +105,17 @@ class VESDE(DiffusionSDE):
     def get_mean_std_conditional_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
-        t: Float[ndarray, "batch y_dim"],
+        t: Float[ndarray, "batch 1"],
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
-        # The conditional distribution is Gaussian with mean y0 and variance sigma(t)**2 - sigma(0)**2
+        """
+        The conditional distribution is Gaussian with:
+        * mean = `y0`
+        * variance = `sigma(t)**2 - sigma(0)**2`
+        """
         mean = y0
-        std = (self.sigma_schedule(t) ** 2 - self.sigma_schedule(0) ** 2) ** 0.5
+        std = (self.sigma_schedule(t) ** 2 - self.sigma_schedule(np.zeros_like(t)) ** 2) ** 0.5
+
+        std = np.broadcast_to(std, y0.shape)
         return mean, std
 
     def __repr__(self):
@@ -132,7 +145,7 @@ class VPSDE(DiffusionSDE):
         self.beta_schedule = LinearSchedule(beta_min, beta_max)
 
     def drift_and_diffusion(
-        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch"]
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         beta_t = self.beta_schedule(t)
         drift = -0.5 * beta_t * y
@@ -150,12 +163,17 @@ class VPSDE(DiffusionSDE):
     def get_mean_std_conditional_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
-        t: Float[ndarray, "batch y_dim"],
+        t: Float[ndarray, "batch 1"],
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
-        # The conditional distribution is Gaussian with:
-        # mean = y0 * exp(-0.5 * \int_0^t1 beta(s) ds)
-        # variance = (1 - exp(-\int_0^t1 beta(s) ds))
+        """
+        The conditional distribution is Gaussian with:
+        * mean = `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
+        * variance = `1 - exp(-\\int_0^t1 beta(s) ds)`
+        """
         beta_integral = self.beta_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * beta_integral)
         std = (1 - np.exp(-beta_integral)) ** 0.5
+
+        mean = np.broadcast_to(mean, y0.shape)
+        std = np.broadcast_to(std, y0.shape)
         return mean, std

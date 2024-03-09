@@ -21,7 +21,7 @@ def sdeint(
     seed=None,
 ):
     """
-    Integrate (i.e. sample from) an SDE.
+    Integrate an SDE (i.e. sample from an SDE).
 
     Parameters
     ----------
@@ -44,9 +44,6 @@ def sdeint(
     seed : int
         Random seed.
     """
-    solver_cls = get_solver(method)
-    if n_samples > 1:
-        y0 = np.broadcast_to(y0, (n_samples,) + y0.shape)
     if t1 < t0:
         # Reverse SDE
         if score_fn is None:
@@ -56,7 +53,9 @@ def sdeint(
             )
         sde = ReverseSDE(sde, t0, score_fn)
         t0, t1 = 0.0, t0 - t1
-    solver = solver_cls(sde=sde, n_steps=n_steps, seed=seed)
+    if n_samples > 1:
+        y0 = np.broadcast_to(y0, (n_samples,) + y0.shape)
+    solver = get_solver(method)(sde=sde, n_steps=n_steps, seed=seed)
     return solver.integrate(y0, t0, t1)
 
 
@@ -102,8 +101,8 @@ class BaseSDESolver(abc.ABC):
 
     @abc.abstractmethod
     def step(
-        self, y0: Float[ndarray, "*shape"], t0: float, t1: float
-    ) -> Float[ndarray, "*shape"]:
+        self, y0: Float[ndarray, "batch y_dim"], t0: float, t1: float
+    ) -> Float[ndarray, "batch y_dim"]:
         """
         Perform a single discrete step of the SDE solver from time t0 to time t1.
 
@@ -119,8 +118,8 @@ class BaseSDESolver(abc.ABC):
         raise NotImplementedError
 
     def integrate(
-        self, y0: Float[ndarray, "*shape"], t0: float, t1: float
-    ) -> Float[ndarray, "*shape"]:
+        self, y0: Float[ndarray, "batch y_dim"], t0: float, t1: float
+    ) -> Float[ndarray, "batch y_dim"]:
         """
         Integrate the SDE from time t0 to time t1 using `self.n_steps` steps.
 

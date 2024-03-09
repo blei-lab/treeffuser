@@ -43,7 +43,7 @@ class BaseSDE(abc.ABC):
 
     @abc.abstractmethod
     def drift_and_diffusion(
-        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch"]
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
         Drift and diffusion of the SDE at time `t` and value `y`.
@@ -55,7 +55,7 @@ class BaseSDE(abc.ABC):
 
 class ReverseSDE(BaseSDE):
     """
-    ReverseSDE, is the SDE reversed in time. To be reversed, SDEs require a
+    ReverseSDE, is the SDE reversed in time. To be reversed, an SDE requires a
     transformation of the drift term, based on the score function of the marginal
     distributions induced by the original SDE [1].
 
@@ -67,7 +67,7 @@ class ReverseSDE(BaseSDE):
     -----------
     sde : BaseSDE
         The original SDE.
-    t_origin : float
+    t_reverse_origin : float
         The time from which to reverse the SDE.
     score_fn : Callable[[Float[ndarray, "batch y_dim"], Float[ndarray, "batch"]], Float[ndarray, "batch"]]
         The score function of the original SDE induced marginal distributions.
@@ -81,23 +81,21 @@ class ReverseSDE(BaseSDE):
     def __init__(
         self,
         sde: BaseSDE,
-        t_origin: float,
+        t_reverse_origin: float,
         score_fn: Callable[
             [Float[ndarray, "batch y_dim"], Float[ndarray, "batch"]], Float[ndarray, "batch"]
         ],
     ):
         self.sde = sde
-        self.t_origin = t_origin
+        self.t_reverse_origin = t_reverse_origin
         self.score_fn = score_fn
 
     def drift_and_diffusion(
-        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch"]
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
-        drift, diffusion = self.sde.drift_and_diffusion(y, self.t_origin - t)
-        drift = -drift + diffusion**2 * self.score_fn(y, self.t_origin - t)
+        drift, diffusion = self.sde.drift_and_diffusion(y, self.t_reverse_origin - t)
+        drift = -drift + diffusion**2 * self.score_fn(y, self.t_reverse_origin - t)
         return drift, diffusion
 
     def __repr__(self):
-        return (
-            f"ReverseSDE(sde={self.sde}, t_origin={self.t_origin}, score_fn={self.score_fn})"
-        )
+        return f"ReverseSDE(sde={self.sde}, t_origin={self.t_reverse_origin}, score_fn={self.score_fn})"
