@@ -38,7 +38,7 @@ class DiffusionSDE(BaseSDE):
         raise NotImplementedError
 
     @abc.abstractmethod
-    def get_mean_std_conditional_pt_given_y0(
+    def get_mean_std_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
@@ -102,7 +102,7 @@ class VESDE(DiffusionSDE):
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.sigma_max, shape)
 
-    def get_mean_std_conditional_pt_given_y0(
+    def get_mean_std_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
@@ -160,7 +160,7 @@ class VPSDE(DiffusionSDE):
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
 
-    def get_mean_std_conditional_pt_given_y0(
+    def get_mean_std_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],

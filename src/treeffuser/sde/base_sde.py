@@ -99,3 +99,39 @@ class ReverseSDE(BaseSDE):
 
     def __repr__(self):
         return f"ReverseSDE(sde={self.sde}, t_origin={self.t_reverse_origin}, score_fn={self.score_fn})"
+
+
+class CustomSDE(BaseSDE):
+    """
+    SDE defined by a custom drift and diffusion functions.
+
+    Parameters:
+    -----------
+    drift_fn : Callable[[Float[ndarray, "batch y_dim"], Float[ndarray, "batch 1"]], Float[ndarray, "batch y_dim"]]
+        Drift function of the SDE.
+    diffusion_fn : Callable[[Float[ndarray, "batch y_dim"], Float[ndarray, "batch 1"]], Float[ndarray, "batch y_dim"]]
+        Diffusion function of the SDE.
+
+    """
+
+    def __init__(
+        self,
+        drift_fn: Callable[
+            [Float[ndarray, "batch y_dim"], Float[ndarray, "batch 1"]],
+            Float[ndarray, "batch y_dim"],
+        ],
+        diffusion_fn: Callable[
+            [Float[ndarray, "batch y_dim"], Float[ndarray, "batch 1"]],
+            Float[ndarray, "batch y_dim"],
+        ],
+    ):
+        self.drift_fn = drift_fn
+        self.diffusion_fn = diffusion_fn
+
+    def drift_and_diffusion(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+        return self.drift_fn(y, t), self.diffusion_fn(y, t)
+
+    def __repr__(self):
+        return f"CustomSDE(drift_fn={self.drift_fn}, diffusion_fn={self.diffusion_fn})"
