@@ -64,7 +64,7 @@ def get_uci_data(dataset: str, data_dir: str = "./data", verbose: bool = False) 
             links = _get_links()
             path_raw_dataset_dir = path_dataset_dir / "raw"
             _download_raw_data(links[dataset], path_raw_dataset_dir, verbose)
-            _preprocess_raw_data(path_dataset_dir)
+            _preprocess_raw_data(path_dataset_dir, verbose)
 
         data = np.load(path_dataset_file, allow_pickle=True).item()
         if verbose:
