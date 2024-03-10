@@ -1,12 +1,17 @@
+import argparse
+from pathlib import Path
+
 import numpy as np
 
 
-def main():
+def main(path_raw_dataset_dir: Path):
     # import original datasets
-    red = np.genfromtxt("original/winequality-red.csv", delimiter=";", skip_header=True)
-    white = np.genfromtxt("original/winequality-white.csv", delimiter=";", skip_header=True)
-
-    # concatenate them
+    red = np.genfromtxt(
+        path_raw_dataset_dir / "winequality-red.csv", delimiter=";", skip_header=True
+    )
+    white = np.genfromtxt(
+        path_raw_dataset_dir / "winequality-white.csv", delimiter=";", skip_header=True
+    )
     x = np.concatenate((red, white), axis=0)
 
     # add covariate for red vs. white
@@ -20,8 +25,13 @@ def main():
     x = np.delete(x, -2, 1)
     categorical = [x.shape[1]]
 
-    np.save("data.npy", {"x": x, "y": y, "categorical": categorical})
+    np.save(
+        path_raw_dataset_dir.parent / "data.npy", {"x": x, "y": y, "categorical": categorical}
+    )
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=Path)
+    args = parser.parse_args()
+    main(args.path)
