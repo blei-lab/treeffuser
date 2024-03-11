@@ -7,38 +7,20 @@ from numpy import ndarray
 _AVAILABLE_SDES = {}
 
 
-def _register_sde(name):
-    """A decorator for registering available SDE."""
-
-    def _register(cls):
-        if name in _AVAILABLE_SDES:
-            raise ValueError(f"Already registered SDE with name: {name}")
-        _AVAILABLE_SDES[name] = cls
-        return cls
-
-    return _register
-
-
-def get_sde(name):
-    """Get an SDE by name."""
-    if name not in _AVAILABLE_SDES:
-        raise ValueError(f"Unknown SDE {name}. Available SDEs: {list(_AVAILABLE_SDES.keys())}")
-    return _AVAILABLE_SDES[name]
-
-
 class BaseSDE(abc.ABC):
     """
-    Abstract class representing a stochastic differential equation (SDE):
-    `dY = f(Y, t) dt + g(Y, t) dW` where `Y` is the state, `t` is time,
-    `f` is the drift and `g` is the diffusion [1].
+    This abstract class represents a stochastic differential equation (SDE) of the form
+    `dY = f(Y, t) dt + g(Y, t) dW`, where:
+    - `Y` is the variable of the SDE
+    - `t` is time
+    - `f` is the drift function
+    - `g` is the diffusion function
 
-    BaseSDE must implement:
-    - `drift_and_diffusion(y, t)`, which return a tuple of the drift and the
-    diffusion at time `t` when `Y=y`.
+    Any class that inherits from `BaseSDE` must implement the `drift_and_diffusion(y, t)` method,
+    which returns a tuple containing the drift and the diffusion at time `t` for a given state `Y=y`.
 
     References:
-    -----------
-    [1] https://en.wikipedia.org/wiki/Stochastic_differential_equation
+        [1] https://en.wikipedia.org/wiki/Stochastic_differential_equation
     """
 
     @abc.abstractmethod
@@ -46,7 +28,14 @@ class BaseSDE(abc.ABC):
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
-        Drift and diffusion of the SDE at time `t` and value `y`.
+        Computes the drift and diffusion at a given time `t` for a given state `Y=y`.
+
+        Args:
+            y (Float[ndarray, "batch y_dim"]): The state of the SDE.
+            t (Float[ndarray, "batch 1"]): The time at which to compute the drift and diffusion.
+
+        Returns:
+            tuple: A tuple containing the drift and the diffusion at time `t` for a given state `Y=y`.
         """
 
     def __repr__(self):
@@ -55,27 +44,22 @@ class BaseSDE(abc.ABC):
 
 class ReverseSDE(BaseSDE):
     """
-    ReverseSDE, is the SDE reversed in time. To be reversed, an SDE requires a
-    transformation of the drift term, based on the score function of the marginal
-    distributions induced by the original SDE [1].
+    The `ReverseSDE` class represents a stochastic differential equation (SDE) reversed
+    in time.
 
-    The original SDE `dY = f(Y, t) dt + g(Y, t) dW` can be reversed from
-    time `T` to define a new SDE:
-    `dY(T-t) = (-f(Y, T-t) + g(Y, T-t)² ∇[log p(Y(T-t))]) dt + g(Y, T-t) dW`
+    An SDE requires a transformation of the drift term to be reversed, which is based on
+    the score function of the marginal distributions induced by the original SDE [1].
+    The original SDE `dY = f(Y, t) dt + g(Y, t) dW` can be reversed from time `T` to
+    define a new SDE:
+    `dY(T-t) = (-f(Y, T-t) + g(Y, T-t)² ∇[log p(Y(T-t))]) dt + g(Y, T-t) dW`.
 
-    Parameters:
-    -----------
-    sde : BaseSDE
-        The original SDE.
-    t_reverse_origin : float
-        The time from which to reverse the SDE.
-    score_fn : Callable[[Float[ndarray, "batch y_dim"], Float[ndarray, "batch"]], Float[ndarray, "batch"]]
-        The score function of the original SDE induced marginal distributions.
+    Args:
+        sde (BaseSDE): The original SDE.
+        t_reverse_origin (float): The time from which to reverse the SDE.
+        score_fn: The score function of the original SDE induced marginal distributions.
 
     References:
-    -----------
-    [1] https://openreview.net/pdf?id=PxTIG12RRHS
-
+        [1] https://openreview.net/pdf?id=PxTIG12RRHS
     """
 
     def __init__(
@@ -135,3 +119,54 @@ class CustomSDE(BaseSDE):
 
     def __repr__(self):
         return f"CustomSDE(drift_fn={self.drift_fn}, diffusion_fn={self.diffusion_fn})"
+
+
+def _register_sde(name: str):
+    """
+    A decorator for registering available SDEs and making them accessible by name,
+    with the `get_sde` function.
+
+    Args:
+        name (str): Name of the SDE.
+
+    Examples:
+        >>> @_register_sde(name="my_sde")
+        ... class MySDE(BaseSDE):
+        ...     pass
+        ...
+        >>> sde_cls = get_sde("my_sde")
+        >>> sde_instance = sde_cls()
+
+    See Also:
+        get_sde: Function to get an SDE by name.
+    """
+
+    def _register(cls):
+        if name in _AVAILABLE_SDES:
+            raise ValueError(f"Already registered SDE with name: {name}")
+        _AVAILABLE_SDES[name] = cls
+        return cls
+
+    return _register
+
+
+def get_sde(name):
+    """
+    Function to retrieve a registered SDE by its name.
+
+    Args:
+        name (str): The name of the SDE.
+
+    Raises:
+        ValueError: If the SDE with the given name is not registered.
+
+    Returns:
+        The class of the registered SDE.
+
+    Examples:
+        >>> sde_class = get_sde("my_sde")
+        >>> sde_instance = sde_class()
+    """
+    if name not in _AVAILABLE_SDES:
+        raise ValueError(f"Unknown SDE {name}. Available SDEs: {list(_AVAILABLE_SDES.keys())}")
+    return _AVAILABLE_SDES[name]
