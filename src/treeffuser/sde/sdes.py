@@ -102,7 +102,6 @@ class VESDE(DiffusionSDE):
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
         # This assumes that sigma_max is large enough
-        # TODO: maybe (sigma_max**2 + 1 - sigma_min**2)**0.5 would be more accurate
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.sigma_max, shape)
 
@@ -113,8 +112,8 @@ class VESDE(DiffusionSDE):
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
         The conditional distribution is Gaussian with:
-        - mean = `y0`
-        - variance = `sigma(t)**2 - sigma(0)**2`
+            mean: `y0`
+            variance: `sigma(t)**2 - sigma(0)**2`
         """
         mean = y0
         std = (self.sigma_schedule(t) ** 2 - self.sigma_schedule(np.zeros_like(t)) ** 2) ** 0.5
@@ -159,8 +158,7 @@ class VPSDE(DiffusionSDE):
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
-        # Assume that beta_max is large enough so that the SDE has converged
-        # to a standard normal distribution.
+        # Assume that beta_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
 
@@ -171,12 +169,96 @@ class VPSDE(DiffusionSDE):
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
         The conditional distribution is Gaussian with:
-        - mean = `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
-        - variance = `1 - exp(-\\int_0^t1 beta(s) ds)`
+            mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
+            variance: `1 - exp(-\\int_0^t1 beta(s) ds)`
         """
         beta_integral = self.beta_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * beta_integral)
         std = (1 - np.exp(-beta_integral)) ** 0.5
+
+        mean = np.broadcast_to(mean, y0.shape)
+        std = np.broadcast_to(std, y0.shape)
+        return mean, std
+
+    def __repr__(self):
+        return f"VPSDE(beta_min={self.beta_min}, beta_max={self.beta_max})"
+
+
+"""
+    def sde(self, y, t):
+        beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
+        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
+        discount = 1.0 - np.exp(-2 * self.beta_0 * t - (self.beta_1 - self.beta_0) * t**2)
+        diffusion = np.sqrt(beta_t * discount)
+        return drift, diffusion
+
+    def marginal_prob(self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]):
+        log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
+        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
+        std = 1 - np.exp(2.0 * log_mean_coeff)
+        return mean, std
+
+    def prior_sampling(self, shape):
+        return np.random.randn(*shape)
+
+    def prior_logp(self, z):
+        shape = z.shape
+        N = np.prod(shape[1:])
+        return -N / 2.0 * np.log(2 * np.pi) - np.sum(z**2, axis=(1, 2, 3)) / 2.0"""
+
+
+@_register_sde(name="sub-vpsde")
+class SubVPSDE(DiffusionSDE):
+    """
+    Sub-Variance-preserving SDE (SubVPSDE):
+    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t)} dW`
+    where `beta(t)` is a time-varying diffusion coefficient.
+
+    The SDE converges to a standard normal distribution for large `beta(t)`.
+
+    Parameters
+    ----------
+    beta_min : float
+        Minimum value of the diffusion coefficient.
+    beta_max : float
+        Maximum value of the diffusion coefficient.
+    """
+
+    def __init__(self, beta_min=0.01, beta_max=20):
+        self.beta_min = beta_min
+        self.beta_max = beta_max
+        self.beta_schedule = LinearSchedule(beta_min, beta_max)
+
+    def drift_and_diffusion(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+        beta_t = self.beta_schedule(t)
+        drift = -0.5 * beta_t * y
+        beta_integral = self.beta_schedule.get_integral(t)
+        discount = 1.0 - np.exp(-2 * beta_integral)
+        diffusion = np.sqrt(beta_t * discount)
+        return drift, diffusion
+
+    def sample_from_theoretical_prior(
+        self, shape: tuple[int, ...], seed: Optional[int] = None
+    ) -> Float[ndarray, "batch x_dim y_dim"]:
+        # Assume that beta_max is large enough so that the SDE has converged to N(0,1).
+        rng = np.random.default_rng(seed)
+        return rng.normal(0, 1, shape)
+
+    def get_mean_std_pt_given_y0(
+        self,
+        y0: Float[ndarray, "batch y_dim"],
+        t: Float[ndarray, "batch 1"],
+    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+        """
+        The conditional distribution is Gaussian with:
+            mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
+            variance: `[1 - exp(-\\int_0^t1 beta(s) ds)]^2`
+        """
+        beta_integral = self.beta_schedule.get_integral(t)
+        mean = y0 * np.exp(-0.5 * beta_integral)
+        std = 1 - np.exp(-beta_integral)
 
         mean = np.broadcast_to(mean, y0.shape)
         std = np.broadcast_to(std, y0.shape)
