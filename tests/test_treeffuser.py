@@ -43,9 +43,7 @@ def test_treeffuser_bimodal_linear_regression():
     )
     model.fit(X_train, y_train)
 
-    y_samples = model.sample(
-        X_test, n_samples=n_samples, n_parallel=50, denoise=True, n_steps=30, seed=0
-    )
+    y_samples = model.sample(X_test, n_samples=n_samples, n_parallel=50, n_steps=30, seed=0)
 
     y_samples = y_samples.flatten()
     y_test = y_test.flatten()
