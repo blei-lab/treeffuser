@@ -44,6 +44,30 @@ def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
         print("Preprocessing completed.")
 
 
+def list_data(verbose: bool = False):
+    path_data_dir = Path("./data/")
+
+    # extract all leaves of data folder
+    datasets = []
+    for d in path_data_dir.glob("**/"):
+        if d.is_dir() and d.name != "raw" and not d.name.startswith((".", "_")):
+            subdirs = [
+                subdir
+                for subdir in d.iterdir()
+                if subdir.is_dir()
+                and subdir.name != "raw"
+                and not subdir.name.startswith((".", "_"))
+            ]
+            if len(subdirs) == 0:
+                datasets.append(d)
+
+    datasets = {d.name: str(d) for d in datasets}
+    if verbose:
+        print(datasets)
+
+    return datasets
+
+
 def get_uci_data(dataset: str, data_dir: str = "./data", verbose: bool = False) -> np.ndarray:
     """
     Retrieve preprocessed data files from UCI directory.
