@@ -21,10 +21,10 @@ def _get_links():
 
 
 def _download_raw_data(url: str, path_raw_dataset_dir: Path, verbose: bool = False):
-    response = requests.get(url, allow_redirects=False)
+    response = requests.get(url, allow_redirects=False, timeout=10)
     if response.status_code == 200:
         path_raw_dataset_file = path_raw_dataset_dir / "temp.zip"
-        open(path_raw_dataset_file, "wb").write(response.content)
+        path_raw_dataset_file.open("wb").write(response.content)
         if verbose:
             print(f"Raw data files downloaded successfully in {path_raw_dataset_dir}.")
 
@@ -38,8 +38,8 @@ def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
     path_preprocess_script = path_dataset_dir / "preprocess.py"
     path_raw_dataset_dir = path_dataset_dir / "raw"
     subprocess.run(
-        [
-            "python",
+        [  # noqa: S603 (`subprocess` call: check for execution of untrusted input)
+            Path("python").resolve(),  # make executable path absolute
             path_preprocess_script,
             path_raw_dataset_dir,
         ],
