@@ -10,9 +10,9 @@ from jaxtyping import Float
 from numpy import ndarray
 
 from treeffuser.sde import sdeint
-from treeffuser.sde.sdes import SubVPSDE
 from treeffuser.sde.sdes import VESDE
 from treeffuser.sde.sdes import VPSDE
+from treeffuser.sde.sdes import SubVPSDE
 
 
 def _score_linear_vesde(
@@ -94,7 +94,7 @@ def _score_linear_subvpsde(
 
 
 @pytest.mark.parametrize(
-    "sde_name, score_fn",
+    ("sde_name", "score_fn"),
     [
         ("vesde", _score_linear_vesde),
         ("vpsde", _score_linear_vpsde),
