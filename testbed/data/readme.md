@@ -18,13 +18,12 @@ The utility consists of two primary functions: `list_data` and `get_data`.
 
 - `list_data` lists all the available datasets in the `./data/` directory.
 
-    ```python
-    list_data()
-    ```
-
 - `get_data` is used to import a supported dataset or datasets. To import a single dataset, such as `"naval"`, simply call:
 
     ```python
+    from data.utils import get_data
+
+
     get_data("naval")
     ```
 
