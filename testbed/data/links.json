@@ -1,0 +1,6 @@
+{
+    "naval": "https://archive.ics.uci.edu/static/public/316/condition+based+maintenance+of+naval+propulsion+plants.zip",
+    "protein": "https://archive.ics.uci.edu/static/public/265/physicochemical+properties+of+protein+tertiary+structure.zip",
+    "wine": "https://archive.ics.uci.edu/static/public/186/wine+quality.zip",
+    "yacht": "https://archive.ics.uci.edu/static/public/243/yacht+hydrodynamics.zip"
+}

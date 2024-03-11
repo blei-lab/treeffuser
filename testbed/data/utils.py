@@ -1,5 +1,6 @@
 """Helper functions to import preprocessed datasets in ./data/."""
 
+import json
 import subprocess
 from pathlib import Path
 
@@ -8,16 +9,9 @@ import requests
 
 
 def _get_links():
-    links = {}
-    links["naval"] = (
-        "https://archive.ics.uci.edu/static/public/316/condition+based+maintenance+of+naval+propulsion+plants.zip"
-    )
-    links["protein"] = (
-        "https://archive.ics.uci.edu/static/public/265/physicochemical+properties+of+protein+tertiary+structure.zip"
-    )
-    links["wine"] = "https://archive.ics.uci.edu/static/public/186/wine+quality.zip"
-    links["yacht"] = "https://archive.ics.uci.edu/static/public/243/yacht+hydrodynamics.zip"
-    return links
+    path_links = Path("./data/links.json")
+    with path_links.open() as links:
+        return json.load(links)
 
 
 def _download_raw_data(url: str, path_raw_dataset_dir: Path, verbose: bool = False):
