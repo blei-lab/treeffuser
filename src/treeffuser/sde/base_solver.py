@@ -59,27 +59,6 @@ def sdeint(
     return solver.integrate(y0, t0, t1)
 
 
-def _register_solver(name):
-    """A decorator for registering available solvers."""
-
-    def _register(cls):
-        if name in _AVAILABLE_SOLVERS:
-            raise ValueError(f"Already registered solver with name: {name}")
-        _AVAILABLE_SOLVERS[name] = cls
-        return cls
-
-    return _register
-
-
-def get_solver(name):
-    """Get a solver by name."""
-    if name not in _AVAILABLE_SOLVERS:
-        raise ValueError(
-            f"Unknown solver {name}. Available solvers: {list(_AVAILABLE_SOLVERS.keys())}"
-        )
-    return _AVAILABLE_SOLVERS[name]
-
-
 class BaseSDESolver(abc.ABC):
     """
     Abstract class representing a solver for stochastic differential equations (SDEs).
@@ -139,3 +118,56 @@ class BaseSDESolver(abc.ABC):
             y = self.step(y, t, t + dt)
             t += dt
         return y
+
+
+def _register_solver(name):
+    """
+    A decorator for registering available solvers and making them accessible by name,
+    with the `get_solver` function.
+
+    Args:
+        name (str): Name of the solver.
+
+    Examples:
+        >>> @_register_solver(name="my_solver")
+        ... class MySolver(BaseSDESolver):
+        ...     pass
+        ...
+        >>> solver_cls = get_solver("my_solver")
+        >>> solver_instance = solver_cls()
+
+    See Also:
+        get_solver: Function to get a solver by name.
+    """
+
+    def _register(cls):
+        if name in _AVAILABLE_SOLVERS:
+            raise ValueError(f"Already registered solver with name: {name}")
+        _AVAILABLE_SOLVERS[name] = cls
+        return cls
+
+    return _register
+
+
+def get_solver(name):
+    """
+    Function to retrieve a registered solver by its name.
+
+    Args:
+        name (str): The name of the solver.
+
+    Raises:
+        ValueError: If the solver with the given name is not registered.
+
+    Returns:
+        The class of the registered solver.
+
+    Examples:
+        >>> solver_class = get_solver("my_solver")
+        >>> solver_instance = solver_class()
+    """
+    if name not in _AVAILABLE_SOLVERS:
+        raise ValueError(
+            f"Unknown solver {name}. Available solvers: {list(_AVAILABLE_SOLVERS.keys())}"
+        )
+    return _AVAILABLE_SOLVERS[name]
