@@ -17,7 +17,8 @@ def _get_links():
 def _download_raw_data(url: str, path_raw_dataset_dir: Path, verbose: bool = False):
     response = requests.get(url, allow_redirects=False, timeout=10)
     if response.status_code == 200:
-        path_raw_dataset_file = path_raw_dataset_dir / "temp.zip"
+        format = url.rsplit(".", 1)[-1]
+        path_raw_dataset_file = path_raw_dataset_dir / ("temp." + format)
         path_raw_dataset_file.open("wb").write(response.content)
         if verbose:
             print(f"Raw data files downloaded successfully in {path_raw_dataset_dir}.")
