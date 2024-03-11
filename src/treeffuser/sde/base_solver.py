@@ -51,7 +51,7 @@ def sdeint(
         if score_fn is None:
             raise ValueError(
                 "`score_fn` must be provided for reverse SDE (the SDE is reversed "
-                "because the provided `t1` is smaller than `t0`: t0={t0}, t1={t1})."
+                f"because `t1` is smaller than `t0`: t0={t0}, t1={t1})."
             )
         sde = ReverseSDE(sde, t0, score_fn)
         t0, t1 = 0.0, t0 - t1
