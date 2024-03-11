@@ -26,7 +26,8 @@ class DiffusionSDE(BaseSDE):
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "*shape"]:
-        """Sample from the theoretical distribution that p_T(y) converges to.
+        """
+        Sample from the theoretical distribution that p_T(y) converges to.
 
         Parameters
         ----------
@@ -43,8 +44,9 @@ class DiffusionSDE(BaseSDE):
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
-        """Our diffusion SDEs have conditional distributions p_t(y | y0) that
-         are Gaussian. This method returns their mean and standard deviation.
+        """
+        Our diffusion SDEs have conditional distributions p_t(y | y0) that
+        are Gaussian. This method returns their mean and standard deviation.
 
         Parameters
         ----------
@@ -109,8 +111,8 @@ class VESDE(DiffusionSDE):
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
         The conditional distribution is Gaussian with:
-        * mean = `y0`
-        * variance = `sigma(t)**2 - sigma(0)**2`
+        - mean = `y0`
+        - variance = `sigma(t)**2 - sigma(0)**2`
         """
         mean = y0
         std = (self.sigma_schedule(t) ** 2 - self.sigma_schedule(np.zeros_like(t)) ** 2) ** 0.5
@@ -167,8 +169,8 @@ class VPSDE(DiffusionSDE):
     ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
         """
         The conditional distribution is Gaussian with:
-        * mean = `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
-        * variance = `1 - exp(-\\int_0^t1 beta(s) ds)`
+        - mean = `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
+        - variance = `1 - exp(-\\int_0^t1 beta(s) ds)`
         """
         beta_integral = self.beta_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * beta_integral)
