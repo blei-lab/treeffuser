@@ -4,7 +4,8 @@ import numpy as np
 from jaxtyping import Float
 from numpy import ndarray
 
-from .base_sde import BaseSDE, ReverseSDE
+from .base_sde import BaseSDE
+from .base_sde import ReverseSDE
 
 _AVAILABLE_SOLVERS = {}
 

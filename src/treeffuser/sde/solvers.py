@@ -1,7 +1,8 @@
 import numpy as np
 from jaxtyping import Float
 
-from treeffuser.sde.base_solver import _register_solver, BaseSDESolver
+from treeffuser.sde.base_solver import BaseSDESolver
+from treeffuser.sde.base_solver import _register_solver
 
 
 @_register_solver(name="euler")

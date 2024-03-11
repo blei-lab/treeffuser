@@ -5,8 +5,10 @@ import numpy as np
 from jaxtyping import Float
 from numpy import ndarray
 
-from .base_sde import BaseSDE, _register_sde
-from .parameter_schedule import ExponentialSchedule, LinearSchedule
+from .base_sde import BaseSDE
+from .base_sde import _register_sde
+from .parameter_schedule import ExponentialSchedule
+from .parameter_schedule import LinearSchedule
 
 
 class DiffusionSDE(BaseSDE):

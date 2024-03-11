@@ -16,7 +16,8 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
-from treeffuser.sde import sdeint, get_sde
+from treeffuser.sde import get_sde
+from treeffuser.sde import sdeint
 
 
 def _check_arguments(

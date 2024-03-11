@@ -1,10 +1,12 @@
+from unittest.mock import MagicMock
+
 import numpy as np
 import pytest
 from jaxtyping import Float
 from numpy import ndarray
 
-from treeffuser.sde.base_sde import BaseSDE, ReverseSDE
-from unittest.mock import MagicMock
+from treeffuser.sde.base_sde import BaseSDE
+from treeffuser.sde.base_sde import ReverseSDE
 
 
 class ConcreteBaseSDE(BaseSDE):
