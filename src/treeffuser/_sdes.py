@@ -102,8 +102,8 @@ class SDE(abc.ABC):
 
     def marginalized_perturbation_kernel(self, y0: Float[np.ndarray, "batch y_dim"]):
         """Compute the perturbation kernel density function induced by the data `y0`.
-        Defined as: `p(y', t | y0) = \frac{1}{n}\\sum_{y \\in y0}p_t(y' | y)` where
-        `n` is the number of data points in `y0`. Each `p_t(y' | y)` is a Gaussian
+        Defined as: `p(y, t) = \frac{1}{n}\\sum_{y' \\in y0}p_t(y | y')` where
+        `n` is the number of data points in `y0`. Each `p_t(y | y')` is a Gaussian
         density with conditional mean and standard deviation given by `marginal_prob`.
 
         Args:
@@ -118,24 +118,24 @@ class SDE(abc.ABC):
             y0 = y0[:, None]
 
         def kernel_density_fn(
-            y_prime: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]
+            y: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]
         ):
             if t is None:
                 t = self.T
-            if len(y_prime.shape) == 1:
-                y_prime = y_prime[:, None]
+            if len(y.shape) == 1:
+                y = y[:, None]
             if isinstance(t, float):
-                t = np.ones_like(y_prime) * t
+                t = np.ones_like(y) * t
             means, stds = self.marginal_prob(y0, t)
             if isinstance(means, float):
-                means = np.ones_like(y_prime) * means
+                means = np.ones_like(y) * means
             if isinstance(stds, float):
-                stds = np.ones_like(y_prime) * stds
+                stds = np.ones_like(y) * stds
             means = means[:, None, :]
             stds = stds[:, None, :]
 
             return np.mean(
-                np.exp(-0.5 * ((y_prime - means) / stds) ** 2) / (stds * np.sqrt(2 * np.pi)),
+                np.exp(-0.5 * ((y - means) / stds) ** 2) / (stds * np.sqrt(2 * np.pi)),
                 axis=0,
             ).sum(axis=-1)
 
