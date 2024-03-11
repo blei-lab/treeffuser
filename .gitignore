@@ -73,3 +73,7 @@ docs/_build
 
 # Mypy Cache
 .mypy_cache/
+
+# Data files
+**/raw/**
+**/data.npy
