@@ -6,9 +6,7 @@ from treeffuser.sde.base_sde import CustomSDE
 
 def test_euler_maruyama():
     # Samples from this SDE are ~ Normal(y, t)
-    drift = lambda y, t: 0
-    diffusion = lambda y, t: 1
-    sde = CustomSDE(drift, diffusion)
+    sde = CustomSDE(drift_fn=lambda y, t: 0, diffusion_fn=lambda y, t: 1)
 
     batch_size = 1000
     y0 = np.zeros((batch_size, 1))

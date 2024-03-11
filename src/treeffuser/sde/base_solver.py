@@ -1,4 +1,5 @@
 import abc
+from typing import Optional
 
 import numpy as np
 from jaxtyping import Float
@@ -55,7 +56,7 @@ def sdeint(
         sde = ReverseSDE(sde, t0, score_fn)
         t0, t1 = 0.0, t0 - t1
     if n_samples > 1:
-        y0 = np.broadcast_to(y0, (n_samples,) + y0.shape)
+        y0 = np.broadcast_to(y0, (n_samples, *y0.shape))
     solver = get_solver(method)(sde=sde, n_steps=n_steps, seed=seed)
     return solver.integrate(y0, t0, t1)
 
@@ -74,7 +75,7 @@ class BaseSDESolver(abc.ABC):
         Random seed.
     """
 
-    def __init__(self, sde: BaseSDE, n_steps: int, seed: int = None):
+    def __init__(self, sde: BaseSDE, n_steps: int, seed: Optional[int] = None):
         self.sde = sde
         self.n_steps = n_steps
         self._rng = np.random.default_rng(seed)

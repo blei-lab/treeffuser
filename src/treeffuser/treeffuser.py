@@ -116,7 +116,6 @@ class Treeffuser(BaseEstimator, abc.ABC):
             if x_batched is None or x_batched.shape[0] != batch_size_samples:
                 # Reuse the same batch of x as much as possible
                 x_batched = np.tile(x_transformed, [batch_size_samples, 1])
-            score_fn = lambda y, t: self._score_model.score(y, x_batched, t)
             y_batch_samples = sdeint(
                 self._sde,
                 y_batch,
@@ -125,7 +124,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 n_steps=n_steps,
                 method="euler",
                 seed=seed + n_samples_sampled if seed is not None else None,
-                score_fn=score_fn,
+                score_fn=lambda y, t: self._score_model.score(y, x_batched, t),
             )
             n_samples_sampled += batch_size_samples
             y_samples.append(y_batch_samples)
