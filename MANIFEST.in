@@ -26,5 +26,6 @@ global-exclude *.py[cod] __pycache__/* *.so *.dylib
 global-exclude paper/*
 global-exclude dev_tools/*
 global-exclude notebooks/*
-global-exclude raw/*
-global-exclude data.npy
+global-exclude **/raw/*
+global-exclude **/data.npy
+global-exclude **/debug.*
