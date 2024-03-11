@@ -3,7 +3,8 @@
 import json
 import subprocess
 from pathlib import Path
-from typing import Union, List
+from typing import List
+from typing import Union
 
 import numpy as np
 import requests
@@ -58,6 +59,9 @@ def _load_data(path_dataset_file: Path, verbose: bool = False) -> np.ndarray:
 
 
 def list_data(verbose: bool = False) -> dict:
+    """
+    Lists all datasets in './data/'.
+    """
     path_data_dir = Path("./data/")
 
     # extract all leaves of data folder
@@ -95,9 +99,22 @@ def _get_data_path(dataset: str, verbose: bool = False) -> Path:
 
 def get_data(
     datasets: Union[str, List[str]], verbose: bool = False
-) -> Union[np.ndarray, List[np.ndarray]]:
+) -> Union[dict, List[dict]]:
     """
-    Download or retrieve data files.
+    Download or retrieve data files for one or multiple datasets. For each dataset, it checks if the
+    preprocessed data file exists; if not, it downloads the raw data and then preprocesses it. Each dataset
+    is loaded into a dictionary containing the keys `x` for covariates, `y` for outcome, and `categorical`
+    for indices of categorical covariates.
+
+    Parameters:
+    - datasets (Union[str, List[str]]): A single dataset name as a string or a list of dataset names.
+
+    Returns:
+    - Union[dict, List[dict]]: A dictionary for a single dataset or a list of dictionaries for multiple
+      datasets. The dictionaries contain the following keys:
+         - `x`: a np.ndarray with features.
+         - `y`: a np.ndarray with the outcome.
+         - `categorical`: a list with the indices of categorical features.
     """
     if isinstance(datasets, list):
         return {dataset: get_data(dataset, verbose=verbose) for dataset in datasets}
