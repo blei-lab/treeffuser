@@ -3,6 +3,7 @@
 import json
 import subprocess
 from pathlib import Path
+from typing import Union, List
 
 import numpy as np
 import requests
@@ -92,10 +93,17 @@ def _get_data_path(dataset: str, verbose: bool = False) -> Path:
         )
 
 
-def get_data(dataset: str, verbose: bool = False) -> np.ndarray:
+def get_data(
+    datasets: Union[str, List[str]], verbose: bool = False
+) -> Union[np.ndarray, List[np.ndarray]]:
     """
     Download or retrieve data files.
     """
+    if isinstance(datasets, list):
+        return {dataset: get_data(dataset, verbose=verbose) for dataset in datasets}
+    else:
+        dataset = datasets
+
     if verbose:
         print(f"Getting {dataset} dataset.")
 
