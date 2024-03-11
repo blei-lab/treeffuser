@@ -44,7 +44,19 @@ def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
         print("Preprocessing completed.")
 
 
-def list_data(verbose: bool = False):
+def _load_data(path_dataset_file: Path, verbose: bool = False) -> np.ndarray:
+    data = np.load(path_dataset_file, allow_pickle=True).item()
+    if verbose:
+        n_obs, n_cov = data["x"].shape
+        y_dim = data["y"].shape[1]
+        print(
+            f"# of observations: {n_obs}, # of covariates: {n_cov}, dimension of outcome: {y_dim}"
+        )
+
+    return data
+
+
+def list_data(verbose: bool = False) -> dict:
     path_data_dir = Path("./data/")
 
     # extract all leaves of data folder
@@ -61,54 +73,57 @@ def list_data(verbose: bool = False):
             if len(subdirs) == 0:
                 datasets.append(d)
 
-    datasets = {d.name: str(d) for d in datasets}
+    datasets = {d.name: str(d) for d in sorted(datasets)}
     if verbose:
         print(datasets)
 
     return datasets
 
 
-def get_uci_data(dataset: str, data_dir: str = "./data", verbose: bool = False) -> np.ndarray:
-    """
-    Retrieve preprocessed data files from UCI directory.
-    """
-    if verbose:
-        print(f"Getting UCI {dataset} dataset.")
-
-    path_dataset_dir = Path(data_dir) / "uci" / dataset
-    path_dataset_file = path_dataset_dir / "data.npy"
-
-    if path_dataset_dir.exists():
-        if not path_dataset_file.exists():
-            links = _get_links()
-            path_raw_dataset_dir = path_dataset_dir / "raw"
-            _download_raw_data(links[dataset], path_raw_dataset_dir, verbose)
-            _preprocess_raw_data(path_dataset_dir, verbose)
-
-        data = np.load(path_dataset_file, allow_pickle=True).item()
-        if verbose:
-            n_obs, n_cov = data["x"].shape
-            y_dim = data["y"].shape[1]
-            print(
-                f"# of observations: {n_obs}, # of covariates: {n_cov}, dimension of outcome: {y_dim}"
-            )
-        return data
+def _get_data_path(dataset: str, verbose: bool = False) -> Path:
+    datasets = list_data()
+    if dataset in datasets:
+        return Path(datasets[dataset])
 
     else:
+        path_data_dir = Path("./data").resolve()
         raise FileNotFoundError(
-            f"Dataset '{dataset}' not found in UCI directory. Use `list_uci_data` to print a list of available datasets."
+            f"Dataset '{dataset}' not found: {dataset} is not a subfolder of '{path_data_dir}'. Use `list_data` to print a list of available datasets."
         )
 
 
-def list_uci_data(data_dir: str = "./data"):
+def get_data(dataset: str, verbose: bool = False) -> np.ndarray:
     """
-    Return list of datasets from UCI directory.
+    Download or retrieve data files.
     """
-    path = Path(data_dir) / "uci"
-    datasets = sorted(x.name for x in path.iterdir() if x.is_dir())
-    datasets = sorted(datasets)
-    return datasets
+    if verbose:
+        print(f"Getting {dataset} dataset.")
 
+    path_dataset_dir = _get_data_path(dataset)
+    path_dataset_file = path_dataset_dir / "data.npy"
+    if not path_dataset_file.exists():
+        path_raw_dataset_dir = path_dataset_dir / "raw"
+        if not path_raw_dataset_dir.exists():
+            path_raw_dataset_dir.mkdir()
 
-def get_uci_data_all(data_dir: str = "./data", verbose: bool = False):
-    return {dataset: get_uci_data(dataset, verbose=verbose) for dataset in list_uci_data()}
+        if not any(path_raw_dataset_dir.iterdir()):
+            # download raw files
+            links = _get_links()
+            if dataset not in links:
+                raise Exception(
+                    f"Cannot download {dataset} dataset: no download link available."
+                )
+
+            _download_raw_data(links[dataset], path_raw_dataset_dir, verbose)
+
+        # preprocess raw files
+        path_preprocess_file = path_dataset_dir / "preprocess.py"
+        if not path_preprocess_file.exists():
+            raise Exception(
+                f"Cannot preprocess {dataset} dataset. Preprocessing script {path_preprocess_file} is missing."
+            )
+
+        _preprocess_raw_data(path_dataset_dir, verbose)
+
+    # load and return preprocessed data file
+    return _load_data(path_dataset_file, verbose)
