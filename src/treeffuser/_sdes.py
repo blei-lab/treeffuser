@@ -27,7 +27,8 @@ The notice from the original code is as follows:
 """
 
 import abc
-from typing import Tuple, Union
+from typing import Tuple
+from typing import Union
 
 import numpy as np
 from einops import repeat
