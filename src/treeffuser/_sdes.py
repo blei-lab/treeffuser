@@ -27,7 +27,7 @@ The notice from the original code is as follows:
 """
 
 import abc
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 from einops import repeat
@@ -114,23 +114,13 @@ class SDE(abc.ABC):
             for time `t`.
 
         """
-        if len(y0.shape) == 1:
-            y0 = y0[:, None]
 
         def kernel_density_fn(
-            y: Float[ndarray, "batch_2 y_dim"], t: Float[np.ndarray, "batch 1"]
+            y: Float[ndarray, "batch_ y_dim"], t: Union[float, Float[np.ndarray, "batch_ 1"]]
         ):
-            if t is None:
-                t = self.T
-            if len(y.shape) == 1:
-                y = y[:, None]
             if isinstance(t, float):
                 t = np.ones_like(y) * t
             means, stds = self.marginal_prob(y0, t)
-            if isinstance(means, float):
-                means = np.ones_like(y) * means
-            if isinstance(stds, float):
-                stds = np.ones_like(y) * stds
             means = means[:, None, :]
             stds = stds[:, None, :]
 
