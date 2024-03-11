@@ -77,3 +77,6 @@ docs/_build
 # Data files
 **/raw/**
 **/data.npy
+
+# Debug files
+**/debug.*
