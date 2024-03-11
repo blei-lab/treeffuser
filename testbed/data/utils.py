@@ -38,8 +38,8 @@ def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
     path_preprocess_script = path_dataset_dir / "preprocess.py"
     path_raw_dataset_dir = path_dataset_dir / "raw"
     subprocess.run(
-        [  # noqa: S603 (`subprocess` call: check for execution of untrusted input)
-            Path("python").resolve(),  # make executable path absolute
+        [  # noqa: S603, S607 (S603 `subprocess` call: check for execution of untrusted input,  S607 Starting a process with a partial executable path)
+            "python3",
             path_preprocess_script,
             path_raw_dataset_dir,
         ],
