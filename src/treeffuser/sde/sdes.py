@@ -14,9 +14,9 @@ from .parameter_schedule import LinearSchedule
 class DiffusionSDE(BaseSDE):
     """
     Abstract class representing a diffusion SDE:
-    `dY = f(Y, t) dt + \\sigma(t) dW` where `\\sigma(t)` is a time-varying
-    diffusion coefficient independent of `Y`. As a result, the conditional
-    distribution p_t(y | y0) is Gaussian.
+    `dY = (A(t) + B(t) Y) dt + \\sigma(t) dW` where `\\sigma(t)` is a time-varying
+    diffusion coefficient independent of `Y`, and the drift is an affine function of Y.
+    As a result, the conditional distribution p_t(y | y0) is Gaussian.
     """
 
     @property
@@ -184,34 +184,11 @@ class VPSDE(DiffusionSDE):
         return f"VPSDE(beta_min={self.beta_min}, beta_max={self.beta_max})"
 
 
-"""
-    def sde(self, y, t):
-        beta_t = self.beta_0 + t * (self.beta_1 - self.beta_0)
-        drift = -0.5 * beta_t.reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
-        discount = 1.0 - np.exp(-2 * self.beta_0 * t - (self.beta_1 - self.beta_0) * t**2)
-        diffusion = np.sqrt(beta_t * discount)
-        return drift, diffusion
-
-    def marginal_prob(self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]):
-        log_mean_coeff = -0.25 * t**2 * (self.beta_1 - self.beta_0) - 0.5 * t * self.beta_0
-        mean = np.exp(log_mean_coeff).reshape((-1,) + (1,) * (len(y.shape) - 1)) * y
-        std = 1 - np.exp(2.0 * log_mean_coeff)
-        return mean, std
-
-    def prior_sampling(self, shape):
-        return np.random.randn(*shape)
-
-    def prior_logp(self, z):
-        shape = z.shape
-        N = np.prod(shape[1:])
-        return -N / 2.0 * np.log(2 * np.pi) - np.sum(z**2, axis=(1, 2, 3)) / 2.0"""
-
-
 @_register_sde(name="sub-vpsde")
 class SubVPSDE(DiffusionSDE):
     """
     Sub-Variance-preserving SDE (SubVPSDE):
-    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t)} dW`
+    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t) (1 - e^{-2 \\int_0^t \\beta(s) ds})} dW`
     where `beta(t)` is a time-varying diffusion coefficient.
 
     The SDE converges to a standard normal distribution for large `beta(t)`.
