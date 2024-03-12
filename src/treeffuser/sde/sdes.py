@@ -1,5 +1,5 @@
 import abc
-from typing import Optional
+from typing import Optional, Union
 
 import numpy as np
 from jaxtyping import Float
@@ -65,6 +65,40 @@ class DiffusionSDE(BaseSDE):
             Standard deviation of the conditional distribution.
         """
         raise NotImplementedError
+
+    def get_marginalized_perturbation_kernel(self, y0: Float[np.ndarray, "batch y_dim"]):
+        """
+        Compute the marginalized perturbation kernel density function induced by the data `y0`.
+
+        The marginalized perturbation kernel is defined as:
+            `p(y, t) = \frac{1}{n}\\sum_{y' \\in y0}p_t(y | y')`
+        where `n` is the number of data points in `y0`. Each `p_t(y | y')` is a Gaussian
+        density with conditional mean and standard deviation given by `marginal_prob`.
+
+        Args:
+            y0: data
+        Returns:
+            kernel_density_fn: function taking `y_prime` and `t` as input and returning
+            the perturbation kernel density function induced by the diffusion of data `y0`
+            for time `t`.
+
+        """
+
+        def kernel_density_fn(
+            y: Float[ndarray, "batch_ y_dim"], t: Union[float, Float[np.ndarray, "batch_ 1"]]
+        ):
+            if isinstance(t, float):
+                t = np.ones_like(y) * t
+            means, stds = self.get_mean_std_pt_given_y0(y0, t)
+            means = means[:, None, :]
+            stds = stds[:, None, :]
+
+            return np.mean(
+                np.exp(-0.5 * ((y - means) / stds) ** 2) / (stds * np.sqrt(2 * np.pi)),
+                axis=0,
+            ).sum(axis=-1)
+
+        return kernel_density_fn
 
 
 @_register_sde(name="vesde")
