@@ -12,7 +12,7 @@ from jaxtyping import Float
 from jaxtyping import Int
 from sklearn.model_selection import train_test_split
 
-from treeffuser._sdes import SDE
+from treeffuser.sde import DiffusionSDE
 
 ###################################################
 # Helper functions
@@ -70,7 +70,7 @@ def _fit_one_lgbm_model(
 def _make_training_data(
     X: Float[np.ndarray, "batch x_dim"],
     y: Float[np.ndarray, "batch y_dim"],
-    sde: SDE,
+    sde: DiffusionSDE,
     n_repeats: int,
     eval_percent: Optional[float],
     seed: Optional[int] = None,
@@ -98,7 +98,7 @@ def _make_training_data(
 
     X_train, X_test, y_train, y_test = X, None, y, None
     predictors_train, predictors_val = None, None
-    predicted_val, predicted_train = None, None
+    predicted_train, predicted_val = None, None
 
     if eval_percent is not None:
         X_train, X_test, y_train, y_test = train_test_split(
@@ -111,7 +111,7 @@ def _make_training_data(
     t_train = np.random.uniform(0, 1, size=(y_train.shape[0], 1)) * (T - EPS) + EPS
     z_train = np.random.normal(size=y_train.shape)
 
-    train_mean, train_std = sde.marginal_prob(y_train, t_train)
+    train_mean, train_std = sde.get_mean_std_pt_given_y0(y_train, t_train)
     perturbed_y_train = train_mean + train_std * z_train
 
     predictors_train = np.concatenate([perturbed_y_train, X_train, t_train], axis=1)
@@ -122,7 +122,7 @@ def _make_training_data(
         t_val = np.random.uniform(0, 1, size=(y_test.shape[0], 1)) * (T - EPS) + EPS
         z_val = np.random.normal(size=(y_test.shape[0], y_test.shape[1]))
 
-        val_mean, val_std = sde.marginal_prob(y_test, t_val)
+        val_mean, val_std = sde.get_mean_std_pt_given_y0(y_test, t_val)
         perturbed_y_val = val_mean + val_std * z_val
         predictors_val = np.concatenate(
             [perturbed_y_val, X_test, t_val.reshape(-1, 1)], axis=1
@@ -157,7 +157,7 @@ class Score(abc.ABC):
 class LightGBMScore(Score):
     def __init__(
         self,
-        sde: SDE,
+        sde: DiffusionSDE,
         n_repeats: Optional[int] = 1,
         n_estimators: Optional[int] = 100,
         eval_percent: Optional[float] = None,
@@ -248,14 +248,12 @@ class LightGBMScore(Score):
         t: Int[np.ndarray, "batch 1"],
     ) -> Float[np.ndarray, "batch y_dim"]:
         scores = []
-        t = t.reshape(-1, 1)
-        _, std = self._sde.marginal_prob(y, t)
-        for i in range(y.shape[1]):
-            predictors = np.concatenate([y, X, t], axis=1)
+        predictors = np.concatenate([y, X, t], axis=1)
+        _, std = self._sde.get_mean_std_pt_given_y0(y, t)
+        for i in range(y.shape[-1]):
+            # The score is parametrized: score(y, x, t) = GBT(y, x, t) / std(t)
             score_p = self.models[i].predict(predictors, num_threads=self._lgbm_args["n_jobs"])
-            score = (
-                score_p / std[:, i]
-            )  # Score is parametrized as score(y, x, t) = GBT(y, x, t) / std(t)
+            score = score_p / std[:, i]
             scores.append(score)
         return np.array(scores).T
 

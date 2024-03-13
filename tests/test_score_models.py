@@ -7,7 +7,7 @@ from einops import repeat
 from sklearn.metrics import r2_score
 
 from treeffuser._score_models import LightGBMScore
-from treeffuser._sdes import VESDE
+from treeffuser.sde.sdes import VESDE
 
 from .utils import generate_bimodal_linear_regression_data
 
@@ -50,12 +50,12 @@ def test_linear_regression():
     score_model.fit(X, y)
 
     # Check that the score model is able to fit the data
-    random_t = np.random.uniform(0, sde.T // 2, size=n)
+    random_t = np.random.uniform(1e-5, sde.T // 2, size=n)
     random_t = repeat(random_t, "n -> n 1")
     z = np.random.randn(n)
     z = repeat(z, "n -> n y_dim", y_dim=y_dim)
 
-    mean, std = sde.marginal_prob(y, random_t)
+    mean, std = sde.get_mean_std_pt_given_y0(y, random_t)
     y_perturbed = mean + z * std
 
     scores = score_model.score(y=y_perturbed, X=X, t=random_t)
@@ -110,12 +110,12 @@ def test_can_be_deterministic():
     score_model_b.fit(X, y)
 
     # Check that the two results are the same
-    random_t = np.random.uniform(0, sde.T // 2, size=n)
+    random_t = np.random.uniform(1e-5, sde.T // 2, size=n)
     random_t = repeat(random_t, "n -> n 1")
     z = np.random.randn(n)
     z = repeat(z, "n -> n y_dim", y_dim=y_dim)
 
-    mean, std = sde.marginal_prob(y, random_t)
+    mean, std = sde.get_mean_std_pt_given_y0(y, random_t)
     y_perturbed = mean + z * std
 
     scores_a = score_model_a.score(y=y_perturbed, X=X, t=random_t)
@@ -171,12 +171,12 @@ def test_different_seeds_do_not_give_same_results():
     score_model_b.fit(X, y)
 
     # Check that the two results are the same
-    random_t = np.random.uniform(0, sde.T // 2, size=n)
+    random_t = np.random.uniform(1e-5, sde.T // 2, size=n)
     random_t = repeat(random_t, "n -> n 1")
     z = np.random.randn(n)
     z = repeat(z, "n -> n y_dim", y_dim=y_dim)
 
-    mean, std = sde.marginal_prob(y, random_t)
+    mean, std = sde.get_mean_std_pt_given_y0(y, random_t)
     y_perturbed = mean + z * std
 
     scores_a = score_model_a.score(y=y_perturbed, X=X, t=random_t)

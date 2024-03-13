@@ -5,17 +5,19 @@ This should be the main file corresponding to the project.
 import abc
 from typing import Optional
 
+import numpy as np
 from einops import rearrange
 from jaxtyping import Float
 from ml_collections import FrozenConfigDict
 from numpy import ndarray
 from sklearn.base import BaseEstimator
+from tqdm import tqdm
 
-import treeffuser._sampling as _sampling
 import treeffuser._score_models as _score_models
-import treeffuser._sdes as _sdes
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
+from treeffuser.sde import get_sde
+from treeffuser.sde import sdeint
 
 
 def _check_arguments(
@@ -45,7 +47,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self._y_dim = None
 
         # TODO: We are using the defaults but we should change this
-        self._sde = _sdes.get_sde(sde_name)()
+        self._sde = get_sde(sde_name)()
         self._sde_name = sde_name
 
     @property
@@ -87,46 +89,62 @@ class Treeffuser(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         n_samples: int,
         n_parallel: int = 100,
-        denoise: bool = False,
         n_steps: int = 100,
         seed=None,
+        verbose: int = 1,
     ) -> Float[ndarray, "batch n_samples y_dim"]:
         """
-        Sample from the model.
+        Sample from the diffusion model.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        # We need a new SDE in case we change discretization steps
-        sde = _sdes.get_sde(self._sde_name)(N=n_steps)
-
         x_transformed = self._x_preprocessor.transform(X)
+        batch_size_x = x_transformed.shape[0]
+        y_dim = self._y_dim
 
-        y_untransformed = _sampling.sample(
-            X=x_transformed,
-            y_dim=self._y_dim,
-            n_samples=n_samples,
-            score_fn=self._score_model.score,
-            n_parallel=n_parallel,
-            sde=sde,
-            n_steps=n_steps,
-            denoise=denoise,
-            seed=seed,
-            predictor_name="euler_maruyama",  # TODO: This should be a parameter
-            corrector_name="none",  # TODO: This should be a parameter
-            verbose=1,
-        )
+        n_samples_sampled = 0
+        y_samples = []
+        x_batched = None
 
+        pbar = tqdm(total=n_samples, disable=verbose < 1)
+        while n_samples_sampled < n_samples:
+            batch_size_samples = min(n_parallel, n_samples - n_samples_sampled)
+            y_batch = self._sde.sample_from_theoretical_prior(
+                (batch_size_samples * batch_size_x, y_dim)
+            )
+            if x_batched is None or x_batched.shape[0] != batch_size_samples:
+                # Reuse the same batch of x as much as possible
+                x_batched = np.tile(x_transformed, [batch_size_samples, 1])
+
+            def _score_fn(y, t):
+                return self._score_model.score(y=y, X=x_batched, t=t)  # noqa: B023
+                # B023 highlights that x_batched might change in the future. But we
+                # use _score_fn immediately inside the loop, so there are no risks.
+
+            y_batch_samples = sdeint(
+                self._sde,
+                y_batch,
+                self._sde.T,
+                0,
+                n_steps=n_steps,
+                method="euler",
+                seed=seed + n_samples_sampled if seed is not None else None,
+                score_fn=_score_fn,
+            )
+            n_samples_sampled += batch_size_samples
+            y_samples.append(y_batch_samples)
+            pbar.update(batch_size_samples)
+        pbar.close()
+
+        y_transformed = np.concatenate(y_samples, axis=0)
+        y_untransformed = self._y_preprocessor.inverse_transform(y_transformed)
         y_untransformed = rearrange(
-            y_untransformed, "n_preds n_samples y_dim -> (n_preds n_samples) y_dim"
-        )
-        y_transformed = self._y_preprocessor.inverse_transform(y_untransformed)
-        y_transformed = rearrange(
-            y_transformed,
-            "(n_preds n_samples) y_dim -> n_preds n_samples y_dim",
+            y_untransformed,
+            "(n_samples batch) y_dim ->  batch n_samples y_dim",
             n_samples=n_samples,
         )
-        return y_transformed
+        return y_untransformed
 
 
 class LightGBMTreeffuser(Treeffuser):
