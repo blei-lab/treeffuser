@@ -46,7 +46,7 @@ class DiffusionSDE(BaseSDE):
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         Our diffusion SDEs have conditional distributions p_t(y | y0) that
         are Gaussian. This method returns their mean and standard deviation.
@@ -126,7 +126,7 @@ class VESDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         sigma = self.sigma_schedule(t)
         sigma_prime = self.sigma_schedule.get_derivative(t)
         drift = 0
@@ -144,7 +144,7 @@ class VESDE(DiffusionSDE):
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
             mean: `y0`
@@ -184,7 +184,7 @@ class VPSDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         beta_t = self.beta_schedule(t)
         drift = -0.5 * beta_t * y
         diffusion = np.sqrt(beta_t)
@@ -201,7 +201,7 @@ class VPSDE(DiffusionSDE):
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
             mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
@@ -243,7 +243,7 @@ class SubVPSDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         beta_t = self.beta_schedule(t)
         drift = -0.5 * beta_t * y
         beta_integral = self.beta_schedule.get_integral(t)
@@ -262,7 +262,7 @@ class SubVPSDE(DiffusionSDE):
         self,
         y0: Float[ndarray, "batch y_dim"],
         t: Float[ndarray, "batch 1"],
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
             mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
