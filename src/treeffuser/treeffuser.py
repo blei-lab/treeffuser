@@ -92,7 +92,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         n_steps: int = 100,
         seed=None,
         verbose: int = 1,
-    ) -> Float[ndarray, "batch n_samples y_dim"]:
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
         """
@@ -141,7 +141,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         y_untransformed = self._y_preprocessor.inverse_transform(y_transformed)
         y_untransformed = rearrange(
             y_untransformed,
-            "(n_samples batch) y_dim ->  batch n_samples y_dim",
+            "(n_samples batch) y_dim -> n_samples batch  y_dim",
             n_samples=n_samples,
         )
         return y_untransformed
