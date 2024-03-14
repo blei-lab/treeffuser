@@ -1,5 +1,5 @@
 """
-Available methods need to inherit from the BaseEstimators
+Available methods need to inherit from sklearn.base.BaseEstimator (and maybe more?)
 """
 
 from data.utils import get_data
