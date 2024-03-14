@@ -2,8 +2,11 @@
 Available methods need to inherit from the BaseEstimators
 """
 
-_AVAILABLE_METHODS = dict()
-_MISSING_METHODS = dict()
+from data.utils import get_data
+from data.utils import list_data
+
+_AVAILABLE_METHODS = {}
+_MISSING_METHODS = {}
 
 try:
     from _ngboost import NGBRegressor
@@ -27,8 +30,5 @@ def list_missing_methods():
 def get_method(method_name: str):
     return _AVAILABLE_METHODS[method_name]
 
-
-from data.utils import get_data
-from data.utils import list_data
 
 __all__ = ["get_data", "list_data", "list_methods", "get_method", "list_missing_methods"]
