@@ -29,8 +29,10 @@ class DiffusionSDE(BaseSDE):
     @abc.abstractmethod
     def get_hyperparameters(self) -> Dict:
         """
-        The drift and diffusion coefficients of our diffusion SDEs are fu.
-        This function returns a dictionary of the hyperparameters that parametrize them.
+        Return a dictionary with the hyperparameters of the SDE.
+
+        The hyperparameters parametrize the drift and diffusion coefficients of the
+        SDE.
         """
         raise NotImplementedError
 
@@ -118,37 +120,37 @@ class VESDE(DiffusionSDE):
         `dY = 0 dt + \\sqrt{2 \\sigma(t) \\sigma'(t)} dW`
     where `sigma(t)` is a time-varying diffusion coefficient.
 
-    The SDE converges to a normal distribution with variance `sigma_max**2`.
+    The SDE converges to a normal distribution with variance `hyperparam_max**2`.
 
     Parameters
     ----------
-    sigma_min : float
+    hyperparam_min : float
         Minimum value of the diffusion coefficient.
-    sigma_max : float
+    hyperparam_max : float
         Maximum value of the diffusion coefficient.
     """
 
-    def __init__(self, sigma_min=0.01, sigma_max=20):
-        self.sigma_min = sigma_min
-        self.sigma_max = sigma_max
-        self.sigma_schedule = ExponentialSchedule(sigma_min, sigma_max)
+    def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_min = hyperparam_min
+        self.hyperparam_max = hyperparam_max
+        self.hyperparam_schedule = ExponentialSchedule(hyperparam_min, hyperparam_max)
 
     def get_hyperparams(self):
-        return {"sigma_min": self.sigma_min, "sigma_max": self.sigma_max}
+        return {"hyperparam_min": self.hyperparam_min, "hyperparam_max": self.hyperparam_max}
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
-        sigma = self.sigma_schedule(t)
-        sigma_prime = self.sigma_schedule.get_derivative(t)
+        sigma = self.hyperparam_schedule(t)
+        hyperparam_prime = self.hyperparam_schedule.get_derivative(t)
         drift = 0
-        diffusion = np.sqrt(2 * sigma * sigma_prime)
+        diffusion = np.sqrt(2 * sigma * hyperparam_prime)
         return drift, diffusion
 
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
-        # This assumes that sigma_max is large enough
+        # This assumes that hyperparam_max is large enough
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.sigma_max, shape)
 
@@ -163,13 +165,15 @@ class VESDE(DiffusionSDE):
             variance: `sigma(t)**2 - sigma(0)**2`
         """
         mean = y0
-        std = (self.sigma_schedule(t) ** 2 - self.sigma_schedule(np.zeros_like(t)) ** 2) ** 0.5
+        std = (
+            self.hyperparam_schedule(t) ** 2 - self.hyperparam_schedule(np.zeros_like(t)) ** 2
+        ) ** 0.5
 
         std = np.broadcast_to(std, y0.shape)
         return mean, std
 
     def __repr__(self):
-        return f"VESDE(sigma_min={self.sigma_min}, sigma_max={self.sigma_max})"
+        return f"VESDE(hyperparam_min={self.hyperparam_min}, hyperparam_max={self.hyperparam_max})"
 
 
 @_register_sde(name="vpsde")
@@ -183,32 +187,32 @@ class VPSDE(DiffusionSDE):
 
     Parameters
     ----------
-    beta_min : float
+    hyperparam_min : float
         Minimum value of the diffusion coefficient.
-    beta_max : float
+    hyperparam_max : float
         Maximum value of the diffusion coefficient.
     """
 
-    def __init__(self, beta_min=0.01, beta_max=20):
-        self.beta_min = beta_min
-        self.beta_max = beta_max
-        self.beta_schedule = LinearSchedule(beta_min, beta_max)
+    def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_min = hyperparam_min
+        self.hyperparam_max = hyperparam_max
+        self.hyperparam_schedule = LinearSchedule(hyperparam_min, hyperparam_max)
 
     def get_hyperparams(self):
-        return {"beta_min": self.beta_min, "beta_max": self.beta_max}
+        return {"hyperparam_min": self.hyperparam_min, "hyperparam_max": self.hyperparam_max}
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
-        beta_t = self.beta_schedule(t)
-        drift = -0.5 * beta_t * y
-        diffusion = np.sqrt(beta_t)
+        hyperparam_t = self.hyperparam_schedule(t)
+        drift = -0.5 * hyperparam_t * y
+        diffusion = np.sqrt(hyperparam_t)
         return drift, diffusion
 
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
-        # Assume that beta_max is large enough so that the SDE has converged to N(0,1).
+        # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
 
@@ -222,16 +226,16 @@ class VPSDE(DiffusionSDE):
             mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
             variance: `1 - exp(-\\int_0^t1 beta(s) ds)`
         """
-        beta_integral = self.beta_schedule.get_integral(t)
-        mean = y0 * np.exp(-0.5 * beta_integral)
-        std = (1 - np.exp(-beta_integral)) ** 0.5
+        hyperparam_integral = self.hyperparam_schedule.get_integral(t)
+        mean = y0 * np.exp(-0.5 * hyperparam_integral)
+        std = (1 - np.exp(-hyperparam_integral)) ** 0.5
 
         mean = np.broadcast_to(mean, y0.shape)
         std = np.broadcast_to(std, y0.shape)
         return mean, std
 
     def __repr__(self):
-        return f"VPSDE(beta_min={self.beta_min}, beta_max={self.beta_max})"
+        return f"VPSDE(hyperparam_min={self.hyperparam_min}, hyperparam_max={self.hyperparam_max})"
 
 
 @_register_sde(name="sub-vpsde")
@@ -245,34 +249,34 @@ class SubVPSDE(DiffusionSDE):
 
     Parameters
     ----------
-    beta_min : float
+    hyperparam_min : float
         Minimum value of the diffusion coefficient.
-    beta_max : float
+    hyperparam_max : float
         Maximum value of the diffusion coefficient.
     """
 
-    def __init__(self, beta_min=0.01, beta_max=20):
-        self.beta_min = beta_min
-        self.beta_max = beta_max
-        self.beta_schedule = LinearSchedule(beta_min, beta_max)
+    def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_min = hyperparam_min
+        self.hyperparam_max = hyperparam_max
+        self.hyperparam_schedule = LinearSchedule(hyperparam_min, hyperparam_max)
 
     def get_hyperparams(self):
-        return {"beta_min": self.beta_min, "beta_max": self.beta_max}
+        return {"hyperparam_min": self.hyperparam_min, "hyperparam_max": self.hyperparam_max}
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
-        beta_t = self.beta_schedule(t)
-        drift = -0.5 * beta_t * y
-        beta_integral = self.beta_schedule.get_integral(t)
-        discount = 1.0 - np.exp(-2 * beta_integral)
-        diffusion = np.sqrt(beta_t * discount)
+        hyperparam_t = self.hyperparam_schedule(t)
+        drift = -0.5 * hyperparam_t * y
+        hyperparam_integral = self.hyperparam_schedule.get_integral(t)
+        discount = 1.0 - np.exp(-2 * hyperparam_integral)
+        diffusion = np.sqrt(hyperparam_t * discount)
         return drift, diffusion
 
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
-        # Assume that beta_max is large enough so that the SDE has converged to N(0,1).
+        # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
 
@@ -286,13 +290,13 @@ class SubVPSDE(DiffusionSDE):
             mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
             variance: `[1 - exp(-\\int_0^t1 beta(s) ds)]^2`
         """
-        beta_integral = self.beta_schedule.get_integral(t)
-        mean = y0 * np.exp(-0.5 * beta_integral)
-        std = 1 - np.exp(-beta_integral)
+        hyperparam_integral = self.hyperparam_schedule.get_integral(t)
+        mean = y0 * np.exp(-0.5 * hyperparam_integral)
+        std = 1 - np.exp(-hyperparam_integral)
 
         mean = np.broadcast_to(mean, y0.shape)
         std = np.broadcast_to(std, y0.shape)
         return mean, std
 
     def __repr__(self):
-        return f"VPSDE(beta_min={self.beta_min}, beta_max={self.beta_max})"
+        return f"VPSDE(hyperparam_min={self.hyperparam_min}, hyperparam_max={self.hyperparam_max})"
