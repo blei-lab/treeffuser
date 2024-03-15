@@ -275,3 +275,6 @@ class SubVPSDE(DiffusionSDE):
         mean = np.broadcast_to(mean, y0.shape)
         std = np.broadcast_to(std, y0.shape)
         return mean, std
+
+    def __repr__(self):
+        return f"VPSDE(beta_min={self.beta_min}, beta_max={self.beta_max})"
