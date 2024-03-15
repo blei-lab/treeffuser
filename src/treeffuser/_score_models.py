@@ -106,8 +106,8 @@ def _make_training_data(
         )
 
     # TRAINING DATA
-    X_train = np.tile(X, (n_repeats, 1))
-    y_train = np.tile(y, (n_repeats, 1))
+    X_train = np.tile(X_train, (n_repeats, 1))
+    y_train = np.tile(y_train, (n_repeats, 1))
     t_train = np.random.uniform(0, 1, size=(y_train.shape[0], 1)) * (T - EPS) + EPS
     z_train = np.random.normal(size=y_train.shape)
 
@@ -119,6 +119,8 @@ def _make_training_data(
 
     # VALIDATION DATA
     if eval_percent is not None:
+        X_test = np.tile(X_test, (n_repeats, 1))
+        y_test = np.tile(y_test, (n_repeats, 1))
         t_val = np.random.uniform(0, 1, size=(y_test.shape[0], 1)) * (T - EPS) + EPS
         z_val = np.random.normal(size=(y_test.shape[0], y_test.shape[1]))
 
