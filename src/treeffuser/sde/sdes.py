@@ -1,4 +1,5 @@
 import abc
+from typing import Dict
 from typing import Optional
 from typing import Union
 
@@ -24,6 +25,14 @@ class DiffusionSDE(BaseSDE):
     def T(self) -> float:
         """End time of the SDE."""
         return 1.0
+
+    @abc.abstractmethod
+    def get_hyperparameters(self) -> Dict:
+        """
+        The drift and diffusion coefficients of our diffusion SDEs are fu.
+        This function returns a dictionary of the hyperparameters that parametrize them.
+        """
+        raise NotImplementedError
 
     @abc.abstractmethod
     def sample_from_theoretical_prior(
@@ -124,6 +133,9 @@ class VESDE(DiffusionSDE):
         self.sigma_max = sigma_max
         self.sigma_schedule = ExponentialSchedule(sigma_min, sigma_max)
 
+    def get_hyperparams(self):
+        return {"sigma_min": self.sigma_min, "sigma_max": self.sigma_max}
+
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
@@ -181,6 +193,9 @@ class VPSDE(DiffusionSDE):
         self.beta_min = beta_min
         self.beta_max = beta_max
         self.beta_schedule = LinearSchedule(beta_min, beta_max)
+
+    def get_hyperparams(self):
+        return {"beta_min": self.beta_min, "beta_max": self.beta_max}
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
@@ -240,6 +255,9 @@ class SubVPSDE(DiffusionSDE):
         self.beta_min = beta_min
         self.beta_max = beta_max
         self.beta_schedule = LinearSchedule(beta_min, beta_max)
+
+    def get_hyperparams(self):
+        return {"beta_min": self.beta_min, "beta_max": self.beta_max}
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
