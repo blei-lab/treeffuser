@@ -1,7 +1,7 @@
 import warnings
 from typing import Callable
-from typing import List
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import numpy as np
@@ -55,35 +55,34 @@ def initialize_sde(
         [1] Song, Y. and Ermon, S., 2020. Improved techniques for training score-based
         generative models. NeurIPS (2020).
     """
-    hyperparams = None
     if name.lower() == "vesde":
-        hyperparams = _initialize_vesde(y0)
+        hyperparam_min, hyperparam_max = _initialize_vesde(y0)
     elif name.lower() == "vpsde":
-        hyperparams = _initialize_vpsde(y0, T, KL_tol)
+        hyperparam_min, hyperparam_max = _initialize_vpsde(y0, T, KL_tol)
     elif name.lower() == "sub-vpsde":
-        hyperparams = _initialize_subvpsde(y0, T, KL_tol)
+        hyperparam_min, hyperparam_max = _initialize_subvpsde(y0, T, KL_tol)
     else:
         raise NotImplementedError
 
-    sde = get_sde(name)(*hyperparams)
+    sde = get_sde(name)(hyperparam_min, hyperparam_max)
     if verbose:
         print(sde)
     return sde
 
 
-def _initialize_vesde(y0: Float[np.ndarray, "batch y_dim"]) -> List[float, float]:
+def _initialize_vesde(y0: Float[np.ndarray, "batch y_dim"]) -> Tuple[float, float]:
     hyperparam_min = 0.01
     if y0.shape[1] == 1:
         max_pairwise_difference = y0.max() - y0.min()
     else:
         y0_aug = y0[:, np.newaxis, :]
         max_pairwise_difference = np.max(np.sqrt(np.sum((y0_aug - y0) ** 2, axis=-1)))
-    return [hyperparam_min, max_pairwise_difference]
+    return hyperparam_min, max_pairwise_difference
 
 
 def _initialize_vpsde(
     y0: Float[np.ndarray, "batch y_dim"], T: float = 1, KL_tol: float = 10 ** (-5)
-) -> List[float, float]:
+) -> Tuple[float, float]:
     hyperparam_min = 0.01
     y0_max = y0.max()
 
@@ -108,12 +107,12 @@ def _initialize_vpsde(
             stacklevel=1,
         )
 
-    return [hyperparam_min, hyperparam_max]
+    return hyperparam_min, hyperparam_max
 
 
 def _initialize_subvpsde(
     y0: Float[np.ndarray, "batch y_dim"], T: float = 1, KL_tol: float = 10 ** (-5)
-) -> List[float, float]:
+) -> Tuple[float, float]:
     hyperparam_min = 0.01
     y0_max = y0.max()
 
@@ -135,7 +134,7 @@ def _initialize_subvpsde(
             stacklevel=1,
         )
 
-    return [hyperparam_min, hyperparam_max]
+    return hyperparam_min, hyperparam_max
 
 
 def _KL_univariate_gaussians(
