@@ -16,7 +16,7 @@ from .parameter_schedule import LinearSchedule
 class DiffusionSDE(BaseSDE):
     """
     Abstract class representing a diffusion SDE:
-    `dY = (A(t) + B(t) Y) dt + \\sigma(t) dW` where `\\sigma(t)` is a time-varying
+    `dY = (A(t) + B(t) Y) dt + \\hyperparam(t) dW` where `\\hyperparam(t)` is a time-varying
     diffusion coefficient independent of `Y`, and the drift is an affine function of Y.
     As a result, the conditional distribution p_t(y | y0) is Gaussian.
     """
@@ -117,8 +117,8 @@ class DiffusionSDE(BaseSDE):
 class VESDE(DiffusionSDE):
     """
     Variance-exploding SDE (VESDE):
-        `dY = 0 dt + \\sqrt{2 \\sigma(t) \\sigma'(t)} dW`
-    where `sigma(t)` is a time-varying diffusion coefficient.
+        `dY = 0 dt + \\sqrt{2 \\hyperparam(t) \\hyperparam'(t)} dW`
+    where `hyperparam(t)` is a time-varying diffusion coefficient.
 
     The SDE converges to a normal distribution with variance `hyperparam_max**2`.
 
@@ -141,10 +141,10 @@ class VESDE(DiffusionSDE):
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
-        sigma = self.hyperparam_schedule(t)
+        hyperparam = self.hyperparam_schedule(t)
         hyperparam_prime = self.hyperparam_schedule.get_derivative(t)
         drift = 0
-        diffusion = np.sqrt(2 * sigma * hyperparam_prime)
+        diffusion = np.sqrt(2 * hyperparam * hyperparam_prime)
         return drift, diffusion
 
     def sample_from_theoretical_prior(
@@ -152,7 +152,7 @@ class VESDE(DiffusionSDE):
     ) -> Float[ndarray, "batch x_dim y_dim"]:
         # This assumes that hyperparam_max is large enough
         rng = np.random.default_rng(seed)
-        return rng.normal(0, self.sigma_max, shape)
+        return rng.normal(0, self.hyperparam_max, shape)
 
     def get_mean_std_pt_given_y0(
         self,
@@ -162,7 +162,7 @@ class VESDE(DiffusionSDE):
         """
         The conditional distribution is Gaussian with:
             mean: `y0`
-            variance: `sigma(t)**2 - sigma(0)**2`
+            variance: `hyperparam(t)**2 - hyperparam(0)**2`
         """
         mean = y0
         std = (
@@ -180,10 +180,10 @@ class VESDE(DiffusionSDE):
 class VPSDE(DiffusionSDE):
     """
     Variance-preserving SDE (VPSDE):
-    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t)} dW`
-    where `beta(t)` is a time-varying diffusion coefficient.
+    `dY = -0.5 \\hyperparam(t) Y dt + \\sqrt{\\hyperparam(t)} dW`
+    where `hyperparam(t)` is a time-varying diffusion coefficient.
 
-    The SDE converges to a standard normal distribution for large `beta(t)`.
+    The SDE converges to a standard normal distribution for large `hyperparam(t)`.
 
     Parameters
     ----------
@@ -223,8 +223,8 @@ class VPSDE(DiffusionSDE):
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
-            mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
-            variance: `1 - exp(-\\int_0^t1 beta(s) ds)`
+            mean: `y0 * exp(-0.5 * \\int_0^t1 hyperparam(s) ds)`
+            variance: `1 - exp(-\\int_0^t1 hyperparam(s) ds)`
         """
         hyperparam_integral = self.hyperparam_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * hyperparam_integral)
@@ -242,10 +242,10 @@ class VPSDE(DiffusionSDE):
 class SubVPSDE(DiffusionSDE):
     """
     Sub-Variance-preserving SDE (SubVPSDE):
-    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t) (1 - e^{-2 \\int_0^t \\beta(s) ds})} dW`
-    where `beta(t)` is a time-varying diffusion coefficient.
+    `dY = -0.5 \\hyperparam(t) Y dt + \\sqrt{\\hyperparam(t) (1 - e^{-2 \\int_0^t \\hyperparam(s) ds})} dW`
+    where `hyperparam(t)` is a time-varying diffusion coefficient.
 
-    The SDE converges to a standard normal distribution for large `beta(t)`.
+    The SDE converges to a standard normal distribution for large `hyperparam(t)`.
 
     Parameters
     ----------
@@ -287,8 +287,8 @@ class SubVPSDE(DiffusionSDE):
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
-            mean: `y0 * exp(-0.5 * \\int_0^t1 beta(s) ds)`
-            variance: `[1 - exp(-\\int_0^t1 beta(s) ds)]^2`
+            mean: `y0 * exp(-0.5 * \\int_0^t1 hyperparam(s) ds)`
+            variance: `[1 - exp(-\\int_0^t1 hyperparam(s) ds)]^2`
         """
         hyperparam_integral = self.hyperparam_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * hyperparam_integral)
