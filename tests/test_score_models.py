@@ -37,9 +37,9 @@ def test_linear_regression():
     assert y.shape == (n, y_dim)
 
     # Fit a score model
-    sigma_min = 0.01
-    sigma_max = y.std()
-    sde = VESDE(sigma_min=sigma_min, sigma_max=sigma_max)
+    hyperparam_min = 0.01
+    hyperparam_max = y.std()
+    sde = VESDE(hyperparam_min=hyperparam_min, hyperparam_max=hyperparam_max)
     score_model = LightGBMScore(
         sde=sde,
         verbose=1,
@@ -82,9 +82,9 @@ def test_can_be_deterministic():
     assert y.shape == (n, y_dim)
 
     # Fit a score model
-    sigma_min = 0.01
-    sigma_max = y.std()
-    sde = VESDE(sigma_min=sigma_min, sigma_max=sigma_max)
+    hyperparam_min = 0.01
+    hyperparam_max = y.std()
+    sde = VESDE(hyperparam_min=hyperparam_min, hyperparam_max=hyperparam_max)
     seed = 0
 
     # First fit
@@ -141,9 +141,9 @@ def test_different_seeds_do_not_give_same_results():
     assert y.shape == (n, y_dim)
 
     # Fit a score model
-    sigma_min = 0.01
-    sigma_max = y.std()
-    sde = VESDE(sigma_min=sigma_min, sigma_max=sigma_max)
+    hyperparam_min = 0.01
+    hyperparam_max = y.std()
+    sde = VESDE(hyperparam_min=hyperparam_min, hyperparam_max=hyperparam_max)
 
     seed_a = 0
     seed_b = 1
