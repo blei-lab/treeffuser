@@ -3,6 +3,7 @@ This should be the main file corresponding to the project.
 """
 
 import abc
+import warnings
 from typing import Optional
 
 import numpy as np
@@ -16,6 +17,7 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
+from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
 
@@ -145,6 +147,66 @@ class Treeffuser(BaseEstimator, abc.ABC):
             n_samples=n_samples,
         )
         return y_untransformed
+
+    def predict(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        ode: bool = True,
+        tol: float = 1e-3,
+        max_samples: Optional[int] = 100,
+        verbose: bool = False,
+    ):
+        if ode:
+            return self._predict_from_ode(X, tol, verbose)
+        else:
+            return self._predict_from_sample(X, tol, max_samples, verbose)
+
+    def _predict_from_sample(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        tol: float,
+        max_samples: int,
+        verbose: bool,
+    ) -> Float[ndarray, "batch y_dim"]:
+        """
+        Predict the conditional mean of y given x via Monte Carlo estimates.
+
+        This method iteratively generates samples of size 10, until the relative change in
+        the norm of each estimate is within a specified tolerance.
+        """
+        n_samples = n_samples_increment = 10
+
+        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=1)
+        norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
+        max_change = np.inf
+
+        while max_change > tol and n_samples < max_samples:
+            sum_increment = self.sample(
+                X=X,
+                n_samples=n_samples_increment,
+                verbose=verbose,
+            ).sum(axis=1)
+
+            mean = (sum_increment + mean_prev * n_samples) / (n_samples + n_samples_increment)
+            norm = np.sqrt((mean**2).sum(axis=1))
+            n_samples += n_samples_increment
+
+            max_change = np.max(np.abs(norm / norm_prev - 1))
+            mean_prev = mean
+
+        if n_samples > max_samples:
+            warnings.warn(
+                f"Predict method did not converge on {max_samples} samples. Consider increasing `max_samples` for more accurate estimates.",
+                ConvergenceWarning,
+                stacklevel=2,
+            )
+
+        return mean_prev
+
+    def _predict_from_ode(
+        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
+    ) -> Float[ndarray, "batch y_dim"]:
+        pass
 
 
 class LightGBMTreeffuser(Treeffuser):
