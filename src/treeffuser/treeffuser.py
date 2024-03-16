@@ -196,8 +196,7 @@ class LightGBMTreeffuser(Treeffuser):
         sde_initialize_with_data (bool): Whether to initialize the SDE hyperparameters
             with data.
         sde_manual_hyperparams: (dict): A dictionary for explicitly setting the SDE
-            hyperparameters, overriding default or data-based initializations. Keys
-            should be consistent with the SDE specified by `sde_name`.
+            hyperparameters, overriding default or data-based initializations.
         n_repeats (int): How many times to repeat the training dataset. i.e how
             many noisy versions of a point to generate for training.
         LightGBM args

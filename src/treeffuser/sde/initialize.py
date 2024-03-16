@@ -1,6 +1,7 @@
 import warnings
 from typing import Callable
 from typing import List
+from typing import Optional
 from typing import Union
 
 import numpy as np
@@ -22,9 +23,38 @@ def initialize_sde(
     name: str,
     y0: Float[np.ndarray, "batch y_dim"],
     T: float = 1,
-    KL_tol: float = 10 ** (-5),
+    KL_tol: Optional[float] = 10 ** (-5),
     verbose: bool = False,
 ) -> Union[VESDE, VPSDE, SubVPSDE]:
+    """
+    Initializes an SDE model based on the given name and initial data.
+
+    For all SDEs, it sets `hyperparam_min` to 0.01. For VESDE, it sets `hyperparam_max`
+    to the maxiumum pairwise distance in y0, following [1]. For VPSDE and Sub-VPSDE, it
+    sets `hyperparam_max` to the smallest value that controls the KL divergence between
+    the perturbation kernel at T and the theorethical prior.
+
+    Parameters
+    ----------
+    name : str
+        The SDE model to initialize ('vesde', 'vpsde', 'sub-vpsde').
+    y0 : np.ndarray
+        The data array with the training outcome.
+    T : float, optional
+        End time of the SDE, default is 1.
+    KL_tol : float, optional
+        KL divergence tolerance for initialization, default is 1e-5. This is only used
+        for VPSDE and Sub-VPSDE.
+
+    Returns
+    -------
+    An instance of the specified SDE model.
+
+    References
+    -------
+        [1] Song, Y. and Ermon, S., 2020. Improved techniques for training score-based
+        generative models. NeurIPS (2020).
+    """
     hyperparams = None
     if name.lower() == "vesde":
         hyperparams = _initialize_vesde(y0)
