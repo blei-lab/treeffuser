@@ -27,7 +27,7 @@ class DiffusionSDE(BaseSDE):
         return 1.0
 
     @abc.abstractmethod
-    def get_hyperparameters(self) -> Dict:
+    def get_hyperparams(self) -> Dict:
         """
         Return a dictionary with the hyperparameters of the SDE.
 
