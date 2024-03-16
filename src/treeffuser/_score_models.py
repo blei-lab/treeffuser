@@ -79,8 +79,8 @@ def _make_training_data(
     Creates the training data for the score model. This functions assumes that
     1.  Score is parametrized as score(y, x, t) = GBT(y, x, t) / std(t)
     2.  The loss that we want to use is
-        || sigma(t) * score(y_perturbed, x, t) - (mean(y, t) - y_perturbed)/sigma ||^2
-        Which corresponds to the standard denoising objective with weights sigma(t)**2
+        || std(t) * score(y_perturbed, x, t) - (mean(y, t) - y_perturbed)/std(t) ||^2
+        Which corresponds to the standard denoising objective with weights std(t)**2
         This ends up meaning that we optimize
         || GBT(y_perturbed, x, t) - (-z)||^2
         where z is the noise added to y_perturbed.
