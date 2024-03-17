@@ -12,6 +12,7 @@ from jaxtyping import Float
 from ml_collections import FrozenConfigDict
 from numpy import ndarray
 from sklearn.base import BaseEstimator
+from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 import treeffuser._score_models as _score_models
@@ -156,10 +157,18 @@ class Treeffuser(BaseEstimator, abc.ABC):
         max_samples: Optional[int] = 100,
         verbose: bool = False,
     ):
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
         if ode:
             return self._predict_from_ode(X, tol, verbose)
         else:
             return self._predict_from_sample(X, tol, max_samples, verbose)
+
+    def _predict_from_ode(
+        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
+    ) -> Float[ndarray, "batch y_dim"]:
+        pass
 
     def _predict_from_sample(
         self,
@@ -203,10 +212,55 @@ class Treeffuser(BaseEstimator, abc.ABC):
 
         return mean_prev
 
-    def _predict_from_ode(
-        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
-    ) -> Float[ndarray, "batch y_dim"]:
+    def compute_nll(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        ode: bool = True,
+        n_samples: Optional[int] = 10,
+        bandwidth: Optional[float] = 1.0,
+        verbose: bool = False,
+    ):
+        """
+        Compute the negative log likelihood, \\sum_{(y, x) in [y, X]} \\log p(y|x), where p
+        is the conditional distribution learned by the model.
+        """
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
+        if ode:
+            return self._compute_nll_from_ode(X, y, verbose)
+        else:
+            return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
+
+    def _compute_nll_from_ode(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        verbose: bool = False,
+    ):
         pass
+
+    def _compute_nll_from_sample(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        n_samples: Optional[int] = 10,
+        bandwidth: Optional[float] = 1.0,
+        verbose: bool = False,
+    ) -> float:
+        y_sample = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+
+        def fit_and_evaluate_kde(y_train, y_test):
+            kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
+            kde.fit(y_train)
+            return kde.score_samples(y_test).item()
+
+        nll = 0
+        for i, y_i in enumerate(y_sample):
+            nll -= fit_and_evaluate_kde(y_i.reshape(-1, 1), y[i, :].reshape(-1, 1))
+
+        return nll
 
 
 class LightGBMTreeffuser(Treeffuser):
