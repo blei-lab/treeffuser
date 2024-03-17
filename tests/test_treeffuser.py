@@ -54,13 +54,13 @@ def test_treeffuser_bimodal_linear_regression():
     assert result.pvalue > 0.05
 
 
-def test_sample_based_nll_gaussian_mixture(seed):
+def test_sample_based_nll_gaussian_mixture():
     """
     The data are generated from a Gaussian mixture model with conditional density:
     p(y_i | x_i) = .5 * N(x_i, x_i ** 2) + (1 - .5) * N(-x_i, x_i ** 2)
     """
     n = 10**3
-    rng = np.random.default_rng(seed)
+    rng = np.random.default_rng()
 
     x = rng.uniform(low=1, high=2, size=(n, 1))
     sign = 2 * rng.binomial(n=1, p=0.5, size=(n, 1)) - 1
