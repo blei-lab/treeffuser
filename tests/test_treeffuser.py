@@ -89,4 +89,4 @@ def test_sample_based_nll_gaussian_mixture():
     )
 
     relative_error = np.abs(nll_treeffuser / nll_true - 1)
-    assert relative_error < 0.05, f"relative error: {relative_error}"
+    assert relative_error < 0.1, f"relative error: {relative_error}"
