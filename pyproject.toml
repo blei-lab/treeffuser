@@ -7,7 +7,7 @@ requires = [
 "ci/*" = ["S"]
 
 [tool.ruff]
-extend-exclude = ["static", "ci/templates", "testbed/notebooks/*"]
+extend-exclude = ["static", "ci/templates", "testbed/notebooks/*", "testbed/*/_card_repo/*"]
 ignore = [
     "RUF001", # ruff-specific rules ambiguous-unicode-character-string
     "S101", # flake8-bandit assert
