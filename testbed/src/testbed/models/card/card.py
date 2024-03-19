@@ -7,11 +7,14 @@ specific structure of the Card model.
 
 import argparse
 from argparse import Namespace
+from typing import List
+from typing import Optional
 
 from jaxtyping import Float
 from numpy import ndarray
 
-from testbed.models.card._card_regression import Diffusion
+from testbed.models.card._card_repo._card_regression import Diffusion
+from testbed.models.card._dataset import Dataset
 
 ####################################################
 # Helper functions
@@ -51,9 +54,7 @@ def _make_config(
     data_dim: int,
     x_dim: int,
     y_dim: int,
-    z_dim: int,
     cat_x: bool,
-    feature_dim: int,
     ema_rate: float,
     ema: int,
     # Beta Schedule
@@ -63,7 +64,6 @@ def _make_config(
     timesteps: int,
     vis_step: int,
     num_figs: int,
-    conditioning_signal: str,
     # Non-linear guidance
     pre_train: bool,
     joint_train: bool,
@@ -94,9 +94,7 @@ def _make_config(
             "data_dim": data_dim,
             "x_dim": x_dim,
             "y_dim": y_dim,
-            "z_dim": z_dim,
             "cat_x": cat_x,
-            "feature_dim": feature_dim,
             "var_type": var_type,
             "ema_rate": ema_rate,
             "ema": ema,
@@ -108,7 +106,7 @@ def _make_config(
             "timesteps": timesteps,
             "vis_step": vis_step,
             "num_figs": num_figs,
-            "conditioning_signal": conditioning_signal,
+            "conditioning_signal": "NN",  # always use NN
             "nonlinear_guidance": {
                 "pre_train": pre_train,
                 "joint_train": joint_train,
@@ -131,6 +129,22 @@ def _make_config(
     return config
 
 
+def _make_args() -> Namespace:
+    """
+    Returns dummy arguments for the Card model. These are used
+    but the code should be modified in the future to not require
+    these arguments.
+    """
+    args = {
+        "log_path": "log_path",
+        "train_guidance_only": False,
+        "resume_training": False,
+        "im_path": "im_path",
+    }
+    args: Namespace = _dict2namespace(args)
+    return args
+
+
 ####################################################
 # Main class
 ####################################################
@@ -147,12 +161,7 @@ class Card:
         # Model parameters
         var_type: str = "fixedlarge",
         type: str = "simple",
-        data_dim: int = 15,
-        x_dim: int = 14,
-        y_dim: int = 1,
-        z_dim: int = 2,
         cat_x: bool = True,
-        feature_dim: int = 128,
         ema_rate: float = 0.9999,
         ema: int = True,
         # Beta Schedule
@@ -162,7 +171,6 @@ class Card:
         timesteps: int = 1000,
         vis_step: int = 100,
         num_figs: int = 10,
-        conditioning_signal: str = "NN",
         # Non-linear guidance
         pre_train: bool = True,
         joint_train: bool = False,
@@ -182,12 +190,7 @@ class Card:
         # Config settings
         self.var_type = var_type
         self.type = type
-        self.data_dim = data_dim
-        self.x_dim = x_dim
-        self.y_dim = y_dim
-        self.z_dim = z_dim
         self.cat_x = cat_x
-        self.feature_dim = feature_dim
         self.ema_rate = ema_rate
         self.ema = ema
 
@@ -197,7 +200,6 @@ class Card:
         self._timesteps = timesteps
         self._vis_step = vis_step
         self._num_figs = num_figs
-        self._conditioning_signal = conditioning_signal
 
         self._pre_train = pre_train
         self._joint_train = joint_train
@@ -218,43 +220,47 @@ class Card:
 
         super().__init__()
 
-    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        cat_idx: Optional[List[int]] = None,
+    ):
         """
         Fit the model to the data.
         """
         config = _make_config(
-            self.var_type,
-            self.type,
-            self.data_dim,
-            self.x_dim,
-            self.y_dim,
-            self.z_dim,
-            self.cat_x,
-            self.feature_dim,
-            self.ema_rate,
-            self.ema,
-            self._beta_schedule,
-            self._beta_start,
-            self._beta_end,
-            self._timesteps,
-            self._vis_step,
-            self._num_figs,
-            self._conditioning_signal,
-            self._pre_train,
-            self._joint_train,
-            self._n_pretrain_epochs,
-            self._logging_interval,
-            self._hid_layers,
-            self._use_batchnorm,
-            self._negative_slope,
-            self._dropout_rate,
-            self._apply_early_stopping,
-            self._n_pretrain_max_epochs,
-            self._train_ratio,
-            self._patience,
-            self._delta,
+            var_type=self.var_type,
+            type=self.type,
+            data_dim=X.shape[1] + y.shape[1],
+            x_dim=X.shape[1],
+            y_dim=y.shape[1],
+            cat_x=self.cat_x,
+            ema_rate=self.ema_rate,
+            ema=self.ema,
+            beta_schedule=self._beta_schedule,
+            beta_start=self._beta_start,
+            beta_end=self._beta_end,
+            timesteps=self._timesteps,
+            vis_step=self._vis_step,
+            num_figs=self._num_figs,
+            pre_train=self._pre_train,
+            joint_train=self._joint_train,
+            n_pretrain_epochs=self._n_pretrain_epochs,
+            logging_interval=self._logging_interval,
+            hid_layers=self._hid_layers,
+            use_batchnorm=self._use_batchnorm,
+            negative_slope=self._negative_slope,
+            dropout_rate=self._dropout_rate,
+            apply_early_stopping=self._apply_early_stopping,
+            n_pretrain_max_epochs=self._n_pretrain_max_epochs,
+            train_ratio=self._train_ratio,
+            patience=self._patience,
+            delta=self._delta,
         )
-        self._diffusion = Diffusion(config=config, X=X, y=y)
+        args = _make_args()
+        dataset = Dataset(X, y, cat_idx=cat_idx)
+        self._diffusion = Diffusion(config=config, args=args, dataset=dataset)
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """

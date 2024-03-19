@@ -9,12 +9,12 @@ https://github.com/XzwHan/CARD/blob/main/regression/data_loader.py
 
 from typing import List
 from typing import Optional
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
 import torch as t
 from jaxtyping import Float
-from jaxtyping import Tuple
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 
@@ -68,46 +68,46 @@ class Dataset:
 
         np.random.seed(seed)
 
-        self.X, self.dim_cat = _preprocess_feature_set(X, cat_idx)
+        self.x, self.dim_cat = _preprocess_feature_set(X, cat_idx)
         self.y = y
 
         # Split the data into train and test
-        X_train, X_test, y_train, y_test = train_test_split(
-            self.X, self.y, test_size=test_ratio, random_state=seed
+        x_train, x_test, y_train, y_test = train_test_split(
+            self.x, self.y, test_size=test_ratio, random_state=seed
         )
 
         if validation:
             # Split the train data into train and validation
-            X_train, X_val, y_train, y_val = train_test_split(
-                X_train, y_train, test_size=validation_ratio, random_state=seed
+            x_train, x_val, y_train, y_val = train_test_split(
+                x_train, y_train, test_size=validation_ratio, random_state=seed
             )
-            self.X_val, self.y_val = X_val, y_val
+            self.x_val, self.y_val = x_val, y_val
 
-        self.X_train = X_train
+        self.x_train = x_train
         self.y_train = y_train
-        self.X_test = X_test
+        self.x_test = x_test
         self.y_test = y_test
 
-        self.train_n_samples = self.X_train.shape[0]
-        self.test_n_samples = self.X_test.shape[0]
+        self.train_n_samples = self.x_train.shape[0]
+        self.test_n_samples = self.x_test.shape[0]
 
-        self.train_dim_x = self.X_train.shape[1]
+        self.train_dim_x = self.x_train.shape[1]
         self.train_dim_y = self.y_train.shape[1]
 
-        self.test_n_samples = self.X_test.shape[0]
-        self.test_dim_x = self.X_test.shape[1]
+        self.test_n_samples = self.x_test.shape[0]
+        self.test_dim_x = self.x_test.shape[1]
         self.test_dim_y = self.y_test.shape[1]
 
         self._normalize_train_test_x()
         self._normalize_train_test_y()
 
         # Convert to torch tensors
-        self.X_train = t.tensor(self.X_train, dtype=t.float32)
+        self.x_train = t.tensor(self.x_train, dtype=t.float32)
         self.y_train = t.tensor(self.y_train, dtype=t.float32)
-        self.X_test = t.tensor(self.X_test, dtype=t.float32)
+        self.x_test = t.tensor(self.x_test, dtype=t.float32)
         self.y_test = t.tensor(self.y_test, dtype=t.float32)
 
-    def normalize_train_test_x(self):
+    def _normalize_train_test_x(self):
         """
         When self.dim_cat > 0, we have one-hot encoded number of categorical variables,
         on which we don't conduct standardization. They are arranged as the last
@@ -132,16 +132,16 @@ class Dataset:
             self.x_train = np.concatenate([x_train_num, x_train_cat], axis=1)
             self.x_test = np.concatenate([x_test_num, x_test_cat], axis=1)
 
-    def normalize_train_test_y(self):
+    def _normalize_train_test_y(self):
         self.scaler_y = StandardScaler(with_mean=True, with_std=True)
         self.y_train = self.scaler_y.fit_transform(self.y_train)
         self.y_test = self.scaler_y.transform(self.y_test)
 
     def return_dataset(self, split="train"):
         if split == "train":
-            dataset = t.cat([self.X_train, self.y_train], dim=1)
+            dataset = t.cat([self.x_train, self.y_train], dim=1)
         elif split == "test":
-            dataset = t.cat([self.X_test, self.y_test], dim=1)
+            dataset = t.cat([self.x_test, self.y_test], dim=1)
         return dataset
 
     def summary_dataset(self, split="train"):

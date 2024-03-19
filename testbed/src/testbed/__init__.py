@@ -1,9 +1,9 @@
 """
 Available methods need to inherit from sklearn.base.BaseEstimator (and maybe more?)
-"""
 
-from data.utils import get_data
-from data.utils import list_data
+
+from testbed.data.utils import get_data
+from testbed.data.utils import list_data
 
 _AVAILABLE_METHODS = {}
 _MISSING_METHODS = {}
@@ -32,3 +32,4 @@ def get_method(method_name: str):
 
 
 __all__ = ["get_data", "list_data", "list_methods", "get_method", "list_missing_methods"]
+"""
