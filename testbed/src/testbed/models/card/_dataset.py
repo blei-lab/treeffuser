@@ -63,7 +63,6 @@ class Dataset:
         validation: bool = False,
         test_ratio: float = 0.2,
         validation_ratio: float = 0.2,
-        normalize: bool = True,
         seed: int = 0,
     ) -> None:
 
