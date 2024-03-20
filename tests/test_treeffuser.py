@@ -13,17 +13,19 @@ def test_treeffuser_bimodal_linear_regression():
     """
     n = 500
     n_samples = 1
-    X_1 = np.random.rand(n, 1)
-    y_1 = X_1 + np.random.randn(n, 1) * 0.05 * (X_1 + 1) ** 2
+    rng = np.random.default_rng(seed=0)
 
-    X_2 = np.random.rand(n, 1)
-    y_2 = X_2 + np.random.randn(n, 1) * 0.05 * (X_2 + 1) ** 2
+    X_1 = rng.uniform(size=(n, 1))
+    y_1 = X_1 + rng.normal(size=(n, 1)) * 0.05 * (X_1 + 1) ** 2
+
+    X_2 = rng.uniform(size=(n, 1))
+    y_2 = X_2 + rng.normal(size=(n, 1)) * 0.05 * (X_2 + 1) ** 2
 
     X = np.concatenate([X_1, X_2], axis=0)
     y = np.concatenate([y_1, y_2], axis=0)
 
     # Shuffle and split the data
-    idx = np.random.permutation(2 * n)
+    idx = rng.permutation(2 * n)
     X = X[idx]
     y = y[idx]
 
@@ -60,7 +62,7 @@ def test_sample_based_nll_gaussian_mixture():
     p(y_i | x_i) = .5 * N(x_i, x_i ** 2) + (1 - .5) * N(-x_i, x_i ** 2)
     """
     n = 10**3
-    rng = np.random.default_rng()
+    rng = np.random.default_rng(seed=0)
 
     x = rng.uniform(low=1, high=2, size=(n, 1))
     sign = 2 * rng.binomial(n=1, p=0.5, size=(n, 1)) - 1
@@ -89,4 +91,4 @@ def test_sample_based_nll_gaussian_mixture():
     )
 
     relative_error = np.abs(nll_treeffuser / nll_true - 1)
-    assert relative_error < 0.1, f"relative error: {relative_error}"
+    assert relative_error < 0.05, f"relative error: {relative_error}"
