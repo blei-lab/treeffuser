@@ -18,6 +18,8 @@ from testbed.models.card._card_repo._model import *
 from testbed.models.card._card_repo._utils import *
 from testbed.models.card._dataset import Dataset
 
+import os
+
 plt.style.use("ggplot")
 
 
@@ -124,7 +126,7 @@ class Diffusion:
         testbed changes
         """
         dataset_split = "test" if test_set else "train"
-        return self._testbed_dataset.return_dataset(split=dataset_split)
+        return self._testbed_dataset, self._testbed_dataset.return_dataset(split=dataset_split)
 
     # Compute guiding prediction as diffusion condition
     def compute_guiding_prediction(self, x, method="OLS"):
@@ -205,7 +207,9 @@ class Diffusion:
     def nonlinear_guidance_model_train_loop_per_epoch(
         self, train_batch_loader, aux_optimizer, epoch
     ):
+        print("pre step")
         for xy_0 in train_batch_loader:
+            print("step")
             xy_0 = xy_0.to(self.device)
             x_batch = xy_0[:, : -self.config.model.y_dim]
             y_batch = xy_0[:, -self.config.model.y_dim :]
@@ -277,7 +281,7 @@ class Diffusion:
         test_loader = data.DataLoader(
             test_set,
             batch_size=config.testing.batch_size,
-            num_workers=config.data.num_workers,
+            num_workers=1,  # config.data.num_workers,
         )
         # obtain training set
         logging.info("Training set info:")
@@ -287,7 +291,7 @@ class Diffusion:
             dataset,
             batch_size=config.training.batch_size,
             shuffle=True,
-            num_workers=config.data.num_workers,
+            num_workers=1,  # config.data.num_workers,
         )
         # obtain training (as a subset of original one) and validation set for guidance model hyperparameter tuning
         if (
@@ -305,7 +309,7 @@ class Diffusion:
             val_loader = data.DataLoader(
                 val_set,
                 batch_size=config.testing.batch_size,
-                num_workers=config.data.num_workers,
+                num_workers=1,  # config.data.num_workers,
             )
             logging.info("Training subset info:")
             train_subset_object, train_subset = self._get_dataset(
@@ -315,7 +319,7 @@ class Diffusion:
                 train_subset,
                 batch_size=config.training.batch_size,
                 shuffle=True,
-                num_workers=config.data.num_workers,
+                num_workers=1,  # config.data.num_workers,
             )
 
         model = ConditionalGuidedModel(config)

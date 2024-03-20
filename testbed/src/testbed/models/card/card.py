@@ -12,6 +12,7 @@ from typing import Optional
 
 from jaxtyping import Float
 from numpy import ndarray
+from torch.utils.tensorboard import SummaryWriter
 
 from testbed.models.card._card_repo._card_regression import Diffusion
 from testbed.models.card._dataset import Dataset
@@ -95,6 +96,7 @@ def _make_config(
             "x_dim": x_dim,
             "y_dim": y_dim,
             "cat_x": cat_x,
+            "cat_y_pred": False,
             "var_type": var_type,
             "ema_rate": ema_rate,
             "ema": ema,
@@ -122,6 +124,36 @@ def _make_config(
                 "patience": patience,
                 "delta": delta,
             },
+        },
+        "tb_logger": SummaryWriter("tb_log_path"),  # TODO: replace with actual path
+        # TODO : Figure out a better way of handling these
+        "testing": {
+            "batch_size": 64,
+        },
+        "data": {
+            "num_workers": 1,
+        },
+        "training": {
+            "batch_size": 64,
+            "n_epochs": 1,
+        },
+        "optim": {
+            "weight_decay": 0.000,
+            "optimizer": "Adam",
+            "lr": 0.001,
+            "beta1": 0.9,
+            "amsgrad": True,
+            "eps": 0.00000001,
+            "grad_clip": 1.0,
+        },
+        "aux_optim": {
+            "weight_decay": 0.000,
+            "optimizer": "Adam",
+            "lr": 0.001,
+            "beta1": 0.9,
+            "amsgrad": True,
+            "eps": 0.00000001,
+            "grad_clip": 1.0,
         },
     }
 
@@ -174,14 +206,14 @@ class Card:
         # Non-linear guidance
         pre_train: bool = True,
         joint_train: bool = False,
-        n_pretrain_epochs: int = 100,
+        n_pretrain_epochs: int = 1,
         logging_interval: int = 10,
         hid_layers: int = [100, 50],
         use_batchnorm: bool = False,
         negative_slope: float = 0.01,
         dropout_rate: float = 0.05,
         apply_early_stopping: bool = True,
-        n_pretrain_max_epochs: int = 1000,
+        n_pretrain_max_epochs: int = 1,
         train_ratio: int = 0.6,  # for splitting original train into train and validation set for hyperparameter tuning
         patience: int = 50,
         delta: int = 0,  # hyperparameter for improvement measurement in the early stopping scheme
@@ -261,6 +293,7 @@ class Card:
         args = _make_args()
         dataset = Dataset(X, y, cat_idx=cat_idx)
         self._diffusion = Diffusion(config=config, args=args, dataset=dataset)
+        self._diffusion.train()
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """

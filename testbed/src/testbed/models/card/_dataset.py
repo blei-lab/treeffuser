@@ -107,6 +107,10 @@ class Dataset:
         self.x_test = t.tensor(self.x_test, dtype=t.float32)
         self.y_test = t.tensor(self.y_test, dtype=t.float32)
 
+        # For compatibility with card codebase
+        self.normalize_x = True
+        self.normalize_y = True
+
     def _normalize_train_test_x(self):
         """
         When self.dim_cat > 0, we have one-hot encoded number of categorical variables,

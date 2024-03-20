@@ -18,3 +18,7 @@ def test_linear_regression():
 
     card = Card()
     card.fit(X=X, y=y)
+
+
+if __name__ == "__main__":
+    test_linear_regression()
