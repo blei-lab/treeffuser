@@ -4,7 +4,9 @@ This should be the main file corresponding to the project.
 
 import abc
 import warnings
+from typing import Literal
 from typing import Optional
+from typing import Union
 
 import numpy as np
 from einops import rearrange
@@ -154,7 +156,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         ode: bool = True,
         tol: float = 1e-3,
-        max_samples: Optional[int] = 100,
+        max_samples: int = 100,
         verbose: bool = False,
     ):
         if not self._is_fitted:
@@ -217,13 +219,33 @@ class Treeffuser(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         ode: bool = True,
-        n_samples: Optional[int] = 10,
-        bandwidth: Optional[float] = 1.0,
+        n_samples: int = 10,
+        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
-    ):
+    ) -> float:
         """
         Compute the negative log likelihood, \\sum_{(y, x) in [y, X]} \\log p(y|x), where p
         is the conditional distribution learned by the model.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+        ode : bool, optional
+            If True, computes the negative log likelihood from ODE.
+            If False, computes it from samples. Default is True.
+        n_samples : int, optional
+            Number of samples to draw if computing the negative log likelihood from samples. Default is 10.
+        bandwidth : Union[float, Literal["scott", "silverman"]], optional
+            The bandwidth of the kernel. If bandwidth is a float, it defines the bandwidth of the kernel.
+            If bandwidth is a string, one of the  "scott" and "silverman" estimation methods. Default is 1.0.
+
+        Returns
+        -------
+        float
+            The computed negative log likelihood value.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
@@ -267,23 +289,23 @@ class LightGBMTreeffuser(Treeffuser):
     def __init__(
         self,
         # Diffusion model args
-        sde_name: Optional[str] = "vesde",
+        sde_name: str = "vesde",
         # Score estimator args
-        n_repeats: Optional[int] = 10,
-        n_estimators: Optional[int] = 100,
+        n_repeats: int = 10,
+        n_estimators: int = 100,
         eval_percent: Optional[float] = None,
         early_stopping_rounds: Optional[int] = None,
-        num_leaves: Optional[int] = 31,
-        max_depth: Optional[int] = -1,
-        learning_rate: Optional[float] = 0.1,
-        max_bin: Optional[int] = 255,
-        subsample_for_bin: Optional[int] = 200000,
-        min_child_samples: Optional[int] = 20,
-        subsample: Optional[float] = 1.0,
-        subsample_freq: Optional[int] = 0,
-        verbose: Optional[int] = 0,
+        num_leaves: int = 31,
+        max_depth: int = -1,
+        learning_rate: float = 0.1,
+        max_bin: int = 255,
+        subsample_for_bin: int = 200000,
+        min_child_samples: int = 20,
+        subsample: float = 1.0,
+        subsample_freq: int = 0,
+        verbose: int = 0,
         seed: Optional[int] = None,
-        n_jobs: Optional[int] = -1,
+        n_jobs: int = -1,
     ):
         """
         Diffusion model args
