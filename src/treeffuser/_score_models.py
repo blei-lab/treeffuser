@@ -37,6 +37,7 @@ def _fit_one_lgbm_model(
     verbose: int,
     early_stopping_rounds: int,
     n_jobs: int = -1,
+    linear_tree: bool = False,
 ) -> lgb.Booster:
     """
     Simple wrapper for fitting a lightgbm model. See
@@ -59,7 +60,7 @@ def _fit_one_lgbm_model(
         random_state=seed,
         verbose=verbose,
         n_jobs=n_jobs,
-        linear_tree=False,
+        linear_tree=linear_tree,
     )
     eval_set = None if X_val is None else (X_val, y_val)
     model.fit(X=X, y=y, eval_set=eval_set, callbacks=callbacks)
@@ -173,6 +174,7 @@ class LightGBMScore(Score):
         verbose: Optional[int] = 0,
         seed: Optional[int] = None,
         n_jobs: Optional[int] = -1,
+        linear_tree: bool = False,
     ) -> None:
         """
         Args:
@@ -211,6 +213,7 @@ class LightGBMScore(Score):
                 the model will stop training if no improvement is observed in the validation
             n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
                 number of available cores.
+            linear_tree (bool): Fit piecewise linear gradient boosting tree.
         """
         if early_stopping_rounds is not None:
             eval_percent = eval_percent if eval_percent is not None else 0.1
@@ -235,6 +238,7 @@ class LightGBMScore(Score):
             "seed": seed,
             "verbose": verbose,
             "n_jobs": n_jobs,
+            "linear_tree": linear_tree,
         }
 
         # Other stuff part of internal state

@@ -325,7 +325,8 @@ class LightGBMTreeffuser(Treeffuser):
         subsample_freq: int = 0,
         verbose: int = 0,
         seed: Optional[int] = None,
-        n_jobs: int = -1,
+        n_jobs: Optional[int] = -1,
+        linear_tree: bool = False,
     ):
         """
         Diffusion model args
@@ -361,6 +362,7 @@ class LightGBMTreeffuser(Treeffuser):
             the model will stop training if no improvement is observed in the validation
         n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
             number of available cores.
+        linear_tree (bool): Fit piecewise linear gradient boosting tree.
         """
         if sde_initialize_with_data and sde_manual_hyperparams is not None:
             raise Warning(
@@ -389,6 +391,7 @@ class LightGBMTreeffuser(Treeffuser):
                 "verbose": verbose,
                 "seed": seed,
                 "n_jobs": n_jobs,
+                "linear_tree": linear_tree,
             }
         )
 
