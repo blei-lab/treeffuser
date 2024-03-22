@@ -1,8 +1,9 @@
 from abc import ABC
 from abc import abstractmethod
+from typing import List
+from typing import Optional
 
 from jaxtyping import Float
-from jaxtyping import List
 from numpy import ndarray
 from sklearn.base import BaseEstimator
 
@@ -21,7 +22,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        cat_idx: List[int] = None,
+        cat_idx: Optional[List[int]] = None,
     ) -> None:
         """
         Fit the model to the data.
