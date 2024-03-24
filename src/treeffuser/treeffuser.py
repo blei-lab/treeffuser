@@ -374,7 +374,27 @@ class LightGBMTreeffuser(Treeffuser):
             sde_initialize_with_data=sde_initialize_with_data,
             sde_manual_hyperparams=sde_manual_hyperparams,
         )
-        self._score_config = ConfigDict(
+
+        # BaseEstimator requirement: every keyword argument should correspond to an attribute on the instance
+        self.sde_name = sde_name
+        self.n_repeats = n_repeats
+        self.n_estimators = n_estimators
+        self.eval_percent = eval_percent
+        self.early_stopping_rounds = early_stopping_rounds
+        self.num_leaves = num_leaves
+        self.max_depth = max_depth
+        self.learning_rate = learning_rate
+        self.max_bin = max_bin
+        self.subsample_for_bin = subsample_for_bin
+        self.min_child_samples = min_child_samples
+        self.subsample = subsample
+        self.subsample_freq = subsample_freq
+        self.verbose = verbose
+        self.seed = seed
+        self.n_jobs = n_jobs
+        self.linear_tree = linear_tree
+
+        self._score_config = FrozenConfigDict(
             {
                 "n_repeats": n_repeats,
                 "n_estimators": n_estimators,
