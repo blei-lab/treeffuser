@@ -98,6 +98,10 @@ class Card(ProbabilisticModel):
         self._seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
+        if seed is not None:
+            np.random.seed(seed)
+            torch.manual_seed(seed)
+
     def fit(
         self,
         X: Float[t.Tensor, "batch x_dim"],
@@ -205,6 +209,7 @@ class Card(ProbabilisticModel):
         )
         _diff_trainer.fit(self._diff_model, dm)
 
+    @t.no_grad()
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[t.Tensor, "batch y_dim"]:
         """
         Predicts the mean of the distribution for each input using the conditional model.
@@ -215,10 +220,13 @@ class Card(ProbabilisticModel):
         if self._cond_model is None:
             raise ValueError("The conditional model must be trained before calling predict.")
         X = _to_tensor(X)
+
+        self._cond_model.eval()
         y_tensor = self._cond_model.predict_step(X)["pred"]
         y_np = y_tensor.detach().numpy()
         return y_np
 
+    @t.no_grad()
     def sample(
         self, X: Float[ndarray, "batch x_dim"], n_samples: int, batch_size: int = 64
     ) -> Float[ndarray, "n_samples batch y_dim"]:
@@ -234,6 +242,9 @@ class Card(ProbabilisticModel):
                 a time, therefore the diffusion model will be run 25 times. This
                 is useful for managing memory usage.
         """
+        self._diff_model.eval()
+        self._cond_model.eval()
+
         X = _to_tensor(X)
         repeated_X = X.repeat(n_samples, 1)
         samples = torch.zeros(repeated_X.shape[0], self._y_dim)

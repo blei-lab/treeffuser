@@ -61,6 +61,7 @@ class GenericDataModule(LightningDataModule):
         train_split=0.8,
         val_split=0.1,
         test_split=0.1,
+        num_workers=0,
     ):
         super().__init__()
         self.X = X
@@ -69,6 +70,8 @@ class GenericDataModule(LightningDataModule):
         self.train_split = train_split
         self.val_split = val_split
         self.test_split = test_split
+        cpu_count = torch.multiprocessing.cpu_count() // 2
+        self.num_workers = num_workers if num_workers != -1 else cpu_count
 
         assert (
             self.train_split + self.val_split + self.test_split == 1.0
@@ -100,16 +103,23 @@ class GenericDataModule(LightningDataModule):
             batch_size=self.batch_size,
             shuffle=True,
             collate_fn=collate_fn_tensordataset,
+            num_workers=self.num_workers,
         )
 
     def val_dataloader(self):
         """Return the data loader for the validation dataset."""
         return DataLoader(
-            self.val_dataset, batch_size=self.batch_size, collate_fn=collate_fn_tensordataset
+            self.val_dataset,
+            batch_size=self.batch_size,
+            collate_fn=collate_fn_tensordataset,
+            num_workers=self.num_workers,
         )
 
     def test_dataloader(self):
         """Return the data loader for the testing dataset."""
         return DataLoader(
-            self.test_dataset, batch_size=self.batch_size, collate_fn=collate_fn_tensordataset
+            self.test_dataset,
+            batch_size=self.batch_size,
+            collate_fn=collate_fn_tensordataset,
+            num_workers=self.num_workers,
         )
