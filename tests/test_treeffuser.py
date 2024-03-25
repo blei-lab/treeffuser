@@ -92,3 +92,49 @@ def test_sample_based_nll_gaussian_mixture():
 
     relative_error = np.abs(nll_treeffuser / nll_true - 1)
     assert relative_error < 0.05, f"relative error: {relative_error}"
+
+
+def test_ode_based_nll_gaussian_mixture():
+    """
+    The data are generated from a Gaussian mixture model with conditional density:
+    p(y_i | x_i) = .5 * N(x_i, x_i ** 2) + (1 - .5) * N(-x_i, x_i ** 2)
+    """
+    n = 10**3
+    rng = np.random.default_rng(seed=0)
+
+    x = rng.uniform(low=1, high=2, size=(n, 1))
+    sign = 2 * rng.binomial(n=1, p=0.5, size=(n, 1)) - 1
+    y = rng.normal(loc=sign * x, scale=abs(x), size=(n, 1))
+
+    x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.05, random_state=42)
+
+    model = LightGBMTreeffuser(
+        verbose=1,
+        n_repeats=20,
+        n_estimators=10000,
+        sde_name="vesde",
+        learning_rate=0.1,
+        early_stopping_rounds=20,
+        seed=0,
+        linear_tree=True,
+    )
+    model.fit(x_train, y_train)
+
+    nll_treeffuser = model.compute_nll(x_test, y_test, ode=True, n_samples=10**3, bandwidth=1)
+    nll_true = -(
+        gaussian_mixture_pdf(
+            y_test, x_test, np.abs(x_test), -x_test, np.abs(x_test), 0.5, log=True
+        )
+        .sum()
+        .item()
+    )
+
+    relative_error = np.abs(nll_treeffuser / nll_true - 1)
+    assert relative_error < 0.05, f"relative error: {relative_error}"
+
+
+test_ode_based_nll_gaussian_mixture()
+
+# TO DO:
+# - define get_likelihood_theorethical_prior for all SDEs
+# - add drift term to compute_nll_from_ode, see if we can use the get_integral for the schedule
