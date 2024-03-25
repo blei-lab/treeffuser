@@ -8,6 +8,7 @@ from typing import Optional
 import numpy as np
 from einops import rearrange
 from jaxtyping import Float
+from ml_collections import ConfigDict
 from ml_collections import FrozenConfigDict
 from numpy import ndarray
 from sklearn.base import BaseEstimator
@@ -18,6 +19,7 @@ from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
+from treeffuser.sde.initialize import initialize_sde
 
 
 def _check_arguments(
@@ -39,16 +41,20 @@ class Treeffuser(BaseEstimator, abc.ABC):
     different parameters and methods.
     """
 
-    def __init__(self, sde_name: str = "vesde"):
+    def __init__(
+        self,
+        sde_name: str = "vesde",
+        sde_initialize_with_data: Optional[bool] = False,
+        sde_manual_hyperparams: Optional[dict] = None,
+    ):
+        self._sde_name = sde_name
+        self._sde_initialize_with_data = sde_initialize_with_data
+        self._sde_manual_hyperparams = sde_manual_hyperparams
         self._score_model = None
         self._is_fitted = False
         self._x_preprocessor = Preprocessor()
         self._y_preprocessor = Preprocessor()
         self._y_dim = None
-
-        # TODO: We are using the defaults but we should change this
-        self._sde = get_sde(sde_name)()
-        self._sde_name = sde_name
 
     @property
     @abc.abstractmethod
@@ -73,6 +79,18 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Returns an instance of the model for chaining.
         """
         _check_arguments(X, y)
+
+        if self._sde_initialize_with_data:
+            self._sde = initialize_sde(self._sde_name, y)
+        else:
+            sde_cls = get_sde(self._sde_name)
+            if self._sde_manual_hyperparams:
+                self._sde = sde_cls(**self._sde_manual_hyperparams)
+            else:
+                self._sde = sde_cls()
+
+        self._score_config.update({"sde": self._sde})
+        self._score_config = FrozenConfigDict(self._score_config)
 
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
@@ -152,8 +170,10 @@ class LightGBMTreeffuser(Treeffuser):
         self,
         # Diffusion model args
         sde_name: Optional[str] = "vesde",
-        # Score estimator args
+        sde_initialize_with_data: Optional[bool] = False,
+        sde_manual_hyperparams: Optional[dict] = None,
         n_repeats: Optional[int] = 10,
+        # Score estimator args
         n_estimators: Optional[int] = 100,
         eval_percent: Optional[float] = None,
         early_stopping_rounds: Optional[int] = None,
@@ -172,8 +192,13 @@ class LightGBMTreeffuser(Treeffuser):
         """
         Diffusion model args
         -------------------------------
+        sde_name (str): The SDE name.
+        sde_initialize_with_data (bool): Whether to initialize the SDE hyperparameters
+            with data.
+        sde_manual_hyperparams: (dict): A dictionary for explicitly setting the SDE
+            hyperparameters, overriding default or data-based initializations.
         n_repeats (int): How many times to repeat the training dataset. i.e how
-         many noisy versions of a point to generate for training.
+            many noisy versions of a point to generate for training.
         LightGBM args
         -------------------------------
         eval_percent (float): Percentage of the training data to use for validation.
@@ -199,10 +224,18 @@ class LightGBMTreeffuser(Treeffuser):
         n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
             number of available cores.
         """
-        super().__init__(sde_name=sde_name)
-        self._score_config = FrozenConfigDict(
+        if sde_initialize_with_data and sde_manual_hyperparams is not None:
+            raise Warning(
+                "Manual hypeparameter setting will override data-based initialization."
+            )
+
+        super().__init__(
+            sde_name=sde_name,
+            sde_initialize_with_data=sde_initialize_with_data,
+            sde_manual_hyperparams=sde_manual_hyperparams,
+        )
+        self._score_config = ConfigDict(
             {
-                "sde": self._sde,
                 "n_repeats": n_repeats,
                 "n_estimators": n_estimators,
                 "eval_percent": eval_percent,
