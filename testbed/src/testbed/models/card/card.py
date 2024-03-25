@@ -1,3 +1,10 @@
+"""
+Implementation of CARD model for probabilistic regression according to the uq_box library.
+
+This follows the tutorial from the uq_box library:
+https://lightning-uq-box.readthedocs.io/en/latest/tutorials/regression/card.html
+"""
+
 import tempfile
 from functools import partial
 from typing import List
@@ -26,6 +33,7 @@ def _to_tensor(X: Float[np.ndarray, "batch x_dim"]) -> Float[t.Tensor, "batch x_
 
 
 class Card(ProbabilisticModel):
+
     def __init__(
         self,
         layers: List[int] = [50, 50, 50],  # noqa
@@ -34,7 +42,6 @@ class Card(ProbabilisticModel):
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
         enable_progress_bar: bool = False,
-        enable_checkpointing: bool = False,
         use_gpu: bool = False,
         beta_start: float = 0.0001,
         beta_end: float = 0.02,
@@ -42,6 +49,34 @@ class Card(ProbabilisticModel):
         patience: int = 10,
         seed: int = 42,
     ):
+        """
+        Implements CARD using the uq_box library.
+
+        CARD is a method for probabilistic regression.
+        This class trains both a conditional model and a diffusion model which
+        are used jointly to create a sample based probabilistic model.
+        See https://arxiv.org/abs/2206.07275 for more details.
+
+        Args:
+            layers: A list of integers specifying the number of hidden units in each layer of the
+                conditional model.
+            max_epochs: The maximum number of epochs to train the model. This is used
+                for training both the conditional and diffusion models.
+            dropout: The dropout rate to use when training the models.
+            learning_rate: The learning rate to use when training the models.
+            n_steps: The number of steps for the diffusion model.
+            enable_progress_bar: Whether to display a progress bar during training.
+            use_gpu: Whether to use the GPU for training.
+            beta_start: The starting value of beta for the diffusion model.
+                See https://arxiv.org/abs/2006.11239 for more details.
+            beta_end: The ending value of beta for the diffusion model.
+                see https://arxiv.org/abs/2006.11239 for more details.
+            beta_schedule: The schedule to use for beta. This can be
+                "linear", "const", "quad", "jsd", "sigmoid","cosine", "cosine_anneal",
+            patience: The number of epochs to wait before early stopping if the validation loss
+                does not improve.
+
+        """
         self._cond_model: nn.Module = None
         self._diff_model: nn.Module = None
 
@@ -57,7 +92,6 @@ class Card(ProbabilisticModel):
         self._beta_schedule = beta_schedule
         self._max_epochs = max_epochs
         self._enable_progress_bar = enable_progress_bar
-        self._enable_checkpointing = enable_checkpointing
         self._patience = patience
         self._use_gpu = use_gpu
 
@@ -83,6 +117,10 @@ class Card(ProbabilisticModel):
         y: Float[t.Tensor, "batch y_dim"],
         cat_idx: Optional[List[int]] = None,
     ) -> None:
+        """
+        Fits the conditional mean model that is used later
+        as part of the diffusion model in CARD.
+        """
         dm = GenericDataModule(X, y)
         network = MLP(
             n_inputs=X.shape[1],
@@ -101,7 +139,7 @@ class Card(ProbabilisticModel):
         _cond_trainer = Trainer(
             max_epochs=self._max_epochs,
             accelerator="gpu" if self._use_gpu else "cpu",
-            enable_checkpointing=self._enable_checkpointing,
+            enable_checkpointing=False,
             enable_progress_bar=self._enable_progress_bar,
             check_val_every_n_epoch=1,
             default_root_dir=self._my_temp_dir,
@@ -120,6 +158,15 @@ class Card(ProbabilisticModel):
         y: Float[t.Tensor, "batch y_dim"],
         cat_idx: Optional[List[int]] = None,
     ) -> None:
+        """
+        Fits the diffusion model that is used to generate samples in CARD.
+        This function should be called only after the conditional model has been trained.
+        """
+        if self._cond_model is None:
+            raise ValueError(
+                "The conditional model must be trained before the diffusion model."
+            )
+
         dm = GenericDataModule(X, y)
         early_stop_callback = EarlyStopping(
             monitor="val_loss",
@@ -150,7 +197,7 @@ class Card(ProbabilisticModel):
         _diff_trainer = Trainer(
             max_epochs=self._max_epochs,
             accelerator="gpu" if self._use_gpu else "cpu",
-            enable_checkpointing=self._enable_checkpointing,
+            enable_checkpointing=False,
             enable_progress_bar=self._enable_progress_bar,
             check_val_every_n_epoch=1,
             default_root_dir=self._my_temp_dir,
@@ -159,6 +206,14 @@ class Card(ProbabilisticModel):
         _diff_trainer.fit(self._diff_model, dm)
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[t.Tensor, "batch y_dim"]:
+        """
+        Predicts the mean of the distribution for each input using the conditional model.
+
+        The output of this function might be different from the mean of the samples
+        as they don't use the same model.
+        """
+        if self._cond_model is None:
+            raise ValueError("The conditional model must be trained before calling predict.")
         X = _to_tensor(X)
         y_tensor = self._cond_model.predict_step(X)["pred"]
         y_np = y_tensor.detach().numpy()
@@ -167,6 +222,18 @@ class Card(ProbabilisticModel):
     def sample(
         self, X: Float[ndarray, "batch x_dim"], n_samples: int, batch_size: int = 64
     ) -> Float[ndarray, "n_samples batch y_dim"]:
+        """
+        Geneters n_samples of p(y|x) for each input x in X using the diffusion model.
+
+        Args:
+            X: The input data.
+            n_samples: The number of samples to generate for each input.
+            batch_size: The batch size to use when generating samples. For example
+                if batch_size=2 and n_samples=10, and X has 5 datapoints, then there
+                will be a total of 50 samples generated with batches of 2 generated at
+                a time, therefore the diffusion model will be run 25 times. This
+                is useful for managing memory usage.
+        """
         X = _to_tensor(X)
         repeated_X = X.repeat(n_samples, 1)
         samples = torch.zeros(repeated_X.shape[0], self._y_dim)
