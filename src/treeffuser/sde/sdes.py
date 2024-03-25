@@ -156,6 +156,16 @@ class VESDE(DiffusionSDE):
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.hyperparam_max, shape)
 
+    def get_likelihood_theoretical_prior(self, y: Float[ndarray, "y_dim"], log=True):
+        if len(y.shape) > 1:
+            raise ValueError("`y` must be a one-dimensional numpy ndarray.")
+        y_dim = len(y)
+        log_density = (
+            -(y**2).sum() / (2 * self.sigma_max)
+            - np.log(2 * np.pi * self.sigma_max**2) * y_dim / 2
+        )
+        return log_density if log else np.exp(log_density)
+
     def get_mean_std_pt_given_y0(
         self,
         y0: Float[ndarray, "batch y_dim"],
@@ -218,6 +228,13 @@ class VPSDE(DiffusionSDE):
         # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
+
+    def get_likelihood_theoretical_prior(self, y: Float[ndarray, "y_dim"], log=True):
+        if len(y.shape) > 1:
+            raise ValueError("`y` must be a one-dimensional numpy ndarray.")
+        y_dim = len(y)
+        log_density = -(y**2).sum() / 2 - np.log(2 * np.pi) * y_dim / 2
+        return log_density if log else np.exp(log_density)
 
     def get_mean_std_pt_given_y0(
         self,
@@ -283,6 +300,13 @@ class SubVPSDE(DiffusionSDE):
         # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
         return rng.normal(0, 1, shape)
+
+    def get_likelihood_theoretical_prior(self, y: Float[ndarray, "y_dim"], log=True):
+        if len(y.shape) > 1:
+            raise ValueError("`y` must be a one-dimensional numpy ndarray.")
+        y_dim = len(y)
+        log_density = -(y**2).sum() / 2 - np.log(2 * np.pi) * y_dim / 2
+        return log_density if log else np.exp(log_density)
 
     def get_mean_std_pt_given_y0(
         self,
