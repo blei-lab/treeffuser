@@ -26,7 +26,7 @@ class BaseSDE(abc.ABC):
     @abc.abstractmethod
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         Computes the drift and diffusion at a given time `t` for a given state `Y=y`.
 
@@ -76,7 +76,7 @@ class ReverseSDE(BaseSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         drift, diffusion = self.sde.drift_and_diffusion(y, self.t_reverse_origin - t)
         drift = -drift + diffusion**2 * self.score_fn(y, self.t_reverse_origin - t)
         return drift, diffusion
@@ -114,7 +114,7 @@ class CustomSDE(BaseSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> (Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]):
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         return self.drift_fn(y, t), self.diffusion_fn(y, t)
 
     def __repr__(self):
@@ -150,7 +150,7 @@ def _register_sde(name: str):
     return _register
 
 
-def get_sde(name):
+def get_sde(name: str):
     """
     Function to retrieve a registered SDE by its name.
 
