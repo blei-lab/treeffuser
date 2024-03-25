@@ -162,9 +162,9 @@ def _bisect(
     max_iter: int = 1000,
 ) -> float:
     """
-    Return an x such that |f(x)| <= tol and |f(x - tol)| > tol.
+    Return an x such that |f(x)| <= tol and |f(x - x_tol)| > tol.
 
-    It assumes that f is continuous and increasing in [a, b], and that |f(a)| > tol and |f(b)| <= tol.
+    It assumes that f is continuous and decreasing in [a, b], and that |f(a)| > tol and |f(b)| <= tol.
     """
     for _ in range(max_iter):
         x = (a + b) / 2

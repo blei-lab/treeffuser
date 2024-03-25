@@ -16,7 +16,7 @@ from .parameter_schedule import LinearSchedule
 class DiffusionSDE(BaseSDE):
     """
     Abstract class representing a diffusion SDE:
-    `dY = (A(t) + B(t) Y) dt + \\hyperparam(t) dW` where `\\hyperparam(t)` is a time-varying
+    `dY = (A(t) + B(t) Y) dt + C(t) dW` where `C(t)` is a time-varying
     diffusion coefficient independent of `Y`, and the drift is an affine function of Y.
     As a result, the conditional distribution p_t(y | y0) is Gaussian.
     """
@@ -117,10 +117,12 @@ class DiffusionSDE(BaseSDE):
 class VESDE(DiffusionSDE):
     """
     Variance-exploding SDE (VESDE):
-        `dY = 0 dt + \\sqrt{2 \\hyperparam(t) \\hyperparam'(t)} dW`
-    where `hyperparam(t)` is a time-varying diffusion coefficient.
+        `dY = 0 dt + \\sqrt{2 \\sigma(t) \\sigma'(t)} dW`
+    where `sigma(t)` is a time-varying diffusion coefficient with exponential schedule:
 
-    The SDE converges to a normal distribution with variance `hyperparam_max**2`.
+    `\\sigma(t) = hyperparam_min * (hyperparam_max / hyperparam_min) ^ t`
+
+    The SDE converges to a normal distribution with variance `hyperparam_max ^ 2`.
 
     Parameters
     ----------
@@ -180,17 +182,18 @@ class VESDE(DiffusionSDE):
 class VPSDE(DiffusionSDE):
     """
     Variance-preserving SDE (VPSDE):
-    `dY = -0.5 \\hyperparam(t) Y dt + \\sqrt{\\hyperparam(t)} dW`
-    where `hyperparam(t)` is a time-varying diffusion coefficient.
+    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t)} dW`
+    where `beta(t)` is a time-varying coefficient with linear schedule:
+    `\\beta(t) = hyperparam_min + (hyperparam_max - hyperparam_min) * t.`
 
-    The SDE converges to a standard normal distribution for large `hyperparam(t)`.
+    The SDE converges to a standard normal distribution for large `hyperparam_max`.
 
     Parameters
     ----------
     hyperparam_min : float
-        Minimum value of the diffusion coefficient.
+        Minimum value of the time-varying coefficient `\\beta(t)`.
     hyperparam_max : float
-        Maximum value of the diffusion coefficient.
+        Maximum value of the time-varying coefficient `\\beta(t)`.
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
@@ -223,8 +226,8 @@ class VPSDE(DiffusionSDE):
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
-            mean: `y0 * exp(-0.5 * \\int_0^t1 hyperparam(s) ds)`
-            variance: `1 - exp(-\\int_0^t1 hyperparam(s) ds)`
+            mean: `y0 * exp(-0.5 * \\int_0^t1 \\beta(s) ds)`
+            variance: `1 - exp(-\\int_0^t1 \\beta(s) ds)`
         """
         hyperparam_integral = self.hyperparam_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * hyperparam_integral)
@@ -242,17 +245,18 @@ class VPSDE(DiffusionSDE):
 class SubVPSDE(DiffusionSDE):
     """
     Sub-Variance-preserving SDE (SubVPSDE):
-    `dY = -0.5 \\hyperparam(t) Y dt + \\sqrt{\\hyperparam(t) (1 - e^{-2 \\int_0^t \\hyperparam(s) ds})} dW`
-    where `hyperparam(t)` is a time-varying diffusion coefficient.
+    `dY = -0.5 \\beta(t) Y dt + \\sqrt{\\beta(t) (1 - e^{-2 \\int_0^t \\beta(s) ds})} dW`
+    where `beta(t)` is a time-varying coefficient with linear schedule:
+    `\\beta(t) = hyperparam_min + (hyperparam_max - hyperparam_min) * t.`
 
-    The SDE converges to a standard normal distribution for large `hyperparam(t)`.
+    The SDE converges to a standard normal distribution for large `hyperparam_max`.
 
     Parameters
     ----------
     hyperparam_min : float
-        Minimum value of the diffusion coefficient.
+        Minimum value of the time-varying coefficient `\\beta(t)`.
     hyperparam_max : float
-        Maximum value of the diffusion coefficient.
+        Maximum value of the time-varying coefficient `\\beta(t)`.
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
@@ -287,8 +291,8 @@ class SubVPSDE(DiffusionSDE):
     ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
         """
         The conditional distribution is Gaussian with:
-            mean: `y0 * exp(-0.5 * \\int_0^t1 hyperparam(s) ds)`
-            variance: `[1 - exp(-\\int_0^t1 hyperparam(s) ds)]^2`
+            mean: `y0 * exp(-0.5 * \\int_0^t1 \\beta(s) ds)`
+            variance: `[1 - exp(-\\int_0^t1 \\beta(s) ds)]^2`
         """
         hyperparam_integral = self.hyperparam_schedule.get_integral(t)
         mean = y0 * np.exp(-0.5 * hyperparam_integral)
