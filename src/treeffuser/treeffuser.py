@@ -170,7 +170,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
     def _predict_from_ode(
         self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
     ) -> Float[ndarray, "batch y_dim"]:
-        pass
+        raise NotImplementedError
 
     def _predict_from_sample(
         self,
@@ -261,7 +261,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         y: Float[ndarray, "batch y_dim"],
         verbose: bool = False,
     ):
-        pass
+        raise NotImplementedError
 
     def _compute_nll_from_sample(
         self,
