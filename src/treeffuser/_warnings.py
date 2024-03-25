@@ -1,0 +1,2 @@
+class ConvergenceWarning(Warning):
+    pass
