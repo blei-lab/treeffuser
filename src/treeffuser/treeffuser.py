@@ -21,6 +21,7 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
+from treeffuser._tree import _integrate_divergence_over_time
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
@@ -422,3 +423,34 @@ class LightGBMTreeffuser(Treeffuser):
     @property
     def _score_model_class(self):
         return _score_models.LightGBMScore
+
+    def _compute_nll_from_ode(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        verbose: bool = False,
+    ):
+        if self.linear_tree is False:
+            raise ValueError(
+                "Cannot compute ode-based negative log likelihood when `linear_tree` is set to False."
+            )
+
+        forest = self._dump_model()
+
+        nll = 0
+        for i in range(y.shape[0]):
+            nll += self._sde.get_likelihood_theoretical_prior(y[i].reshape(-1))
+            nll += _integrate_divergence_over_time(
+                forest[1:],
+                self.learning_rate,
+                y[i].reshape(-1),
+                X[i, :].reshape(-1),
+                self._sde.T,
+            )
+        return nll
+
+    def _dump_model(self):
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
+        return self._score_model.models[0]._Booster.dump_model()["tree_info"]
