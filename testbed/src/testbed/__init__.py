@@ -2,14 +2,14 @@
 Available methods need to inherit from sklearn.base.BaseEstimator (and maybe more?)
 """
 
-from data.utils import get_data
-from data.utils import list_data
+from testbed.data.utils import get_data
+from testbed.data.utils import list_data
 
 _AVAILABLE_METHODS = {}
 _MISSING_METHODS = {}
 
 try:
-    from testbed.ngboost_._ngboost import NGBRegressor
+    from testbed.ngboost_ import NGBRegressor
 
     _AVAILABLE_METHODS["ngboost"] = NGBRegressor
 
