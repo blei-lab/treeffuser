@@ -35,9 +35,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         """
 
     @abstractmethod
-    def predict_distribution(
-        self, X: Float[ndarray, "batch x_dim"]
-    ) -> Float[ndarray, "batch y_dim"]:
+    def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
         """
         Predict the probability distribution for each input.
         """
