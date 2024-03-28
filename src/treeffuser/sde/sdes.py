@@ -1,6 +1,7 @@
 import abc
 from typing import Dict
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import numpy as np
@@ -149,6 +150,14 @@ class VESDE(DiffusionSDE):
         diffusion = np.sqrt(2 * hyperparam * hyperparam_prime)
         return drift, diffusion
 
+    def _get_drift_and_diffusion_divergence(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[float, float]:
+        """
+        Return divergence of the drift and diffusion coefficients w.r.t. y.
+        """
+        return 0, 0
+
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
@@ -222,6 +231,16 @@ class VPSDE(DiffusionSDE):
         diffusion = np.sqrt(hyperparam_t)
         return drift, diffusion
 
+    def _get_drift_and_diffusion_divergence(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[float, float]:
+        """
+        Return divergence of the drift and diffusion coefficients w.r.t. y.
+        """
+        y_dim = y.shape[1]
+        beta_t = self.beta_schedule(t)
+        return y_dim * -0.5 * beta_t, 0
+
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
@@ -293,6 +312,16 @@ class SubVPSDE(DiffusionSDE):
         discount = 1.0 - np.exp(-2 * hyperparam_integral)
         diffusion = np.sqrt(hyperparam_t * discount)
         return drift, diffusion
+
+    def _get_drift_and_diffusion_divergence(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> Tuple[float, float]:
+        """
+        Return divergence of the drift and diffusion coefficients w.r.t. y.
+        """
+        y_dim = y.shape[1]
+        beta_t = self.beta_schedule(t)
+        return y_dim * -0.5 * beta_t, 0
 
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: Optional[int] = None
