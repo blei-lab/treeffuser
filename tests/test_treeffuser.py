@@ -120,7 +120,7 @@ def test_ode_based_nll_gaussian_mixture():
     )
     model.fit(x_train, y_train)
 
-    nll_treeffuser = model.compute_nll(x_test, y_test, ode=True, n_samples=10**3, bandwidth=1)
+    nll_treeffuser = model.compute_nll(x_test, y_test, ode=True)
     nll_true = -(
         gaussian_mixture_pdf(
             y_test, x_test, np.abs(x_test), -x_test, np.abs(x_test), 0.5, log=True
