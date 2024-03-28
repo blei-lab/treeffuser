@@ -1,0 +1,7 @@
+[build-system]
+requires = [
+    "setuptools>=30.3.0",
+]
+
+src = ["src", "tests"]
+target-version = "py38"

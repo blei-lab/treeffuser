@@ -6,6 +6,7 @@ Adapted from: https://tinyurl.com/uncertainty-toolbox-calibration
 
 import warnings
 from typing import Dict
+from typing import Optional
 
 import numpy as np
 from jaxtyping import Float
@@ -128,7 +129,7 @@ def compute_quantile_calibration_error(
 def compute_adversarial_group_calibration_error(
     y_preds: Float[ndarray, "n_samples batch"],
     y_true: Float[ndarray, "batch"],
-    group_size_ratios=np.linspace(0.1, 0.9, 10),
+    group_size_ratios: Optional[ndarray, "n_group_sizes"] = None,
     n_group_draws=100,
     n_full_repeats=10,
     metric_name="rmsce",
@@ -144,6 +145,9 @@ def compute_adversarial_group_calibration_error(
     calibration error for each group size.
     """
     rng = np.random.default_rng(seed)
+    group_size_ratios = (
+        np.linspace(0.1, 0.9, 10) if group_size_ratios is None else group_size_ratios
+    )
 
     calibration_results = {
         "group_size_ratios": group_size_ratios,
@@ -157,7 +161,8 @@ def compute_adversarial_group_calibration_error(
         if group_size < 10:
             warnings.warn(
                 f"Group size {group_size} is very small to compute adversarial group "
-                f"calibration. Consider increasing the group size ratio."
+                f"calibration. Consider increasing the group size ratio.",
+                stacklevel=2,
             )
         group_size_list.append(group_size)
         worst_calibrations_for_group_size = []
@@ -190,14 +195,16 @@ def _fix_shape(data: ndarray, target_shape: tuple[int, ...]):
     # data has one extra dimension of size 1 at the end
     if data.shape[:-1] == target_shape and data.shape[-1] == 1:
         warnings.warn(
-            f"Reshaping data from shape {data.shape} to target shape {target_shape}."
+            f"Reshaping data from shape {data.shape} to target shape {target_shape}.",
+            stacklevel=1,
         )
         return data[..., 0]
 
     # data is missing one dimension of size 1 at the end
     if data.shape == target_shape[:-1] and target_shape[-1] == 1:
         warnings.warn(
-            f"Reshaping data from shape {data.shape} to target shape {target_shape}."
+            f"Reshaping data from shape {data.shape} to target shape {target_shape}.",
+            stacklevel=1,
         )
         return data[..., np.newaxis]
 
