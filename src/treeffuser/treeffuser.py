@@ -14,6 +14,7 @@ from jaxtyping import Float
 from ml_collections import ConfigDict
 from ml_collections import FrozenConfigDict
 from numpy import ndarray
+from scipy.integrate import odeint
 from sklearn.base import BaseEstimator
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
@@ -21,7 +22,7 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
-from treeffuser._tree import _integrate_divergence_over_time
+from treeffuser._tree import _compute_score_divergence_numerical
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
@@ -270,7 +271,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
             raise ValueError("The model has not been fitted yet.")
 
         if ode:
-            return self._compute_nll_from_ode(X, y, verbose)
+            return self._compute_nll_from_ode(X, y, verbose=verbose)
         else:
             return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
 
@@ -278,6 +279,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
+        n_steps: int = 10,
         verbose: bool = False,
     ):
         raise NotImplementedError
@@ -291,6 +293,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         verbose: bool = False,
     ) -> float:
         y_sample = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        batch_size = y.shape[0]
 
         def fit_and_evaluate_kde(y_train, y_test):
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
@@ -298,10 +301,19 @@ class Treeffuser(BaseEstimator, abc.ABC):
             return kde.score_samples(y_test).item()
 
         nll = 0
-        for i, y_i in enumerate(y_sample):
-            nll -= fit_and_evaluate_kde(y_i.reshape(-1, 1), y[i, :].reshape(-1, 1))
+        # for i, y_i in enumerate(y_sample):
+        for i in range(batch_size):
+            nll -= fit_and_evaluate_kde(
+                y_sample[:, i, :].reshape(-1, 1), y[i, :].reshape(-1, 1)
+            )
 
         return nll
+
+    # def probability_flow(
+    #     self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    # ) -> Float[ndarray, "batch y_dim"]:
+    #     drift, diffusion = self.drift_and_diffusion(y, t)
+    #     return drift - diffusion**2 / 2
 
 
 class LightGBMTreeffuser(Treeffuser):
@@ -424,33 +436,170 @@ class LightGBMTreeffuser(Treeffuser):
     def _score_model_class(self):
         return _score_models.LightGBMScore
 
+    # def _compute_nll_from_ode(
+    #     self,
+    #     X: Float[ndarray, "batch x_dim"],
+    #     y: Float[ndarray, "batch y_dim"],
+    #     verbose: bool = False,
+    # ):
+    #     if self.linear_tree is False:
+    #         raise ValueError(
+    #             "Cannot compute ode-based negative log likelihood when `linear_tree` is set to False."
+    #         )
+
+    #     forest = self._dump_model()
+
+    #     nll = 0
+    #     for i in range(y.shape[0]):
+    #         nll += self._sde.get_likelihood_theoretical_prior(y[i].reshape(-1))
+    #         nll += _integrate_divergence_over_time(
+    #             forest[1:],
+    #             self.learning_rate,
+    #             y[i].reshape(-1),
+    #             X[i, :].reshape(-1),
+    #             self._sde.T,
+    #         )
+    #     return nll
+
     def _compute_nll_from_ode(
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
+        n_steps: int = 100,
         verbose: bool = False,
     ):
+        """
+        Compute the log likelihood using the instantaneous change of variable formula.
+
+        It first solves the forward probability flow ODE and uses its solution to solve the ODE resulting from the instantaneous change of variable formula.
+
+        It assumes that the drift is linear in y and the diffusion coefficient doesn't depend on y.
+
+        Write down formula.
+        ------
+        References:
+            Song, Y., et al. Score-based generative modeling through stochastic differential equations. ICLR (2021).
+
+        ------
+        TO DO:
+        - create a divergence score function:
+          - get dict representation of score
+          - for each leaf that has y as a feature:
+            - set the intercept equal to the sum of all the coefficients that refer to y
+            - set all the coefficients to 0, or set leaf_features = [0] and leaf_coeff = [0]
+          - initialize a LightGBM model from the modified dict
+        - update documentation to add formula of divergence. should this go to the public method?
+        """
         if self.linear_tree is False:
             raise ValueError(
                 "Cannot compute ode-based negative log likelihood when `linear_tree` is set to False."
             )
 
-        forest = self._dump_model()
+        y_dim = y.shape[1]
+        x_dim = X.shape[1]
+
+        score_dict = self._dump_model()
 
         nll = 0
-        for i in range(y.shape[0]):
-            nll += self._sde.get_likelihood_theoretical_prior(y[i].reshape(-1))
-            nll += _integrate_divergence_over_time(
-                forest[1:],
-                self.learning_rate,
-                y[i].reshape(-1),
-                X[i, :].reshape(-1),
-                self._sde.T,
+        ite = -1
+        for y0, x in zip(y, X):  # tuttapposto
+            ite += 1
+            print(f"{'#' * 20}")
+            print(f"{ite} of {len(y)}")
+            print(f"y0={y0}")
+            print(f"x={x}")
+
+            # first, solve the probability flow
+            def _score_fn(y, x, t):
+                score = self._score_model.score(
+                    y=y.reshape(1, y_dim), X=x.reshape(1, x_dim), t=np.array(t).reshape(-1, 1)
+                )
+                return score.reshape(-1)
+
+            def _score_fn_given_x(y, t):
+                score = self._score_model.score(
+                    y=y.reshape(1, y_dim), X=x.reshape(1, x_dim), t=np.array(t).reshape(-1, 1)
+                )
+                return score.reshape(-1)
+
+            def _probability_flow(y, t):
+                drift, diffusion = self._sde.drift_and_diffusion(y, t)
+                return drift - 0.5 * diffusion**2 * _score_fn_given_x(y, t)
+
+            ts = np.arange(0.01, self._sde.T, 1 / n_steps)
+            y_ts = odeint(func=_probability_flow, y0=y0, t=ts)
+
+            # next, solve the instantaneous change of variable formula
+            drift_div_ts = np.array(
+                [
+                    self._sde._get_drift_and_diffusion_divergence(y, t)[0]
+                    for y, t in zip(y_ts, ts)
+                ]  # y_ts[0] is y(T)
             )
+            diffusion_coeff_ts = np.array(
+                [self._sde.drift_and_diffusion(y, t)[1] for y, t in zip(y_ts, ts)]
+            )
+            score_div_ts = np.array(
+                [
+                    # _compute_score_divergence(score_dict, self.learning_rate, y, x, t)
+                    _compute_score_divergence_numerical(_score_fn, y, x, t)
+                    for y, t in zip(y_ts, ts)
+                ]
+            )
+            log_p_T = self._sde.get_likelihood_theoretical_prior(y_ts[-1])
+
+            nll -= (
+                log_p_T
+                + (drift_div_ts - 0.5 * diffusion_coeff_ts**2 * score_div_ts).sum() / n_steps
+            )
+
+            temp = (
+                log_p_T
+                + (drift_div_ts - 0.5 * diffusion_coeff_ts**2 * score_div_ts).sum() / n_steps
+            )
+            print(f"log_p_0_ode={temp}")
+            print(
+                f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False)}"
+            )
+            # ts = np.sort(np.arange(self._sde.T, 0, -1 / n_steps))
+            # y_ts = odeint(_probability_flow, y0, t=ts)
+            #
+            # def _score_divergence(
+            #     y: Float[np.ndarray, "y_dim"], x: Float[np.ndarray, "x_dim"], t: float
+            # ):
+            #     return _compute_score_divergence(score_dict, self.learning_rate, y, x, t)
+            #
+            # def _get_log_likelihood_derivative(y, t):
+            #     t_idx = np.where(np.arange(0, 1, 1 / n_steps) == t)
+            #     if t_idx:
+            #         _, diff_coeff = self._sde.drift_and_diffusion(y_ts[t_idx], t)
+            #         drift_div, diff_div = self._sde._get_drift_and_diffusion_divergence(
+            #             y_ts[t_idx], t
+            #         )  # they depend on y
+            #         score = (
+            #             _score_fn(y_ts[t_idx], t) if diff_div != 0 else 0
+            #         )  # don't compute score if diff_div = 0
+            #         return (
+            #             drift_div
+            #             - 0.5 * diff_coeff**2 * _score_divergence(y_ts[t_idx], x, t)
+            #             - diff_coeff * diff_div * score
+            #         )
+            #     else:
+            #         return ValueError
+            #
+            # log_p_T = self._sde.get_likelihood_theoretical_prior(y_ts[-1])
+            # nll -= odeint(  # do this manually
+            #     _get_log_likelihood_derivative,
+            #     log_p_T,
+            #     t=[1, 0],
+            #     h0=1 / n_steps,
+            #     hmin=1 / n_steps,
+            #     hmax=1 / n_steps,
+            # )
         return nll
 
     def _dump_model(self):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        return self._score_model.models[0]._Booster.dump_model()["tree_info"]
+        return self._score_model.models[0]._Booster.dump_model()["tree_info"]  # multiple dims?
