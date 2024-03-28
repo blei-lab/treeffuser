@@ -9,7 +9,7 @@ _AVAILABLE_METHODS = {}
 _MISSING_METHODS = {}
 
 try:
-    from testbed.ngboost_ import NGBRegressor
+    from testbed.models._ngboost import NGBRegressor
 
     _AVAILABLE_METHODS["ngboost"] = NGBRegressor
 
