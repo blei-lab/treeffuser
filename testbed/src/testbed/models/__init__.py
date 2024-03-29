@@ -13,7 +13,7 @@ except ImportError as e:
     message = (
         "Cannot use `ngboost` method. Have you installed `ngboost`? "
         "You can install it via `pip install ngboost`. "
-        "The error message was: {}".format(e.msg)
+        f"The error message was: {e.msg}"
     )
     _MISSING_MODELS["ngboost"] = message
     warnings.warn(message)
@@ -27,7 +27,7 @@ except ImportError as e:
     message = (
         "Cannot use `card` method. Have you installed `lightning-uq-box`? "
         "You can install it via `pip install lightning-uq-box`. "
-        "The error message was: {}".format(e.msg)
+        f"The error message was: {e.msg}"
     )
     _MISSING_MODELS["card"] = message
     warnings.warn(message)

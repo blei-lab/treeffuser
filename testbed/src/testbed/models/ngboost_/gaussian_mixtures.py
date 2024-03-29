@@ -1,8 +1,8 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-
-from jaxtyping import Array, Float
+from jaxtyping import Array
+from jaxtyping import Float
 from ngboost.distns import RegressionDistn
 from ngboost.scores import LogScore
 from sklearn.mixture import GaussianMixture as skGaussianMixture

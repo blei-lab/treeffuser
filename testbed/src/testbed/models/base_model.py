@@ -1,7 +1,8 @@
 from abc import ABC
 from abc import abstractmethod
 
-from jaxtyping import Float, Array
+from jaxtyping import Array
+from jaxtyping import Float
 from sklearn.base import BaseEstimator
 
 

@@ -1,8 +1,9 @@
-from .base_model import ProbabilisticModel
 from jaxtyping import Array
 from jaxtyping import Float
 
 from treeffuser.treeffuser import LightGBMTreeffuser
+
+from .base_model import ProbabilisticModel
 
 
 class Treeffuser(ProbabilisticModel):

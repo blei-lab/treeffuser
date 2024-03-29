@@ -5,11 +5,13 @@ Adapted from: https://tinyurl.com/uncertainty-toolbox-calibration
 """
 
 import warnings
-from typing import Dict, List
+from typing import Dict
+from typing import List
 from typing import Optional
 
 import numpy as np
-from jaxtyping import Float, Array
+from jaxtyping import Array
+from jaxtyping import Float
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel

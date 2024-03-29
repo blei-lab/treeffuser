@@ -1,7 +1,8 @@
 import abc
 from typing import Dict
 
-from jaxtyping import Float, Array
+from jaxtyping import Array
+from jaxtyping import Float
 
 from testbed.models.base_model import ProbabilisticModel
 

@@ -1,7 +1,9 @@
-from jaxtyping import Float, Array
+from jaxtyping import Array
+from jaxtyping import Float
 from ngboost import NGBRegressor
 
 from testbed.models.base_model import ProbabilisticModel
+
 from .gaussian_mixtures import build_gaussian_mixture_model
 
 
