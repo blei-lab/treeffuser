@@ -9,85 +9,91 @@ from typing import Dict, List
 from typing import Optional
 
 import numpy as np
-from jaxtyping import Float
-from numpy import ndarray
+from jaxtyping import Float, Array
+
+from testbed.metrics.base_metric import Metric
+from testbed.models.base_model import ProbabilisticModel
 
 
-def compare_calibration(
-    y_preds_dict: Dict[str, Float[ndarray, "n_samples batch"]],
-    y_true: Float[ndarray, "batch"],
-) -> Dict[str, Dict[str, float]]:
+class SharpnessFromSamplesMetric(Metric):
     """
-    Compare calibration metrics for different predictive distributions.
-
-    Parameters
-    ----------
-    y_preds : dict
-        Dictionary where keys are method names (str) and values are ndarrays with
-        predictive distributions. Each prediction array should match the shape of `y_true`.
-    y_true : ndarray of shape (batch,)
-        True `y` values.
-
-    Returns
-    -------
-    metrics : dict
-        Dictionary where each key is a method name corresponding to those in `y_preds`
-        and each value is another dictionary containing the calibration metrics.
+    Computes the sharpness of the predictive distribution (i.e. the average standard deviation).
     """
-    # check shapes for now, try to avoid later
-    if len(y_true.shape) != 1:
-        if len(y_true.shape) == 2 and y_true.shape[1] == 1:
-            y_true = y_true[:, 0]
-        else:
-            raise ValueError(f"y_true has shape {y_true.shape}, expected (batch,)")
 
-    fixed_shape_y_preds_dict = {}
-    for method, y_preds in y_preds_dict.items():
-        original_shape = y_preds.shape
-        if len(original_shape) == 3 and original_shape[-1] == 1:
-            y_preds = y_preds[:, :, 0]
-        if y_preds.shape[1:] != y_true.shape:
-            raise ValueError(
-                f"y_preds[{method}] has shape {original_shape}, "
-                f"expected (n_samples, {y_true.shape[0]})"
-            )
-        fixed_shape_y_preds_dict[method] = y_preds
+    def __init__(self, n_samples: int = 20):
+        super().__init__()
+        self.n_samples = n_samples
 
-    metrics = {}
-    for method, y_preds in fixed_shape_y_preds_dict.items():
-        metrics[method] = {}
-        metrics[method]["sharpness"] = compute_sharpness(y_preds)["sharpness"]
-        metrics[method].update(compute_quantile_calibration_error(y_preds, y_true))
-        metrics[method]["adversarial_mace_0.1"] = compute_adversarial_group_calibration_error(
-            y_preds, y_true, group_size_ratios=[0.1], metric_name="mace"
-        )["mace_mean"][0]
+    def compute(
+        self,
+        model: ProbabilisticModel,
+        X_test: Float[Array, "batch n_features"],
+        y_test: Float[Array, "batch y_dim"],
+    ) -> Dict[str, float]:
+        """
+        Compute the empirical sharpness of the predictive distribution (i.e. the average standard deviation).
 
-    return metrics
+        Parameters
+        ----------
+        model : ProbabilisticModel
+            The model to evaluate.
+        X_test : ndarray of shape (batch, n_features)
+            The input data.
+        y_test : ndarray of shape (batch, y_dim)
+            The true output values.
+
+        Returns
+        -------
+        sharpness : dict
+            A single scalar which quantifies the average of the standard deviations.
+        """
+        y_preds = model.predict_distribution(X_test).sample(self.n_samples)
+        y_stds = np.std(y_preds, axis=0)
+        sharpness = np.sqrt(np.mean(y_stds**2))
+        return {"sharpness": sharpness}
 
 
-def compute_sharpness(y_preds: Float[ndarray, "n_samples batch"]) -> Dict[str, float]:
+class QuantileCalibrationErrorMetric(Metric):
     """
-    Compute the sharpness of the predictive distribution (i.e. the average standard deviation).
+    Computes quantile calibration metrics based on samples from the predictive distribution.
 
-    Parameters
-    ----------
-    y_preds : ndarray of shape (n_samples, batch)
-        Array of `n_samples` of `y` from the predictive distribution, for a batch of data.
-
-    Returns
-    -------
-    sharpness : float
-        A single scalar which quantifies the average of the standard deviations.
+    - root mean squared calibration error (RMSCE)
+    - mean absolute calibration error (MACE)
     """
-    y_stds = np.std(y_preds, axis=0)
-    sharpness = np.sqrt(np.mean(y_stds**2))
 
-    return {"sharpness": sharpness}
+    def compute(
+        self,
+        model: ProbabilisticModel,
+        X_test: Float[Array, "batch n_features"],
+        y_test: Float[Array, "batch y_dim"],
+    ) -> Dict[str, float]:
+        """
+        Compute quantile calibration metrics based on samples from the predictive distribution.
+
+        Parameters
+        ----------
+        model : ProbabilisticModel
+            The model to evaluate.
+        X_test : ndarray of shape (batch, n_features)
+            The input data.
+        y_test : ndarray of shape (batch, y_dim)
+            The true output values.
+
+        Returns
+        -------
+        metrics : dict
+            Dictionary with keys:
+            - "rmsce": root mean squared calibration error
+            - "mace": mean absolute calibration error
+        """
+        y_preds = model.predict_distribution(X_test).sample(100)
+        metrics = _compute_quantile_calibration_error(y_preds, y_test)
+        return metrics
 
 
-def compute_quantile_calibration_error(
-    y_preds: Float[ndarray, "n_samples batch"],
-    y_true: Float[ndarray, "batch"],
+def _compute_quantile_calibration_error(
+    y_preds: Float[Array, "n_samples batch"],
+    y_true: Float[Array, "batch"],
 ) -> Dict[str, float]:
     """
     Compute quantile calibration metrics based on samples from the predictive distribution.
@@ -127,8 +133,8 @@ def compute_quantile_calibration_error(
 
 
 def compute_adversarial_group_calibration_error(
-    y_preds: Float[ndarray, "n_samples batch"],
-    y_true: Float[ndarray, "batch"],
+    y_preds: Float[Array, "n_samples batch"],
+    y_true: Float[Array, "batch"],
     group_size_ratios: Optional[List[float]] = None,
     n_group_draws=100,
     n_full_repeats=10,
@@ -172,7 +178,7 @@ def compute_adversarial_group_calibration_error(
                 idx = rng.choice(y_true.shape[0], group_size, replace=False)
                 y_true_group = y_true[idx]
                 y_preds_group = y_preds[:, idx]
-                calibration_error = compute_quantile_calibration_error(
+                calibration_error = _compute_quantile_calibration_error(
                     y_preds_group, y_true_group
                 )[metric_name]
                 worst_calibration = max(worst_calibration, calibration_error)
@@ -188,7 +194,7 @@ def compute_adversarial_group_calibration_error(
     return calibration_results
 
 
-def _fix_shape(data: ndarray, target_shape: tuple[int, ...]):
+def _fix_shape(data: Array, target_shape: tuple[int, ...]):
     if data.shape == target_shape:
         return data
 
