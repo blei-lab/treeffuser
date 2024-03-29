@@ -11,7 +11,9 @@ import requests
 
 
 def _get_links():
-    path_links = Path("./data/links.json")
+    current_dir = Path(__file__).resolve().parent
+    path_links = Path(current_dir) / "links.json"
+
     with path_links.open() as links:
         return json.load(links)
 
