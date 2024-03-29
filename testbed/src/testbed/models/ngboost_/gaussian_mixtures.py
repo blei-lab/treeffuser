@@ -119,7 +119,7 @@ def build_gaussian_mixture_model(k: int):
         """
 
         n_params = 3 * k
-        scores = [GaussianMixtureScore]
+        scores = (GaussianMixtureScore,)
 
         def __init__(self, params):
             super().__init__(params)
