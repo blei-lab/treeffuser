@@ -5,7 +5,7 @@ Adapted from: https://tinyurl.com/uncertainty-toolbox-calibration
 """
 
 import warnings
-from typing import Dict
+from typing import Dict, List
 from typing import Optional
 
 import numpy as np
@@ -56,7 +56,7 @@ def compare_calibration(
     metrics = {}
     for method, y_preds in fixed_shape_y_preds_dict.items():
         metrics[method] = {}
-        metrics[method]["sharpness"] = compute_sharpness(y_preds)
+        metrics[method]["sharpness"] = compute_sharpness(y_preds)["sharpness"]
         metrics[method].update(compute_quantile_calibration_error(y_preds, y_true))
         metrics[method]["adversarial_mace_0.1"] = compute_adversarial_group_calibration_error(
             y_preds, y_true, group_size_ratios=[0.1], metric_name="mace"
@@ -65,7 +65,7 @@ def compare_calibration(
     return metrics
 
 
-def compute_sharpness(y_preds: Float[ndarray, "n_samples batch"]) -> float:
+def compute_sharpness(y_preds: Float[ndarray, "n_samples batch"]) -> Dict[str, float]:
     """
     Compute the sharpness of the predictive distribution (i.e. the average standard deviation).
 
@@ -82,7 +82,7 @@ def compute_sharpness(y_preds: Float[ndarray, "n_samples batch"]) -> float:
     y_stds = np.std(y_preds, axis=0)
     sharpness = np.sqrt(np.mean(y_stds**2))
 
-    return sharpness
+    return {"sharpness": sharpness}
 
 
 def compute_quantile_calibration_error(
@@ -129,7 +129,7 @@ def compute_quantile_calibration_error(
 def compute_adversarial_group_calibration_error(
     y_preds: Float[ndarray, "n_samples batch"],
     y_true: Float[ndarray, "batch"],
-    group_size_ratios: Optional[ndarray, "n_group_sizes"] = None,
+    group_size_ratios: Optional[List[float]] = None,
     n_group_draws=100,
     n_full_repeats=10,
     metric_name="rmsce",
