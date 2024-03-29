@@ -2,7 +2,7 @@ from typing import Dict
 
 from jaxtyping import Float, Array
 
-from base_metric import Metric
+from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
 
 

@@ -57,7 +57,9 @@ _mixture_logpdf_grad_logit_weights = jax.jit(
 
 
 def _sample_mixture(
-    mus: Float[Array, "batch k"], scales: Float[Array, "batch k"], weights: Float[Array, "k"]
+    mus: Float[Array, "batch k"],
+    scales: Float[Array, "batch k"],
+    weights: Float[Array, "batch k"],
 ) -> Float[Array, "batch"]:
     """Sample from a Gaussian mixture model.
 
@@ -67,7 +69,7 @@ def _sample_mixture(
         Means of the Gaussian components.
     scales : Float[Array, "batch k"]
         Standard deviations of the Gaussian components.
-    weights : Float[Array, "k"]
+    weights : Float[Array, "batch k"]
         Weights of the Gaussian components.
 
     Returns

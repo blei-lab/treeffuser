@@ -1,7 +1,5 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import List
-from typing import Optional
 
 from jaxtyping import Float, Array
 from sklearn.base import BaseEstimator
@@ -21,7 +19,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         self,
         X: Float[Array, "batch x_dim"],
         y: Float[Array, "batch y_dim"],
-    ) -> None:
+    ) -> "ProbabilisticModel":
         """
         Fit the model to the data.
         """
@@ -33,10 +31,18 @@ class ProbabilisticModel(ABC, BaseEstimator):
         """
 
     @abstractmethod
-    def predict_distribution(self, X: Float[Array, "batch x_dim"]):
+    def sample(
+        self, X: Float[Array, "batch x_dim"], n_samples=10
+    ) -> Float[Array, "n_samples batch y_dim"]:
         """
-        Predict the probability distribution for each input.
+        Sample from the probability distribution for each input.
         """
+
+    # @abstractmethod
+    # def predict_distribution(self, X: Float[Array, "batch x_dim"]):
+    #     """
+    #     Predict the probability distribution for each input.
+    #     """
 
 
 class CachedProbabilisticModel(ProbabilisticModel):
@@ -53,19 +59,21 @@ class CachedProbabilisticModel(ProbabilisticModel):
         self,
         X: Float[Array, "batch x_dim"],
         y: Float[Array, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
-    ) -> None:
-        self.model.fit(X, y, cat_idx)
+    ) -> ProbabilisticModel:
+        self.model.fit(X, y)
+        return self
 
     def predict(self, X: Float[Array, "batch x_dim"]) -> Float[Array, "batch y_dim"]:
         if "predict" not in self._cache:
             self._cache["predict"] = self.model.predict(X)
         return self._cache["predict"]
 
-    def predict_distribution(self, X: Float[Array, "batch x_dim"]):
-        if "predict_distribution" not in self._cache:
-            self._cache["predict_distribution"] = self.model.predict_distribution(X)
-        return self._cache["predict_distribution"]
+    def sample(
+        self, X: Float[Array, "batch x_dim"], n_samples=10
+    ) -> Float[Array, "n_samples batch y_dim"]:
+        if "sample" not in self._cache:
+            self._cache["sample"] = self.model.sample(X, n_samples)
+        return self._cache["sample"]
 
     def clear_cache(self):
         self._cache = {}
