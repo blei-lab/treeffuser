@@ -1,10 +1,7 @@
-from data.utils import get_data
-from data.utils import list_data
-from metrics import compare_accuracy
-from ngboost import NGBRegressor
 from sklearn.model_selection import train_test_split
 
-from treeffuser import LightGBMTreeffuser
+from testbed.data.utils import get_data
+from testbed.data.utils import list_data
 
 # List available datasets
 datasets = list_data()
@@ -77,3 +74,33 @@ for dataset_name in datasets:
     print(f"Metrics for dataset: {dataset_name}")
     metrics = compare_accuracy(preds[dataset_name], y_test, print_table=True)
     print("\n")
+
+
+###########################################################
+#                 CONSTANTS                               #
+###########################################################
+
+AVAILABLE_DATASETS = list_data()
+
+AVAILABLE_MODELS = {
+    "ngboost_gaussian": NGBoostGaussian,
+    "ngboost_mixture_gaussian": NGBoostMixtureGaussian,
+}
+
+
+###########################################################
+#               HELPER FUNCTIONS                          #
+###########################################################
+
+
+###########################################################
+#               MAIN FUNCTION                            #
+###########################################################
+
+
+def main():
+    pass
+
+
+if __name__ == "__name__":
+    main()
