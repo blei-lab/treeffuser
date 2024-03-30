@@ -98,28 +98,31 @@ class GenericDataModule(LightningDataModule):
 
     def train_dataloader(self):
         """Return the data loader for the training dataset."""
-        return DataLoader(
+        loader = DataLoader(
             self.train_dataset,
             batch_size=self.batch_size,
             shuffle=True,
             collate_fn=collate_fn_tensordataset,
-            num_workers=self.num_workers,
         )
+        print("train_dataloader len", len(loader))
+        return loader
 
     def val_dataloader(self):
         """Return the data loader for the validation dataset."""
-        return DataLoader(
+        loader = DataLoader(
             self.val_dataset,
             batch_size=self.batch_size,
             collate_fn=collate_fn_tensordataset,
-            num_workers=self.num_workers,
         )
+        print("val_dataloader len", len(loader))
+        return loader
 
     def test_dataloader(self):
         """Return the data loader for the testing dataset."""
-        return DataLoader(
+        loader = DataLoader(
             self.test_dataset,
             batch_size=self.batch_size,
             collate_fn=collate_fn_tensordataset,
-            num_workers=self.num_workers,
         )
+        print("test_dataloader len", len(loader))
+        return loader

@@ -23,6 +23,7 @@ from lightning_uq_box.uq_methods import CARDRegression
 from lightning_uq_box.uq_methods import DeterministicRegression
 from numpy import ndarray
 from torch.optim import Adam
+from tqdm import tqdm
 
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.card._data_module import GenericDataModule
@@ -41,6 +42,7 @@ class Card(ProbabilisticModel):
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
+        batch_size: int = 32,
         enable_progress_bar: bool = False,
         use_gpu: bool = False,
         beta_start: float = 0.0001,
@@ -65,6 +67,7 @@ class Card(ProbabilisticModel):
             dropout: The dropout rate to use when training the models.
             learning_rate: The learning rate to use when training the models.
             n_steps: The number of steps for the diffusion model.
+            batch_size: The batch size to use when training the models.
             enable_progress_bar: Whether to display a progress bar during training.
             use_gpu: Whether to use the GPU for training.
             beta_start: The starting value of beta for the diffusion model.
@@ -87,6 +90,7 @@ class Card(ProbabilisticModel):
         self._dropout = dropout
         self._learning_rate = learning_rate
         self._n_steps = n_steps
+        self._batch_size = batch_size
         self._beta_start = beta_start
         self._beta_end = beta_end
         self._beta_schedule = beta_schedule
@@ -125,7 +129,7 @@ class Card(ProbabilisticModel):
         Fits the conditional mean model that is used later
         as part of the diffusion model in CARD.
         """
-        dm = GenericDataModule(X, y)
+        dm = GenericDataModule(X, y, batch_size=self._batch_size)
         network = MLP(
             n_inputs=X.shape[1],
             n_hidden=self._layers,
@@ -148,6 +152,7 @@ class Card(ProbabilisticModel):
             check_val_every_n_epoch=1,
             default_root_dir=self._my_temp_dir,
             callbacks=[early_stop_callback],
+            log_every_n_steps=1,
         )
         self._cond_model = DeterministicRegression(
             model=network,
@@ -171,7 +176,7 @@ class Card(ProbabilisticModel):
                 "The conditional model must be trained before the diffusion model."
             )
 
-        dm = GenericDataModule(X, y)
+        dm = GenericDataModule(X, y, batch_size=self._batch_size)
         early_stop_callback = EarlyStopping(
             monitor="val_loss",
             min_delta=0.00,
@@ -253,6 +258,8 @@ class Card(ProbabilisticModel):
         datapoints_sampled = 0
 
         # Iterate until all datapoints are sampled
+
+        pbar = tqdm(total=repeated_X.shape[0], disable=not self._enable_progress_bar)
         while datapoints_sampled < repeated_X.shape[0]:
             # Get the current batch of datapoints
             batch_start = datapoints_sampled
@@ -264,7 +271,7 @@ class Card(ProbabilisticModel):
             generated_samples = generated_samples[0]  # get rid of the first dimension
 
             # Determine the number of samples to use from the generated batch
-            samples_to_use = min(batch_size, X.shape[0] - datapoints_sampled)
+            samples_to_use = min(batch_size, repeated_X.shape[0] - batch_start)
 
             # Update the samples tensor with the generated samples
             samples[batch_start : batch_start + samples_to_use] = generated_samples[
@@ -273,6 +280,7 @@ class Card(ProbabilisticModel):
 
             # Update the number of datapoints sampled
             datapoints_sampled += samples_to_use
+            pbar.update(samples_to_use)
 
         # Reshape the samples tensor to (n_samples, batch, y_dim)
         samples = samples.reshape(X.shape[0], n_samples, self._y_dim)
