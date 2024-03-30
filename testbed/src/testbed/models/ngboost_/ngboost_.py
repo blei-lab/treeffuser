@@ -1,6 +1,6 @@
-from jaxtyping import Array
 from jaxtyping import Float
 from ngboost import NGBRegressor
+from numpy import ndarray
 
 from testbed.models.base_model import ProbabilisticModel
 
@@ -21,8 +21,8 @@ class NGBoostGaussian(ProbabilisticModel):
 
     def fit(
         self,
-        X: Float[Array, "batch x_dim"],
-        y: Float[Array, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
     ) -> ProbabilisticModel:
         """
         Fit the model to the data.
@@ -41,15 +41,15 @@ class NGBoostGaussian(ProbabilisticModel):
         self.model.fit(X, y)
         return self
 
-    def predict(self, X: Float[Array, "batch x_dim"]) -> Float[Array, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """
         Predict the mean for each input.
         """
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[Array, "batch x_dim"], n_samples=10
-    ) -> Float[Array, "n_samples batch y_dim"]:
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
@@ -70,8 +70,8 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
 
     def fit(
         self,
-        X: Float[Array, "batch x_dim"],
-        y: Float[Array, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
     ) -> ProbabilisticModel:
         """
         Fit the model to the data.
@@ -91,15 +91,15 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         self.model.fit(X, y)
         return self
 
-    def predict(self, X: Float[Array, "batch x_dim"]) -> Float[Array, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """
         Predict the mean for each input.
         """
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[Array, "batch x_dim"], n_samples=10
-    ) -> Float[Array, "n_samples batch y_dim"]:
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """

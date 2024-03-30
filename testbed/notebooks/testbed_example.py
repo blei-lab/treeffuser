@@ -1,3 +1,8 @@
+# %%
+# uncomment for interactivity
+# %load_ext autoreload
+# %autoreload 2
+
 from testbed.data.utils import get_data
 from testbed.data.utils import list_data
 from sklearn.model_selection import train_test_split
