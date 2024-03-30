@@ -104,7 +104,6 @@ class GenericDataModule(LightningDataModule):
             shuffle=True,
             collate_fn=collate_fn_tensordataset,
         )
-        print("train_dataloader len", len(loader))
         return loader
 
     def val_dataloader(self):
@@ -114,7 +113,6 @@ class GenericDataModule(LightningDataModule):
             batch_size=self.batch_size,
             collate_fn=collate_fn_tensordataset,
         )
-        print("val_dataloader len", len(loader))
         return loader
 
     def test_dataloader(self):
@@ -124,5 +122,4 @@ class GenericDataModule(LightningDataModule):
             batch_size=self.batch_size,
             collate_fn=collate_fn_tensordataset,
         )
-        print("test_dataloader len", len(loader))
         return loader
