@@ -1,4 +1,5 @@
 import argparse
+import logging
 from typing import Dict
 from typing import List
 
@@ -11,31 +12,39 @@ from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
-from testbed.models.card import Card
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
+
+logger = logging.getLogger(__name__)
 
 ###########################################################
 #                 CONSTANTS                               #
 ###########################################################
 
-AVAILABLE_DATASETS = list_data()
+AVAILABLE_DATASETS = list(list_data().keys())
+
 
 # Treeffuser is not imported by default as it causes a segmentation fault
 # of Card model. If adequate it gets added to this dictionary.
 # by the proc_model_names function.
-AVAILABLE_MODELS = {
+MODEL_TO_CLASS = {
     "ngboost_gaussian": NGBoostGaussian,
     "ngboost_mixture_gaussian": NGBoostMixtureGaussian,
-    "card": Card,
+    "card": None,
     "treeffuser": None,
 }
+AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
 
-
-AVAILABLE_METRICS = {
+METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
     "quantile_calibration_error": QuantileCalibrationErrorMetric,
 }
+AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
+
+
+BARS = "-" * 50 + "\n"
+TITLE = "\n" + BARS + "TESTBED".center(50) + "\n" + BARS
+
 
 ###########################################################
 #               HELPER FUNCTIONS                          #
@@ -57,10 +66,10 @@ def lst_to_new_line(lst: list) -> str:
     return string
 
 
-def update_available_models(models: List[str], available_models: dict) -> List[str]:
+def update_metric_to_class(models: List[str]):
     """
-    Adds Treeffuser to AVAILABLE_MODELS if needed and return
-    the updated list of available models.
+    Adds Treeffuser to MODEL_TO_CLASS if it is in the list of models.
+    Changes global variable MODEL_TO_CLASS.
 
     There is an odd bug such that if Treeffuser is imported then Card
     doesn't run and we get a segmentation fault. We solve this by
@@ -73,9 +82,6 @@ def update_available_models(models: List[str], available_models: dict) -> List[s
 
     Args:
         models (List[str]): List of models to run.
-        available_models (dict): Dictionary of available models. Should be set
-            to AVAILABLE_MODELS always. Names as a parameter for
-            clarity.
     """
 
     if "treeffuser" in models and "card" in models:
@@ -85,9 +91,11 @@ def update_available_models(models: List[str], available_models: dict) -> List[s
     if "treeffuser" in models:
         from testbed.models.treeffuser import Treeffuser
 
-        available_models["treeffuser"] = Treeffuser
+        MODEL_TO_CLASS["treeffuser"] = Treeffuser
+    if "card" in models:
+        from testbed.models.card import Card
 
-    return available_models
+        MODEL_TO_CLASS["card"] = Card
 
 
 def parse_args():
@@ -104,23 +112,23 @@ def parse_args():
     )
 
     msg = "List of models to run on the datasets. Default: all available models except card."
-    msg += f" Available models: {lst_to_new_line(AVAILABLE_MODELS.keys())}"
-    available_models = [model for model in AVAILABLE_MODELS if model != "card"]
+    msg += f" Available models: {lst_to_new_line(AVAILABLE_MODELS)}"
+    default_models = [model for model in AVAILABLE_MODELS if model != "card"]
     parser.add_argument(
         "--models",
         type=str,
         nargs="+",
-        default=available_models,
+        default=default_models,
         help=msg,
     )
 
     msg = "List of metrics to compute. Default: all available metrics."
-    msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS.keys())}"
+    msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS)}"
     parser.add_argument(
         "--metrics",
         type=str,
         nargs="+",
-        default=AVAILABLE_METRICS.keys(),
+        default=AVAILABLE_METRICS,
         help=msg,
     )
 
@@ -153,11 +161,9 @@ def check_args(args):
     """
     # check model name is valid
     for model_name in args.models:
-        print(model_name)
-        print(AVAILABLE_MODELS)
         if model_name not in AVAILABLE_MODELS:
             msg = f"Model {model_name} is not available."
-            msg += f" Available models: {lst_to_new_line(AVAILABLE_MODELS.keys())}"
+            msg += f" Available models: {lst_to_new_line(AVAILABLE_MODELS)}"
 
     # check dataset name is valid
     for dataset_name in args.datasets:
@@ -170,25 +176,48 @@ def check_args(args):
     for metric_name in args.metrics:
         if metric_name not in AVAILABLE_METRICS:
             msg = f"Metric {metric_name} is not available."
-            msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS.keys())}"
+            msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS)}"
             raise ValueError(msg)
 
 
-def print_results(model_name: str, dataset_name: str, results: Dict[str, float]):
+def format_results(model_name: str, dataset_name: str, results: Dict[str, float]) -> str:
     """
-    Print the results for a model on a dataset.
+    Format the results of a model on a dataset.
 
     Args:
         model_name (str): Name of the model.
         dataset_name (str): Name of the dataset.
         results (Dict[str, float]): Results of the model on the dataset.
     """
-    print("\n")
-    print("##################################################")
-    print(f"Results for {model_name} on {dataset_name}")
+    results_string = "\n\n"
+    results_string += BARS
+    results_string += (
+        f" MODEL: {model_name.capitalize()} | DATASET: {dataset_name.capitalize()}\n"
+    )
+    results_string += BARS
     for key, value in results.items():
-        print(f"{key}: {value}")
-    print("##################################################")
+        results_string += f"{key}: {value}\n"
+    results_string += BARS
+    results_string += "\n\n"
+
+    return results_string
+
+
+def format_header(args: argparse.Namespace, run_name: str) -> str:
+    """
+    Format the header of the script for logging.
+    """
+    header = "\n"
+    header += TITLE
+    header += "\n"
+    header += f"Running models: {args.models}\n"
+    header += f"On datasets: {args.datasets}\n"
+    header += f"Computing metrics: {args.metrics}\n"
+    header += f"Seed: {args.seed}\n"
+    header += f"Results will be saved in: {args.save_dir}\n"
+    header += f"Run name: {run_name}\n"
+    header += BARS
+    return header
 
 
 def run_model_on_dataset(
@@ -202,8 +231,11 @@ def run_model_on_dataset(
         dataset_name (str): Name of the dataset to run the model on.
         metrics (List[Metric]): List of metrics to compute.
         seed (int): Seed for reproducibility.
+
+    Returns:
+        Dict[str, float]: Results of the model on the dataset.
     """
-    model = AVAILABLE_MODELS[model_name]()
+    model = MODEL_TO_CLASS[model_name]()
     data = get_data(dataset_name, verbose=True)
 
     X_train, X_test, y_train, y_test = train_test_split(
@@ -214,7 +246,7 @@ def run_model_on_dataset(
 
     results = {}
     for metric in metrics:
-        metric = metric()
+        metric = METRIC_TO_CLASS[metric]()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         results.update(res)
     return results
@@ -225,37 +257,35 @@ def run_model_on_dataset(
 ###########################################################
 
 
-def main():
-    global AVAILABLE_MODELS
-
+def main() -> None:
     args = parse_args()
+    check_args(args)
 
     # This line should be added before everything else
     # see the docstring of the function for more information.
-    AVAILABLE_MODELS = update_available_models(args.models, AVAILABLE_MODELS)
-
-    check_args(args)
-
-    full_df = pd.DataFrame()
+    update_metric_to_class(args.models)
 
     run_name = namesgenerator.get_random_name()
+    full_results = []
+
+    header = format_header(args, run_name)
+    logger.info(header)
+
     for model_name in args.models:
         for dataset_name in args.datasets:
-            metrics = [AVAILABLE_METRICS[metric_name] for metric_name in args.metrics]
-            results: Dict[str, float] = run_model_on_dataset(
-                model_name, dataset_name, metrics, args.seed
-            )
+            results = run_model_on_dataset(model_name, dataset_name, args.metrics, args.seed)
+            results["model"] = model_name
+            results["dataset"] = dataset_name
+            full_results.append(results)
 
-            df = pd.DataFrame(results, index=[0])
-            df["model"] = model_name
-            df["dataset"] = dataset_name
-            full_df = pd.concat([full_df, df])
-
-            print_results(model_name, dataset_name, results)
+            results_string = format_results(model_name, dataset_name, results)
+            logger.info(results_string)
 
             if args.save_dir is not None:
-                full_df.to_csv(f"{args.save_dir}/{run_name}.csv")
+                df = pd.DataFrame(full_results)
+                df.to_csv(f"{args.save_dir}/{run_name}.csv")
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     main()
