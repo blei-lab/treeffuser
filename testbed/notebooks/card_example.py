@@ -4,22 +4,23 @@
 
 # %%
 import numpy as np
-from testbed.models import Card
+from testbed.models.card import Card
 import matplotlib.pyplot as plt
 
 # %%
-# ## Data
 
 # %%
 
-X = np.random.rand(1000, 1)
-beta = np.random.rand(1, 1) * 10
+n_features = 1
+n_samples = 1000
+X = np.random.rand(n_samples, n_features)
+beta = np.random.rand(n_features, 1) * 10
 std = 0.1
-epsilon = np.random.randn(1000, 1) * std
+epsilon = np.random.randn(n_samples, 1) * std
 
 y = X @ beta + epsilon
 
-plt.scatter(X, y)
+# plt.scatter(X, y)
 
 # %%
 # ## Models
@@ -38,4 +39,3 @@ plt.scatter(X, y)
 samples = model.sample(X, 1).flatten()
 print(samples.shape)
 plt.scatter(X, samples)
-# %%
