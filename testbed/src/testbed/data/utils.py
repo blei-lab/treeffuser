@@ -11,7 +11,9 @@ import requests
 
 
 def _get_links():
-    path_links = Path("./data/links.json")
+    current_dir = Path(__file__).resolve().parent
+    path_links = Path(current_dir) / "links.json"
+
     with path_links.open() as links:
         return json.load(links)
 
@@ -60,9 +62,10 @@ def _load_data(path_dataset_file: Path, verbose: bool = False) -> np.ndarray:
 
 def list_data(verbose: bool = False) -> dict:
     """
-    Lists all datasets in './data/'.
+    Lists all datasets in './data/' (current directory of this script).
     """
-    path_data_dir = Path("./data/")
+    current_dir = Path(__file__).resolve().parent
+    path_data_dir = Path(current_dir)
 
     # extract all leaves of data folder
     datasets = []
@@ -91,7 +94,7 @@ def _get_data_path(dataset: str, verbose: bool = False) -> Path:
         return Path(datasets[dataset])
 
     else:
-        path_data_dir = Path("./data").resolve()
+        path_data_dir = Path(__file__).resolve().parent
         raise FileNotFoundError(
             f"Dataset '{dataset}' not found: {dataset} is not a subfolder of '{path_data_dir}'. Use `list_data` to print a list of available datasets."
         )
