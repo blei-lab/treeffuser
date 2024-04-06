@@ -5,6 +5,8 @@ from typing import List
 
 import namesgenerator
 import pandas as pd
+from jaxtyping import Float
+from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
 from testbed.data.utils import get_data
@@ -221,7 +223,14 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 
 
 def run_model_on_dataset(
-    model_name: str, dataset_name: str, metrics: List[Metric], seed: int
+    X_train: Float[ndarray, "train_size", "n_features"],
+    X_test: Float[ndarray, "test_size", "n_features"],
+    y_train: Float[ndarray, "train_size, 1"],
+    y_test: Float[ndarray, "test_size, 1"],
+    model_name: str,
+    dataset_name: str,
+    metrics: List[Metric],
+    seed: int,
 ) -> Dict[str, float]:
     """
     Run a model on a dataset and compute the metrics specified.
@@ -236,12 +245,6 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model = MODEL_TO_CLASS[model_name]()
-    data = get_data(dataset_name, verbose=True)
-
-    X_train, X_test, y_train, y_test = train_test_split(
-        data["x"], data["y"], test_size=0.2, random_state=seed
-    )
-
     model.fit(X_train, y_train)
 
     results = {}
@@ -273,7 +276,20 @@ def main() -> None:
 
     for model_name in args.models:
         for dataset_name in args.datasets:
-            results = run_model_on_dataset(model_name, dataset_name, args.metrics, args.seed)
+            data = get_data(dataset_name, verbose=True)
+            X_train, X_test, y_train, y_test = train_test_split(
+                data["x"], data["y"], test_size=0.2, random_state=args.seed
+            )
+
+            results = run_model_on_dataset(
+                X_train=X_train,
+                X_test=X_test,
+                y_train=y_train,
+                y_test=y_test,
+                model_name=model_name,
+                metrics=args.metrics,
+                seed=args.seed,
+            )
             results["model"] = model_name
             results["dataset"] = dataset_name
             full_results.append(results)
