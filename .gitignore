@@ -80,3 +80,12 @@ docs/_build
 
 # Debug files
 **/debug.*
+
+# Latex
+*.aux
+*.bbl
+*.blg
+*.log
+*.out
+*.dvi
+*.gz
