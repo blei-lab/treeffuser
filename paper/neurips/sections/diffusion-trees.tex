@@ -1,0 +1,15 @@
+\section{Treeffuser/Treeffusion Models}
+\label{sec:treefusser}
+For $\bs{x} \in \mathbb{R}^d$, $\bs{y} \in \mathbb{R}^m$ the objective of probabilistic
+predictions is to produce an estimate of the full  conditional distribution $\Prob[\bs{y}|\bs{x}]$.
+This objective is different than in standard regression where the goal
+is usually to predict $\EE[\bs{y}|\bs{x}]$.
+
+The most common approach to solve this problem is via parametric models.
+This procedure assumes that the distribution $\Prob[\bs{y}| \bs{x}]$
+can be well approximated by a parametric family of distributions
+\[ \Prob[\bs{y}| \bs{x}] = p[\bs{y}| \theta{(\bs{x})}], \]
+where $p$ is a well known distribution (e.g Gaussian) and $\theta(\bs{x})$ is a function
+that maps $\bs{x}$ to the parameters of the distribution $p$ (e.g. the mean and covariance of a Gaussian).
+Optimization is then performed by finding the function $\theta(\bs{x})$ that minimizes
+a proper-scoring rule such as the negative log-likelihood.
