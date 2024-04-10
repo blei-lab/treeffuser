@@ -21,6 +21,7 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
+from treeffuser._tree import _compute_score_divergence_numerical
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
@@ -97,8 +98,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
             self._sde = initialize_sde(self.sde_name, y)
         else:
             sde_cls = get_sde(self.sde_name)
-            if self._sde_manual_hyperparams:
-                self._sde = sde_cls(**self._sde_manual_hyperparams)
+            if self.sde_manual_hyperparams:
+                self._sde = sde_cls(**self.sde_manual_hyperparams)
             else:
                 self._sde = sde_cls()
 
@@ -447,8 +448,7 @@ class LightGBMTreeffuser(Treeffuser):
         x_dim = X.shape[1]
         y_dim = self._y_dim
 
-        if self.transform_data:
-            X_new = self._x_preprocessor.transform(X)
+        X_new = self._x_preprocessor.transform(X) if self.transform_data else X
 
         samples = []
         for x_new in tqdm(X_new):  # tuttapposto
@@ -491,10 +491,150 @@ class LightGBMTreeffuser(Treeffuser):
         n_steps: int = 100,
         verbose: bool = False,
     ):
-        raise NotImplementedError
+        """
+        Compute the log likelihood using the instantaneous change of variable formula.
+
+        It first solves the forward probability flow ODE and uses its solution to solve the ODE resulting from the instantaneous change of variable formula.
+
+        It assumes that the drift is linear in y and the diffusion coefficient doesn't depend on y.
+
+        Write down formula.
+        ------
+        References:
+            Song, Y., et al. Score-based generative modeling through stochastic differential equations. ICLR (2021).
+
+        ------
+        TO DO:
+        - create a divergence score function:
+          - get dict representation of score
+          - for each leaf that has y as a feature:
+            - set the intercept equal to the sum of all the coefficients that refer to y
+            - set all the coefficients to 0, or set leaf_features = [0] and leaf_coeff = [0]
+          - initialize a LightGBM model from the modified dict
+        - update documentation to add formula of divergence. should this go to the public method?
+        """
+        if self.linear_tree is False:
+            raise ValueError(
+                "Cannot compute ode-based negative log likelihood when `linear_tree` is set to False."
+            )
+
+        y_dim = y.shape[1]
+        x_dim = X.shape[1]
+
+        # score_dict = self._dump_model()
+
+        nll = 0
+        ite = -1
+        for y0, x in zip(y, X):  # tuttapposto
+            y0 = y0.reshape(1, y_dim)
+            x = x.reshape(1, x_dim)
+
+            # transform data
+            y0_new = (
+                self._y_preprocessor.transform(y0.reshape(1, y_dim))
+                if self.transform_data
+                else y0
+            )
+            x_new = (
+                self._x_preprocessor.transform(x.reshape(1, x_dim))
+                if self.transform_data
+                else x
+            )
+
+            ite += 1
+            print(f"{'#' * 20}")
+            print(f"{ite} of {len(y)}")
+            print(f"y0={y0}")
+            print(f"x={x}")
+
+            # define score helper functions for transformed data
+            def _score_fn(y, x, t):
+                score = self._score_model.score(
+                    y.reshape(1, y_dim), x.reshape(1, x_dim), t=np.array(t).reshape(-1, 1)
+                )
+                return score.reshape(-1)
+
+            # diffuse the transformed data via the probability flow
+            def _probability_flow(y, t, x=x_new):
+                drift, diffusion = self._sde.drift_and_diffusion(y, t)
+                return drift - 0.5 * diffusion**2 * _score_fn(y=y, x=x, t=t)
+
+            n_steps = 10**3
+            ts = np.arange(0.01, self._sde.T, 1 / n_steps)
+            if True:
+                y_new = [y0_new]
+                for t in ts:
+                    y_next = y_new[-1] + _probability_flow(y_new[-1], t) / n_steps
+                    y_new.append(y_next)
+                y_new = np.array(y_new).reshape(-1)
+                y_new = y_new[1:]
+            else:
+                y_new = odeint(func=_probability_flow, y0=y0_new.reshape(-1), t=ts).reshape(
+                    -1
+                )[1:]
+
+            # compute divergences w.r.t. transformed data
+            drift_div_ts = np.array(
+                [
+                    self._sde._get_drift_and_diffusion_divergence(
+                        y.reshape(1, y_dim), t.reshape(1, 1)
+                    )[0]
+                    for y, t in zip(y_new, ts)
+                ]  # y_ts[0] is y(T)
+            ).reshape(-1)
+
+            diffusion_coeff_ts = np.array(
+                [
+                    self._sde.drift_and_diffusion(y.reshape(1, y_dim), t.reshape(1, 1))[1]
+                    for y, t in zip(y_new, ts)
+                ]
+            ).reshape(-1)
+
+            score_div_ts = np.array(
+                [
+                    # _compute_score_divergence(score_dict, self.learning_rate, y, x, t)
+                    _compute_score_divergence_numerical(
+                        _score_fn, y.reshape(1, y_dim), x_new, t.reshape(1, 1)
+                    )
+                    for y, t in zip(y_new, ts)
+                ]
+            ).reshape(-1)
+
+            # compute likelihood of transformed data via the instantaneous change of variable formula
+            if self.sde_name.lower == "vesde":
+                log_p_T = self._sde.get_likelihood_theoretical_prior(
+                    y_new[-1].reshape(y_dim),  # y0_new.reshape(y_dim)
+                )
+            else:
+                log_p_T = self._sde.get_likelihood_theoretical_prior(y_new[-1].reshape(y_dim))
+
+            log_p_0 = (
+                log_p_T
+                + (drift_div_ts - 0.5 * diffusion_coeff_ts**2 * score_div_ts).sum() / n_steps
+            )
+
+            if self.transform_data:
+                log_p_0 = log_p_0 + np.log(
+                    self._y_preprocessor._scaler.scale_
+                )  # rescale log likelihood
+
+            print(f"log_p_0_ode={-log_p_0}")
+            print(
+                f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=100)}"
+            )
+            # nll -=
+        return nll
 
     def _dump_model(self):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
         return self._score_model.models[0]._Booster.dump_model()["tree_info"]  # multiple dims?
+
+
+# TO DO:
+# check probability flow ode [done]
+# check instantaneous change of variable formula
+# - account for transformed data
+# - check when transform_data=False
+# - check the math
