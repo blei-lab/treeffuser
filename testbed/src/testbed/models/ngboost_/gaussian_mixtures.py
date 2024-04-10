@@ -33,13 +33,11 @@ def _mixture_logpdf(
     Float[ndarray, "batch"]
         Log-probability density function of the Gaussian mixture model.
     """
-    scales: Float[ndarray, "batch k"] = jnp.exp(log_scales)
+    scales = jnp.exp(log_scales)
     normalized_logits: Float[ndarray, "batch k"] = logit_weights - jax.nn.logsumexp(
         logit_weights, axis=-1, keepdims=True
     )
-    logprobs_per_component: Float[ndarray, "batch k"] = jax.scipy.stats.norm.logpdf(
-        Y, mus, scales
-    )
+    logprobs_per_component = jax.scipy.stats.norm.logpdf(Y, mus, scales)
     logprobs_per_component += normalized_logits
     log_probs: Float[ndarray, "batch"] = jax.nn.logsumexp(logprobs_per_component, axis=-1)
     return log_probs
