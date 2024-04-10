@@ -6,8 +6,8 @@ Adapted from: https://tinyurl.com/uncertainty-toolbox-accuracy
 from typing import Dict
 
 import numpy as np
-from numpy import ndarray
 from jaxtyping import Float
+from numpy import ndarray
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import median_absolute_error

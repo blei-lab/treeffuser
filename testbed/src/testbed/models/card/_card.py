@@ -8,7 +8,6 @@ https://lightning-uq-box.readthedocs.io/en/latest/tutorials/regression/card.html
 import tempfile
 from functools import partial
 from typing import List
-from typing import Optional
 
 import numpy as np
 import torch

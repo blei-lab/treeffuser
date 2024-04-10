@@ -3,6 +3,7 @@ from typing import Dict
 
 from jaxtyping import Float
 from numpy import ndarray
+
 from testbed.models.base_model import ProbabilisticModel
 
 

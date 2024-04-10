@@ -10,8 +10,8 @@ from typing import List
 from typing import Optional
 
 import numpy as np
-from numpy import ndarray
 from jaxtyping import Float
+from numpy import ndarray
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel

@@ -1,10 +1,10 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-from numpy import ndarray
 from jaxtyping import Float
 from ngboost.distns import RegressionDistn
 from ngboost.scores import LogScore
+from numpy import ndarray
 from sklearn.mixture import GaussianMixture as skGaussianMixture
 
 
