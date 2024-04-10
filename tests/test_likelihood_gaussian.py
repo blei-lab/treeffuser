@@ -14,6 +14,11 @@ def _generate_data(n, std_x=1):
     return y, X
 
 
+def _compute_gaussian_likelihood(x, loc, scale, log=True):
+    out = -0.5 * np.log(2 * np.pi * scale**2) - 0.5 * ((x - loc) / scale) ** 2
+    return out.sum() if log else np.exp(out.sum())
+
+
 # def _score_fn(y, x, t, sde, std_x=1):
 #     mu_x = x
 #     mu_t, std_t = sde.get_mean_std_pt_given_y0(y, t)
@@ -27,7 +32,7 @@ def _generate_data(n, std_x=1):
 
 def test_ode_based_nll():
     n = 10**3
-    y_dim = 1
+    # y_dim = 1
 
     std_x = 1
     y, X = _generate_data(n, std_x=1)
@@ -101,17 +106,32 @@ def compute_nll_from_ode_gaussian(
             drift, diffusion = self._sde.drift_and_diffusion(y, t)
             return drift - 0.5 * diffusion**2 * _score_fn(y=y, x=x, t=t)
 
+        def _diffuse_via_probability_flow(y0, x, t, self, std_x):
+            mu_x = x
+            mu_t = 1
+            yt = [y0]
+            for s in t:
+                _, std_t = self._sde.get_mean_std_pt_given_y0(y0, s)
+                y = (y0 - mu_t * mu_x) * np.sqrt(
+                    (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
+                ) + mu_t * mu_x
+                yt.append(y)
+                if np.isnan(y):
+                    print("Ahoooo!")
+            return np.array(yt)
+
         n_steps = 10**3
         ts = np.arange(0.01, self._sde.T, 1 / n_steps)
-        if True:
-            y_new = [y0_new]
-            for t in ts:
-                y_next = y_new[-1] + _probability_flow(y_new[-1], t) / n_steps
-                y_new.append(y_next)
-            y_new = np.array(y_new).reshape(-1)
-            y_new = y_new[1:]
-        else:
-            y_new = odeint(func=_probability_flow, y0=y0_new.reshape(-1), t=ts).reshape(-1)[1:]
+        y_new = _diffuse_via_probability_flow(y0_new, x_new, ts, self, std_x)
+        # if True:
+        #     y_new = [y0_new]
+        #     for t in ts:
+        #         y_next = y_new[-1] + _probability_flow(y_new[-1], t) / n_steps
+        #         y_new.append(y_next)
+        #     y_new = np.array(y_new).reshape(-1)
+        #     y_new = y_new[1:]
+        # else:
+        #     y_new = odeint(func=_probability_flow, y0=y0_new.reshape(-1), t=ts).reshape(-1)[1:]
 
         # compute divergences w.r.t. transformed data
         drift_div_ts = np.array(
@@ -143,8 +163,16 @@ def compute_nll_from_ode_gaussian(
 
         # compute likelihood of transformed data via the instantaneous change of variable formula
         if self.sde_name.lower == "vesde":
-            log_p_T = self._sde.get_likelihood_theoretical_prior(
-                y_new[-1].reshape(y_dim),  # y0_new.reshape(y_dim)
+            # log_p_T = self._sde.get_likelihood_theoretical_prior(
+            #     y_new[-1].reshape(y_dim),  # y0_new.reshape(y_dim)
+            # )
+            hyperparam_max = self._sde.get_hyperparams()["hyperparam_max"]
+            log_p_T = _compute_gaussian_likelihood(
+                y_new[-1].reshape(y_dim),
+                loc=y0_new.reshape(y_dim),
+                # scale=hyperparam_max,
+                scale=np.sqrt(hyperparam_max**2 + std_x**2),
+                log=True,
             )
         else:
             log_p_T = self._sde.get_likelihood_theoretical_prior(y_new[-1].reshape(y_dim))
@@ -161,8 +189,12 @@ def compute_nll_from_ode_gaussian(
 
         print(f"log_p_0_ode={-log_p_0}")
         print(
-            f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=100)}"
+            f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=1000)}"
         )
+        print(
+            f"log_p_0_theory_VESDE: {-_compute_gaussian_likelihood(y0_new, loc=x_new, scale=std_x, log=True)}"
+        )
+        input()
 
 
 test_ode_based_nll()

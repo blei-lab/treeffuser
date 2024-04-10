@@ -172,7 +172,7 @@ class VESDE(DiffusionSDE):
             raise ValueError("`y` must be a one-dimensional numpy ndarray.")
         y_dim = len(y)
         log_density = (
-            -(y**2 - y0).sum() / (2 * self.hyperparam_max**2)
+            -((y - y0) ** 2).sum() / (2 * self.hyperparam_max**2)
             - np.log(2 * np.pi * self.hyperparam_max**2) * y_dim / 2
         )
         return log_density if log else np.exp(log_density)
