@@ -1,7 +1,7 @@
 from typing import Dict
 
-from jaxtyping import Array
 from jaxtyping import Float
+from numpy import ndarray
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
@@ -15,8 +15,8 @@ class LogLikelihoodMetric(Metric):
     def compute(
         self,
         model: ProbabilisticModel,
-        X_test: Float[Array, "batch n_features"],
-        y_test: Float[Array, "batch y_dim"],
+        X_test: Float[ndarray, "batch n_features"],
+        y_test: Float[ndarray, "batch y_dim"],
     ) -> Dict[str, float]:
         """
         Compute the log likelihood of the predictive distribution.

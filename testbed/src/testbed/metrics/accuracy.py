@@ -6,7 +6,7 @@ Adapted from: https://tinyurl.com/uncertainty-toolbox-accuracy
 from typing import Dict
 
 import numpy as np
-from jaxtyping import Array
+from numpy import ndarray
 from jaxtyping import Float
 from sklearn.metrics import mean_absolute_error
 from sklearn.metrics import mean_squared_error
@@ -25,8 +25,8 @@ class AccuracyMetric(Metric):
     def compute(
         self,
         model: ProbabilisticModel,
-        X_test: Float[Array, "batch n_features"],
-        y_test: Float[Array, "batch y_dim"],
+        X_test: Float[ndarray, "batch n_features"],
+        y_test: Float[ndarray, "batch y_dim"],
     ) -> Dict[str, float]:
         """
         Computes prediction error metrics.
