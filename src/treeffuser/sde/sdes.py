@@ -165,13 +165,15 @@ class VESDE(DiffusionSDE):
         rng = np.random.default_rng(seed)
         return rng.normal(0, self.hyperparam_max, shape)
 
-    def get_likelihood_theoretical_prior(self, y: Float[ndarray, "y_dim"], log=True):
+    def get_likelihood_theoretical_prior(
+        self, y: Float[ndarray, "y_dim"], y0: Float[ndarray, "y_dim"] = 0, log=True
+    ):
         if len(y.shape) > 1:
             raise ValueError("`y` must be a one-dimensional numpy ndarray.")
         y_dim = len(y)
         log_density = (
-            -(y**2).sum() / (2 * self.sigma_max)
-            - np.log(2 * np.pi * self.sigma_max**2) * y_dim / 2
+            -(y**2 - y0).sum() / (2 * self.hyperparam_max**2)
+            - np.log(2 * np.pi * self.hyperparam_max**2) * y_dim / 2
         )
         return log_density if log else np.exp(log_density)
 
@@ -238,7 +240,7 @@ class VPSDE(DiffusionSDE):
         Return divergence of the drift and diffusion coefficients w.r.t. y.
         """
         y_dim = y.shape[1]
-        beta_t = self.beta_schedule(t)
+        beta_t = self.hyperparam_schedule(t)
         return y_dim * -0.5 * beta_t, 0
 
     def sample_from_theoretical_prior(
@@ -320,7 +322,7 @@ class SubVPSDE(DiffusionSDE):
         Return divergence of the drift and diffusion coefficients w.r.t. y.
         """
         y_dim = y.shape[1]
-        beta_t = self.beta_schedule(t)
+        beta_t = self.hyperparam_schedule(t)
         return y_dim * -0.5 * beta_t, 0
 
     def sample_from_theoretical_prior(
