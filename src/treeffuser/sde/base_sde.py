@@ -132,8 +132,8 @@ def _register_sde(name: str):
     Examples:
         >>> @_register_sde(name="my_sde")
         ... class MySDE(BaseSDE):
-        ...     pass
-        ...
+        ...     def drift_and_diffusion(self, y, t):
+        ...         ...
         >>> sde_cls = get_sde("my_sde")
         >>> sde_instance = sde_cls()
 
