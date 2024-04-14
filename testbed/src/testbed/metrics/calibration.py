@@ -10,8 +10,8 @@ from typing import List
 from typing import Optional
 
 import numpy as np
-from jaxtyping import Array
 from jaxtyping import Float
+from numpy import ndarray
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
@@ -29,8 +29,8 @@ class SharpnessFromSamplesMetric(Metric):
     def compute(
         self,
         model: ProbabilisticModel,
-        X_test: Float[Array, "batch n_features"],
-        y_test: Float[Array, "batch y_dim"],
+        X_test: Float[ndarray, "batch n_features"],
+        y_test: Float[ndarray, "batch y_dim"],
     ) -> Dict[str, float]:
         """
         Compute the empirical sharpness of the predictive distribution (i.e. the average standard deviation).
@@ -66,8 +66,8 @@ class QuantileCalibrationErrorMetric(Metric):
     def compute(
         self,
         model: ProbabilisticModel,
-        X_test: Float[Array, "batch n_features"],
-        y_test: Float[Array, "batch y_dim"],
+        X_test: Float[ndarray, "batch n_features"],
+        y_test: Float[ndarray, "batch y_dim"],
     ) -> Dict[str, float]:
         """
         Compute quantile calibration metrics based on samples from the predictive distribution.
@@ -94,8 +94,8 @@ class QuantileCalibrationErrorMetric(Metric):
 
 
 def _compute_quantile_calibration_error(
-    y_preds: Float[Array, "n_samples batch"],
-    y_true: Float[Array, "batch"],
+    y_preds: Float[ndarray, "n_samples batch"],
+    y_true: Float[ndarray, "batch"],
 ) -> Dict[str, float]:
     """
     Compute quantile calibration metrics based on samples from the predictive distribution.
@@ -106,7 +106,7 @@ def _compute_quantile_calibration_error(
     Parameters
     ----------
     y_preds : ndarray of shape (n_samples, batch)
-        Array of `n_samples` of `y` from the predictive distribution, for a batch of data.
+        ndarray of `n_samples` of `y` from the predictive distribution, for a batch of data.
     y_true : ndarray of shape (batch,)
         True `y` values for the batch of data.
 
@@ -135,8 +135,8 @@ def _compute_quantile_calibration_error(
 
 
 def compute_adversarial_group_calibration_error(
-    y_preds: Float[Array, "n_samples batch"],
-    y_true: Float[Array, "batch"],
+    y_preds: Float[ndarray, "n_samples batch"],
+    y_true: Float[ndarray, "batch"],
     group_size_ratios: Optional[List[float]] = None,
     n_group_draws=100,
     n_full_repeats=10,
@@ -196,7 +196,7 @@ def compute_adversarial_group_calibration_error(
     return calibration_results
 
 
-def _fix_shape(data: Array, target_shape: tuple[int, ...]):
+def _fix_shape(data: ndarray, target_shape: tuple[int, ...]):
     if data.shape == target_shape:
         return data
 

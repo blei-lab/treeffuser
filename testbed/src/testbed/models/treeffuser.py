@@ -1,5 +1,5 @@
-from jaxtyping import Array
 from jaxtyping import Float
+from numpy import ndarray
 
 from treeffuser.treeffuser import LightGBMTreeffuser
 
@@ -24,17 +24,17 @@ class Treeffuser(ProbabilisticModel):
 
     def fit(
         self,
-        X: Float[Array, "batch x_dim"],
-        y: Float[Array, "batch y_dim"],
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
     ) -> "ProbabilisticModel":
         self.model.fit(X, y)
         return self
 
-    def predict(self, X: Float[Array, "batch x_dim"]) -> Float[Array, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         y_samples = self.sample(X, n_samples=50)
         return y_samples.mean(axis=0)
 
     def sample(
-        self, X: Float[Array, "batch x_dim"], n_samples=10
-    ) -> Float[Array, "n_samples batch y_dim"]:
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self.model.sample(X, n_samples, n_parallel=5, n_steps=50)

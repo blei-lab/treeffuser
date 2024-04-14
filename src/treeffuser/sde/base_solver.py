@@ -133,7 +133,8 @@ def _register_solver(name):
     Examples:
         >>> @_register_solver(name="my_solver")
         ... class MySolver(BaseSDESolver):
-        ...     pass
+        ...     def step(self, y0, t0, t1):
+        ...         ...
         ...
         >>> solver_cls = get_solver("my_solver")
         >>> solver_instance = solver_cls()

@@ -14,7 +14,7 @@ class Distribution(ABC):
     """
 
     @abstractmethod
-    def sample(n_samples: int) -> Float[ndarray, "n_samples batch y_dim"]:
+    def sample(self, n_samples: int) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """

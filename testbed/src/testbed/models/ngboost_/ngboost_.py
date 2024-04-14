@@ -18,6 +18,7 @@ class NGBoostGaussian(ProbabilisticModel):
         super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
+        self.model = None
 
     def fit(
         self,
@@ -67,6 +68,7 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         self.learning_rate = learning_rate
         self.k = k
         self._dist = build_gaussian_mixture_model(k)
+        self.model = None
 
     def fit(
         self,
