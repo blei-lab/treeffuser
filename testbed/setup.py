@@ -66,6 +66,9 @@ setup(
         "lightgbm",
         "tqdm",
         "ml-collections",
+        "namesgenerator",
+        "torch",
+        "lightning",
     ],
     extras_require={
         # eg:

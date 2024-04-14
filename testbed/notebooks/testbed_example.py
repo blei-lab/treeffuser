@@ -19,7 +19,7 @@ from testbed.data.utils import list_data
 from sklearn.model_selection import train_test_split
 
 # %%
-from testbed.models.ngboost_.ngboost_ import NGBoostGaussian, NGBoostMixtureGaussian
+from testbed.models.ngboost import NGBoostGaussian, NGBoostMixtureGaussian
 
 from testbed.models.treeffuser import Treeffuser  # (causes segmentation fault ????)
 from testbed.metrics.accuracy import AccuracyMetric
