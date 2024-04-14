@@ -7,7 +7,6 @@ https://lightning-uq-box.readthedocs.io/en/latest/tutorials/regression/card.html
 
 import tempfile
 from functools import partial
-from typing import List
 
 import numpy as np
 import torch
@@ -21,6 +20,8 @@ from lightning_uq_box.models import ConditionalGuidedLinearModel
 from lightning_uq_box.uq_methods import CARDRegression
 from lightning_uq_box.uq_methods import DeterministicRegression
 from numpy import ndarray
+from skopt.space import Integer
+from skopt.space import Real
 from torch.optim import Adam
 from tqdm import tqdm
 
@@ -36,8 +37,9 @@ class Card(ProbabilisticModel):
 
     def __init__(
         self,
-        layers: List[int] = [50, 50, 50],  # noqa
-        max_epochs: int = 1000,
+        n_layers: int = 3,
+        hidden_size: int = 50,
+        max_epochs: int = 10000,
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
@@ -59,8 +61,8 @@ class Card(ProbabilisticModel):
         See https://arxiv.org/abs/2206.07275 for more details.
 
         Args:
-            layers: A list of integers specifying the number of hidden units in each layer of the
-                conditional model.
+            n_layers: The number of hidden layers to use in the conditional model.
+            hidden_size: The size of the hidden layers to use in the conditional model.
             max_epochs: The maximum number of epochs to train the model. This is used
                 for training both the conditional and diffusion models.
             dropout: The dropout rate to use when training the models.
@@ -85,7 +87,7 @@ class Card(ProbabilisticModel):
         self._y_dim = None
         self._x_dim = None
 
-        self._layers = layers
+        self._layers = [hidden_size] * n_layers
         self._dropout = dropout
         self._learning_rate = learning_rate
         self._n_steps = n_steps
@@ -289,5 +291,12 @@ class Card(ProbabilisticModel):
     ) -> Float[ndarray, "batch"]:
         raise NotImplementedError
 
-    def predict_distribution(self, X: ndarray) -> ndarray:
-        raise NotImplementedError
+    @classmethod
+    def search_space(self) -> dict:
+
+        return {
+            "n_layers": Integer(1, 7),
+            "hidden_size": Integer(10, 500),
+            "dropout": Real(0.0, 0.5),
+            "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
+        }

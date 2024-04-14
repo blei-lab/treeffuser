@@ -1,5 +1,7 @@
 from jaxtyping import Float
 from numpy import ndarray
+from skopt.space import Integer
+from skopt.space import Real
 
 from treeffuser.treeffuser import LightGBMTreeffuser
 
@@ -11,15 +13,23 @@ class Treeffuser(ProbabilisticModel):
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """
 
-    def __init__(self, n_estimators: int = 1000):
+    def __init__(
+        self,
+        n_estimators: int = 10000,
+        n_repeats: int = 30,
+        learning_rate: float = 0.01,
+        early_stopping_rounds: int = 50,
+        num_leaves: int = 31,
+    ):
         super().__init__()
         self.n_estimators = n_estimators
         self.model = LightGBMTreeffuser(
             n_estimators=n_estimators,
-            n_repeats=30,
+            n_repeats=n_repeats,
             sde_name="vesde",
-            learning_rate=0.01,
-            early_stopping_rounds=50,
+            learning_rate=learning_rate,
+            early_stopping_rounds=early_stopping_rounds,
+            num_leaves=num_leaves,
         )
 
     def fit(
@@ -38,3 +48,12 @@ class Treeffuser(ProbabilisticModel):
         self, X: Float[ndarray, "batch x_dim"], n_samples=10
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self.model.sample(X, n_samples, n_parallel=5, n_steps=50)
+
+    @classmethod
+    def search_space() -> dict:
+        return {
+            "n_repeats": Integer(1, 100),
+            "learning_rate": Real(0.01, 1),
+            "early_stopping_rounds": Integer(1, 1000),
+            "num_leaves": Integer(2, 1000),
+        }
