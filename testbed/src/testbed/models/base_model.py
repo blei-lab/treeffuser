@@ -7,8 +7,6 @@ from numpy import ndarray
 from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
 
-from testbed.metrics.log_likelihood import LogLikelihoodFromSamplesMetric
-
 
 class ProbabilisticModel(ABC, BaseEstimator):
     """
@@ -43,8 +41,8 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Sample from the probability distribution for each input.
         """
 
+    @classmethod
     @abstractmethod
-    @property
     def search_space(self) -> dict:
         """
         Return the search space for parameters of the model.
@@ -64,7 +62,8 @@ class ProbabilisticModel(ABC, BaseEstimator):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        n_samples: int,
+        n_samples: int = 100,
+        bw: float = 1.0,
     ) -> float:
         """
         Return the negative log-likelihood of the model on the data.
@@ -73,8 +72,12 @@ class ProbabilisticModel(ABC, BaseEstimator):
 
         n_samples: The number of samples to draw from the model's predictive
             distribution to compute an estimate of the log likelihood.
+        bw: The bandwidth of the kernel density estimator used to fit the samples.
         """
-        metric = LogLikelihoodFromSamplesMetric(n_samples=n_samples)
+        # Avoid circular import
+        import testbed.metrics.log_likelihood as log_likelihood
+
+        metric = log_likelihood.LogLikelihoodFromSamplesMetric(n_samples=n_samples)
         return -1.0 * metric.compute(self, X, y)["nll"]
 
 
@@ -112,7 +115,7 @@ class CachedProbabilisticModel(ProbabilisticModel):
         self._cache = {}
 
 
-class BayesSearchProbabilisticModel(ProbabilisticModel):
+class BayesOptProbabilisticModel(ProbabilisticModel):
     """
     A probabilistic model that uses Bayesian optimization to find the best hyperparameters.
     It is a wrapper around a probabilistic model that uses the skopt library.
@@ -134,7 +137,7 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
         super().__init__()
         self._model_class = model_class
         self._model = None
-        self._search_space = None
+        self._model_search_space = None
         self._n_iter = n_iter
         self._cv = cv
         self._n_jobs = n_jobs
@@ -145,11 +148,11 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
         y: Float[ndarray, "batch y_dim"],
     ) -> ProbabilisticModel:
         model = self._model_class()
-        self._search_space = self._model_class.search_space
+        self._model_search_space = self._model_class.search_space()
 
         opt = BayesSearchCV(
             estimator=model,
-            search_spaces=self._search_space,
+            search_spaces=self._model_search_space,
             n_iter=self._n_iter,
             cv=self._cv,
             n_jobs=self._n_jobs,
@@ -169,3 +172,10 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
         self, X: Float[ndarray, "batch x_dim"], n_samples=10
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self._model.sample(X, n_samples)
+
+    @classmethod
+    def search_space() -> dict:
+        """
+        This has no hyperparameters to optimize.
+        """
+        return {}

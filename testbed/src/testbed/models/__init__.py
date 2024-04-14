@@ -1,6 +1,12 @@
 """
 No explicit loading for now, to avoid errors if not all models are available.
+Only load wrappers and base class for type hinting.
 """
+
+from testbed.models.base_model import BayesOptProbabilisticModel
+from testbed.models.base_model import ProbabilisticModel
+
+__all__ = ["ProbabilisticModel", "BayesOptProbabilisticModel"]
 
 # import warnings
 #
