@@ -8,7 +8,6 @@ https://lightning-uq-box.readthedocs.io/en/latest/tutorials/regression/card.html
 import tempfile
 from functools import partial
 from typing import List
-from typing import Optional
 
 import numpy as np
 import torch
@@ -110,20 +109,18 @@ class Card(ProbabilisticModel):
         self,
         X: Float[t.Tensor, "batch x_dim"],
         y: Float[t.Tensor, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
     ) -> None:
 
         self._y_dim = y.shape[1]
         self._x_dim = X.shape[1]
 
-        self._fit_conditional_model(X, y, cat_idx)
-        self._fit_diffusion_model(X, y, cat_idx)
+        self._fit_conditional_model(X, y)
+        self._fit_diffusion_model(X, y)
 
     def _fit_conditional_model(
         self,
         X: Float[t.Tensor, "batch x_dim"],
         y: Float[t.Tensor, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
     ) -> None:
         """
         Fits the conditional mean model that is used later
@@ -165,7 +162,6 @@ class Card(ProbabilisticModel):
         self,
         X: Float[t.Tensor, "batch x_dim"],
         y: Float[t.Tensor, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
     ) -> None:
         """
         Fits the diffusion model that is used to generate samples in CARD.

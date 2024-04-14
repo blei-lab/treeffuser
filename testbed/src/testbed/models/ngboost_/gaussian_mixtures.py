@@ -1,47 +1,45 @@
 import jax
 import jax.numpy as jnp
 import numpy as np
-from jaxtyping import Array
 from jaxtyping import Float
 from ngboost.distns import RegressionDistn
 from ngboost.scores import LogScore
+from numpy import ndarray
 from sklearn.mixture import GaussianMixture as skGaussianMixture
 
 
 @jax.jit
 def _mixture_logpdf(
-    Y: Float[Array, "batch 1"],
-    mus: Float[Array, "batch k"],
-    log_scales: Float[Array, "batch k"],
-    logit_weights: Float[Array, "k"],
-) -> Float[Array, "batch"]:
+    Y: Float[ndarray, "batch 1"],
+    mus: Float[ndarray, "batch k"],
+    log_scales: Float[ndarray, "batch k"],
+    logit_weights: Float[ndarray, "k"],
+) -> Float[ndarray, "batch"]:
     """Log-probability density function of a Gaussian mixture model.
 
     Parameters
     ----------
-    Y : Float[Array, "batch 1"]
+    Y : Float[ndarray, "batch 1"]
         Data points.
-    mus : Float[Array, "batch k"]
+    mus : Float[ndarray, "batch k"]
         Means of the Gaussian components.
-    log_scales : Float[Array, "batch k"]
+    log_scales : Float[ndarray, "batch k"]
         Logarithm of the standard deviations of the Gaussian components. Need to be exponentiated.
-    logit_weights : Float[Array, "k"]
+    logit_weights : Float[ndarray, "k"]
         Logit of the weights of the Gaussian components. Need to be softmaxed.
 
     Returns
     -------
-    Float[Array, "batch"]
+    Float[ndarray, "batch"]
         Log-probability density function of the Gaussian mixture model.
     """
-    scales: Float[Array, "batch k"] = jnp.exp(log_scales)
-    normalized_logits: Float[Array, "batch k"] = logit_weights - jax.nn.logsumexp(
+    scales = jnp.exp(log_scales)
+    normalized_logits: Float[ndarray, "batch k"] = logit_weights - jax.nn.logsumexp(
         logit_weights, axis=-1, keepdims=True
     )
-    logprobs_per_component: Float[Array, "batch k"] = jax.scipy.stats.norm.logpdf(
-        Y, mus, scales
-    )
+    logprobs_per_component = jax.scipy.stats.norm.logpdf(Y, mus, scales)
     logprobs_per_component += normalized_logits
-    log_probs: Float[Array, "batch"] = jax.nn.logsumexp(logprobs_per_component, axis=-1)
+    log_probs: Float[ndarray, "batch"] = jax.nn.logsumexp(logprobs_per_component, axis=-1)
     return log_probs
 
 
@@ -57,24 +55,24 @@ _mixture_logpdf_grad_logit_weights = jax.jit(
 
 
 def _sample_mixture(
-    mus: Float[Array, "batch k"],
-    scales: Float[Array, "batch k"],
-    weights: Float[Array, "batch k"],
-) -> Float[Array, "batch"]:
+    mus: Float[ndarray, "batch k"],
+    scales: Float[ndarray, "batch k"],
+    weights: Float[ndarray, "batch k"],
+) -> Float[ndarray, "batch"]:
     """Sample from a Gaussian mixture model.
 
     Parameters
     ----------
-    mus : Float[Array, "batch k"]
+    mus : Float[ndarray, "batch k"]
         Means of the Gaussian components.
-    scales : Float[Array, "batch k"]
+    scales : Float[ndarray, "batch k"]
         Standard deviations of the Gaussian components.
-    weights : Float[Array, "batch k"]
+    weights : Float[ndarray, "batch k"]
         Weights of the Gaussian components.
 
     Returns
     -------
-    Float[Array, "batch"]
+    Float[ndarray, "batch"]
         Samples from the Gaussian mixture model.
     """
     component_rnd = np.random.uniform(size=(len(mus),))

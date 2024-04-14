@@ -289,16 +289,20 @@ class Treeffuser(BaseEstimator, abc.ABC):
         bandwidth: Optional[float] = 1.0,
         verbose: bool = False,
     ) -> float:
-        y_sample = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
 
         def fit_and_evaluate_kde(y_train, y_test):
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_train)
             return kde.score_samples(y_test).item()
 
+        n_samples, batch, y_dim = y_samples.shape
+
         nll = 0
-        for i, y_i in enumerate(y_sample):
-            nll -= fit_and_evaluate_kde(y_i.reshape(-1, 1), y[i, :].reshape(-1, 1))
+        for i in range(batch):
+            y_train_xi = y_samples[:, i, :]
+            y_test_xi = y[i, :]
+            nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi])
 
         return nll
 
