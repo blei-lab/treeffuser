@@ -14,6 +14,7 @@ from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
+from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
 
@@ -151,6 +152,22 @@ def parse_args():
         help=msg,
     )
 
+    msg = "Whether to optimize the hyperparameters of the models."
+    parser.add_argument(
+        "--optimize_hyperparameters",
+        action="store_true",
+        help=msg,
+    )
+
+    msg = "Number of iterations for the Bayesian optimization. To use"
+    msg += " this option, the --optimize_hyperparameters flag must be set."
+    parser.add_argument(
+        "--n_iter",
+        type=int,
+        default=10,
+        help=msg,
+    )
+
     return parser.parse_args()
 
 
@@ -180,6 +197,11 @@ def check_args(args):
             msg = f"Metric {metric_name} is not available."
             msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS)}"
             raise ValueError(msg)
+
+    # check that n_iter is positive
+    if args.n_iter <= 0:
+        msg = "The number of iterations for the Bayesian optimization must be positive."
+        raise ValueError(msg)
 
 
 def format_results(model_name: str, dataset_name: str, results: Dict[str, float]) -> str:
@@ -228,9 +250,9 @@ def run_model_on_dataset(
     y_train: Float[ndarray, "train_size, 1"],
     y_test: Float[ndarray, "test_size, 1"],
     model_name: str,
-    dataset_name: str,
     metrics: List[Metric],
-    seed: int,
+    optimize_hyperparameters: bool,
+    n_iter: int,
 ) -> Dict[str, float]:
     """
     Run a model on a dataset and compute the metrics specified.
@@ -239,11 +261,20 @@ def run_model_on_dataset(
         model_name (str): Name of the model to run.
         dataset_name (str): Name of the dataset to run the model on.
         metrics (List[Metric]): List of metrics to compute.
-        seed (int): Seed for reproducibility.
+        n_iter (int): Number of iterations for the Bayesian optimization.
+            Not used if optimize_hyperparameters is False.
 
     Returns:
         Dict[str, float]: Results of the model on the dataset.
     """
+    model_class = MODEL_TO_CLASS[model_name]
+    if optimize_hyperparameters:
+        model = model_class()
+    else:
+        model = BayesOptProbabilisticModel(
+            model_class=model_class, n_iter=n_iter, cv=3, n_jobs=1
+        )
+
     model = MODEL_TO_CLASS[model_name]()
     model.fit(X_train, y_train)
 
@@ -289,6 +320,7 @@ def main() -> None:
                 model_name=model_name,
                 metrics=args.metrics,
                 seed=args.seed,
+                optimize_hyperparameters=args.optimize_hyperparameters,
             )
             results["model"] = model_name
             results["dataset"] = dataset_name
