@@ -1,0 +1,79 @@
+\section{Treeffuser/Treeffusion Models}
+\label{sec:treefusser}
+For $\bs{x} \in \mathbb{R}^d$, $\bs{y} \in \mathbb{R}^m$ the objective of probabilistic
+predictions is to produce an estimate of the full  conditional distribution $\Prob[\bs{y}|\bs{x}]$.
+This objective is different than in standard regression where the goal
+is usually to predict $\EE[\bs{y}|\bs{x}]$.
+
+The most common approach to solve this problem is via parametric models.
+This procedure assumes that the distribution $\Prob[\bs{y}| \bs{x}]$
+can be well approximated by a parametric family of distributions
+\[ \Prob[\bs{y}| \bs{x}] = p[\bs{y}| \theta{(\bs{x})}], \]
+where $p$ is a well known distribution (e.g Gaussian) and $\theta(\bs{x})$ is a function
+that maps $\bs{x}$ to the parameters of the distribution $p$ (e.g. the mean and covariance of a Gaussian).
+Optimization is then performed by finding the function $\theta(\bs{x})$ that minimizes
+a proper-scoring rule such as the negative log-likelihood.
+
+The advantage of this approach is that, because $p$ is often a simple distribution, it is easy
+to sample from it, compute the log-likelihood, and evaluate its moments.
+However, if the assumption that $p$ is a good approximation to $\Prob[\bs{y}| \bs{x}]$ is not met,
+the model can be poorly calibrated, the predictions can be innacurrate and the
+uncertainty estimates can be unreliable.
+Moreover, it is often hard to know when these assumptions are met, and it often takes significant
+expertise to find an appropiate parametric family of distributions.
+
+Non-parametric models, like diffusions have beecome the state-of-the-art for deep generative models.
+However, they are not as popular for probabilistic predictions and are often not
+considered for this task, specially when the probabilistic predictions are over tabular
+data.
+Coupled with the fact that diffusion models are often computationally expensive to train,
+and coding scratch requires significant expertise, it is not surprising that they have not
+become the standard for probabilistic predictions.
+
+To close this gap we propose a new class of models that we call Treeffuser which adapts diffusion
+models to the task of probabilistic predictions using gradient boosted trees.
+The benefit of this approach are:
+\begin{enumerate}
+    \item Fast training: Gradient boosted trees are fast to train and can be trained on large datasets.
+    Training on CPUs can be done in a matter of seconds.
+    \item Easy to use: Because the model is non-parametric, it is not necessary to tune hyperparameters
+    of the distribution $p$. This means that practioners don't need to have a deep understanding of
+    the distribution $p$ to use the model.
+    \item Large sample convergence guarantees: Due to the non-parametric nature of the model
+    and the score-based formulation of the training, the model is guaranteed to converge to the true
+    distribution as the number of samples goes to infinity.
+    \item Efficient support for probabilistic predictions over multi-dimensional outputs: The model can be used
+    to predict the full conditional distribution $\Prob[\bs{y}| \bs{x}]$ of multi-dimensional outputs in a manner that
+    scales $O(m)$ with the number of dimensions $m$. This is better than the $O(m^2)$ scaling of parametric models.
+    that require the estimation of the covariance matrix.
+    \item Support for feautures important for tabular data: Native support for training with categorical
+    variables, missing values, etc.
+\end{enumerate}
+
+\subsection{Treeffuser Model}
+
+Treeffuser is an algorithm that combines conditional diffusion with gradient boosted trees.
+The model is constructed by approximating the score function  $\nabla_{\bs{y}(t)} \log p(\bs{y}(t)|\bs{x})$
+with $m$ gradient boosted trees $s_i: \mathbb{R}^d \times \mathbb{R}^M \times [0, T] \to \mathbb{R}$ that depend on the input $\bs{x}, t, \bs{y}(t)$.
+\[ \bs{s}(\bs{y}(t), \bs{x}, t) = (s_1(\bs{y}(t), \bs{x}, t), \ldots, s_m(\bs{y}(t), \bs{x}, t)). \]
+
+\paragraph*{Training:}
+Each  gradient boosted tree $s_i$ is trained to minimize the loss function
+\begin{align}
+    L_i(s) = \EE_{t}\EE_{\bs{y}(0), \bs{x}}\EE_{\bs{y}(t)|\bs{y}(0)} \left[ \left(  \frac{\partial \log p(\bs{y}(t)| \bs{x})}{\partial y_i(t) } - s(\bs{y}(t), \bs{x}, t) \right)^2 \right].
+\end{align}
+\blue{Add the term that we divide by}
+using empirical risk minimization.
+Due to \cite{Vincent2010} we know that if the gradient boosted tree adequately minimizes this objective it is guaranteed
+to converge to the true score function.
+Algorithm \ref{alg:treeffuser} describes the training procedure for the Treeffuser model in more detail.
+
+\paragraph*{Sampling:} \blue{Maybe add something about sampling from the model.}
+
+\paragraph*{Log-likelihood:}
+\blue{Describe the computation of the log-likelihood.}
+
+\paragraph*{Other quantities:}
+As sampling from the model is very easy it is also easy to compute other quantities via monte carlo integration and in principle
+it is straightforward to compute any quantity of the form $\EE_{\bs{y} \sim p(\bs{y}|\bs{x})} f(\bs{y})$. This includes the mean, variance, quantiles, but also more
+complicated quantities where a flexible model is needed. We demonstrate this in the experiments using the estimator for causal effects estimation.

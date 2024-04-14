@@ -3,21 +3,28 @@ This should be the main file corresponding to the project.
 """
 
 import abc
+import warnings
+from typing import Literal
 from typing import Optional
+from typing import Union
 
 import numpy as np
 from einops import rearrange
 from jaxtyping import Float
+from ml_collections import ConfigDict
 from ml_collections import FrozenConfigDict
 from numpy import ndarray
 from sklearn.base import BaseEstimator
+from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
+from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
+from treeffuser.sde.initialize import initialize_sde
 
 
 def _check_arguments(
@@ -39,16 +46,20 @@ class Treeffuser(BaseEstimator, abc.ABC):
     different parameters and methods.
     """
 
-    def __init__(self, sde_name: str = "vesde"):
+    def __init__(
+        self,
+        sde_name: str = "vesde",
+        sde_initialize_with_data: Optional[bool] = False,
+        sde_manual_hyperparams: Optional[dict] = None,
+    ):
+        self._sde_name = sde_name
+        self._sde_initialize_with_data = sde_initialize_with_data
+        self._sde_manual_hyperparams = sde_manual_hyperparams
         self._score_model = None
         self._is_fitted = False
         self._x_preprocessor = Preprocessor()
         self._y_preprocessor = Preprocessor()
         self._y_dim = None
-
-        # TODO: We are using the defaults but we should change this
-        self._sde = get_sde(sde_name)()
-        self._sde_name = sde_name
 
     @property
     @abc.abstractmethod
@@ -73,6 +84,18 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Returns an instance of the model for chaining.
         """
         _check_arguments(X, y)
+
+        if self._sde_initialize_with_data:
+            self._sde = initialize_sde(self._sde_name, y)
+        else:
+            sde_cls = get_sde(self._sde_name)
+            if self._sde_manual_hyperparams:
+                self._sde = sde_cls(**self._sde_manual_hyperparams)
+            else:
+                self._sde = sde_cls()
+
+        self._score_config.update({"sde": self._sde})
+        self._score_config = FrozenConfigDict(self._score_config)
 
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
@@ -146,34 +169,178 @@ class Treeffuser(BaseEstimator, abc.ABC):
         )
         return y_untransformed
 
+    def predict(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        ode: bool = True,
+        tol: float = 1e-3,
+        max_samples: int = 100,
+        verbose: bool = False,
+    ):
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
+        if ode:
+            return self._predict_from_ode(X, tol, verbose)
+        else:
+            return self._predict_from_sample(X, tol, max_samples, verbose)
+
+    def _predict_from_ode(
+        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
+    ) -> Float[ndarray, "batch y_dim"]:
+        raise NotImplementedError
+
+    def _predict_from_sample(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        tol: float,
+        max_samples: int,
+        verbose: bool,
+    ) -> Float[ndarray, "batch y_dim"]:
+        """
+        Predict the conditional mean of y given x via Monte Carlo estimates.
+
+        This method iteratively generates samples of size 10, until the relative change in
+        the norm of each estimate is within a specified tolerance.
+        """
+        n_samples = n_samples_increment = 10
+
+        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=1)
+        norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
+        max_change = np.inf
+
+        while max_change > tol and n_samples < max_samples:
+            sum_increment = self.sample(
+                X=X,
+                n_samples=n_samples_increment,
+                verbose=verbose,
+            ).sum(axis=1)
+
+            mean = (sum_increment + mean_prev * n_samples) / (n_samples + n_samples_increment)
+            norm = np.sqrt((mean**2).sum(axis=1))
+            n_samples += n_samples_increment
+
+            max_change = np.max(np.abs(norm / norm_prev - 1))
+            mean_prev = mean
+
+        if n_samples > max_samples:
+            warnings.warn(
+                f"Predict method did not converge on {max_samples} samples. Consider increasing `max_samples` for more accurate estimates.",
+                ConvergenceWarning,
+                stacklevel=2,
+            )
+
+        return mean_prev
+
+    def compute_nll(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        ode: bool = True,
+        n_samples: int = 10,
+        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        verbose: bool = False,
+    ) -> float:
+        """
+        Compute the negative log likelihood, \\sum_{(y, x) in [y, X]} \\log p(y|x), where p
+        is the conditional distribution learned by the model.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+        ode : bool, optional
+            If True, computes the negative log likelihood from ODE.
+            If False, computes it from samples. Default is True.
+        n_samples : int, optional
+            Number of samples to draw if computing the negative log likelihood from samples. Default is 10.
+        bandwidth : Union[float, Literal["scott", "silverman"]], optional
+            The bandwidth of the kernel. If bandwidth is a float, it defines the bandwidth of the kernel.
+            If bandwidth is a string, one of the  "scott" and "silverman" estimation methods. Default is 1.0.
+
+        Returns
+        -------
+        float
+            The computed negative log likelihood value.
+        """
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
+        if ode:
+            return self._compute_nll_from_ode(X, y, verbose)
+        else:
+            return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
+
+    def _compute_nll_from_ode(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        verbose: bool = False,
+    ):
+        raise NotImplementedError
+
+    def _compute_nll_from_sample(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        n_samples: Optional[int] = 10,
+        bandwidth: Optional[float] = 1.0,
+        verbose: bool = False,
+    ) -> float:
+        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+
+        def fit_and_evaluate_kde(y_train, y_test):
+            kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
+            kde.fit(y_train)
+            return kde.score_samples(y_test).item()
+
+        n_samples, batch, y_dim = y_samples.shape
+
+        nll = 0
+        for i in range(batch):
+            y_train_xi = y_samples[:, i, :]
+            y_test_xi = y[i, :]
+            nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi])
+
+        return nll
+
 
 class LightGBMTreeffuser(Treeffuser):
     def __init__(
         self,
         # Diffusion model args
-        sde_name: Optional[str] = "vesde",
+        sde_name: str = "vesde",
+        sde_initialize_with_data: bool = False,
+        sde_manual_hyperparams: Optional[dict] = None,
+        n_repeats: int = 10,
         # Score estimator args
-        n_repeats: Optional[int] = 10,
-        n_estimators: Optional[int] = 100,
+        n_estimators: int = 100,
         eval_percent: Optional[float] = None,
         early_stopping_rounds: Optional[int] = None,
-        num_leaves: Optional[int] = 31,
-        max_depth: Optional[int] = -1,
-        learning_rate: Optional[float] = 0.1,
-        max_bin: Optional[int] = 255,
-        subsample_for_bin: Optional[int] = 200000,
-        min_child_samples: Optional[int] = 20,
-        subsample: Optional[float] = 1.0,
-        subsample_freq: Optional[int] = 0,
-        verbose: Optional[int] = 0,
+        num_leaves: int = 31,
+        max_depth: int = -1,
+        learning_rate: float = 0.1,
+        max_bin: int = 255,
+        subsample_for_bin: int = 200000,
+        min_child_samples: int = 20,
+        subsample: float = 1.0,
+        subsample_freq: int = 0,
+        verbose: int = 0,
         seed: Optional[int] = None,
-        n_jobs: Optional[int] = -1,
+        n_jobs: int = -1,
     ):
         """
         Diffusion model args
         -------------------------------
+        sde_name (str): The SDE name.
+        sde_initialize_with_data (bool): Whether to initialize the SDE hyperparameters
+            with data.
+        sde_manual_hyperparams: (dict): A dictionary for explicitly setting the SDE
+            hyperparameters, overriding default or data-based initializations.
         n_repeats (int): How many times to repeat the training dataset. i.e how
-         many noisy versions of a point to generate for training.
+            many noisy versions of a point to generate for training.
         LightGBM args
         -------------------------------
         eval_percent (float): Percentage of the training data to use for validation.
@@ -199,10 +366,18 @@ class LightGBMTreeffuser(Treeffuser):
         n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
             number of available cores.
         """
-        super().__init__(sde_name=sde_name)
-        self._score_config = FrozenConfigDict(
+        if sde_initialize_with_data and sde_manual_hyperparams is not None:
+            raise Warning(
+                "Manual hypeparameter setting will override data-based initialization."
+            )
+
+        super().__init__(
+            sde_name=sde_name,
+            sde_initialize_with_data=sde_initialize_with_data,
+            sde_manual_hyperparams=sde_manual_hyperparams,
+        )
+        self._score_config = ConfigDict(
             {
-                "sde": self._sde,
                 "n_repeats": n_repeats,
                 "n_estimators": n_estimators,
                 "eval_percent": eval_percent,
