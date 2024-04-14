@@ -5,8 +5,7 @@ from skopt.space import Integer
 from skopt.space import Real
 
 from testbed.models.base_model import ProbabilisticModel
-
-from .gaussian_mixtures import build_gaussian_mixture_model
+from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
 
 
 class NGBoostGaussian(ProbabilisticModel):
