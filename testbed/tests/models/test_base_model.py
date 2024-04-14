@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from testbed.models import BayesOptProbabilisticModel
 from testbed.models import ProbabilisticModel
-from testbed.models.ngboost_.ngboost_ import NGBoostGaussian
+from testbed.models.ngboost import NGBoostGaussian
 
 
 @pytest.mark.parametrize("model_class", [NGBoostGaussian])
