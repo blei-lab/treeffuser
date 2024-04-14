@@ -6,9 +6,8 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
-from skopt.space import Categorical
-from skopt.space import Integer
-from skopt.space import Real
+
+from testbed.metrics.log_likelihood import LogLikelihoodFromSamplesMetric
 
 
 class ProbabilisticModel(ABC, BaseEstimator):
@@ -44,12 +43,6 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Sample from the probability distribution for each input.
         """
 
-    # @abstractmethod
-    # def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
-    #     """
-    #     Predict the probability distribution for each input.
-    #     """
-
     @abstractmethod
     @property
     def search_space(self) -> dict:
@@ -66,6 +59,23 @@ class ProbabilisticModel(ABC, BaseEstimator):
             "param4": Categorical(["a", "b", "c"]),
         }
         """
+
+    def score(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        n_samples: int,
+    ) -> float:
+        """
+        Return the negative log-likelihood of the model on the data.
+        This function is used for hyperparameter optimization and
+        compatibility with scikit-learn.
+
+        n_samples: The number of samples to draw from the model's predictive
+            distribution to compute an estimate of the log likelihood.
+        """
+        metric = LogLikelihoodFromSamplesMetric(n_samples=n_samples)
+        return -1.0 * metric.compute(self, X, y)["nll"]
 
 
 class CachedProbabilisticModel(ProbabilisticModel):
@@ -136,13 +146,10 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
     ) -> ProbabilisticModel:
         model = self._model_class()
         self._search_space = self._model_class.search_space
-        search_space = {
-            key: self._convert_space(space) for key, space in self._search_space.items()
-        }
 
         opt = BayesSearchCV(
             estimator=model,
-            search_spaces=search_space,
+            search_spaces=self._search_space,
             n_iter=self._n_iter,
             cv=self._cv,
             n_jobs=self._n_jobs,
@@ -162,17 +169,3 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
         self, X: Float[ndarray, "batch x_dim"], n_samples=10
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self._model.sample(X, n_samples)
-
-    def _convert_space(self, space):
-        if isinstance(space, tuple):
-            if len(space) == 2:
-                return Real(*space)
-            elif len(space) == 3:
-                if space[2] == "log-uniform":
-                    return Real(*space[:2], prior="log-uniform")
-                elif space[2] == "int":
-                    return Integer(*space[:2])
-        elif isinstance(space, list):
-            return Categorical(space)
-        else:
-            raise ValueError(f"Unsupported space type: {type(space)}")
