@@ -263,19 +263,20 @@ def run_model_on_dataset(
         metrics (List[Metric]): List of metrics to compute.
         n_iter (int): Number of iterations for the Bayesian optimization.
             Not used if optimize_hyperparameters is False.
+        optimize_hyperparameters: Wether to use bayesian optimizatoin when
+            fitting the model or not
 
     Returns:
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = MODEL_TO_CLASS[model_name]
     if optimize_hyperparameters:
-        model = model_class()
-    else:
         model = BayesOptProbabilisticModel(
             model_class=model_class, n_iter=n_iter, cv=3, n_jobs=1
         )
+    else:
+        model = model_class()
 
-    model = MODEL_TO_CLASS[model_name]()
     model.fit(X_train, y_train)
 
     results = {}
@@ -319,7 +320,6 @@ def main() -> None:
                 y_test=y_test,
                 model_name=model_name,
                 metrics=args.metrics,
-                seed=args.seed,
                 optimize_hyperparameters=args.optimize_hyperparameters,
             )
             results["model"] = model_name

@@ -63,7 +63,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 100,
-        bw: float = 1.0,
+        bandwidth: float = 1.0,
     ) -> float:
         """
         Return the negative log-likelihood of the model on the data.
@@ -72,12 +72,14 @@ class ProbabilisticModel(ABC, BaseEstimator):
 
         n_samples: The number of samples to draw from the model's predictive
             distribution to compute an estimate of the log likelihood.
-        bw: The bandwidth of the kernel density estimator used to fit the samples.
+        bandwidth: The bandwidth of the kernel density estimator used to fit the samples.
         """
         # Avoid circular import
         import testbed.metrics.log_likelihood as log_likelihood
 
-        metric = log_likelihood.LogLikelihoodFromSamplesMetric(n_samples=n_samples)
+        metric = log_likelihood.LogLikelihoodFromSamplesMetric(
+            n_samples=n_samples, bandwidth=bandwidth
+        )
         return -1.0 * metric.compute(self, X, y)["nll"]
 
 
