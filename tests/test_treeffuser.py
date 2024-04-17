@@ -46,10 +46,7 @@ def test_treeffuser_bimodal_linear_regression():
     )
     model.fit(X_train, y_train)
 
-    # y_samples = model.sample(X_test, n_samples=n_samples, n_parallel=50, n_steps=30, seed=0)
-    y_samples = model._sample_from_probability_flow(
-        X_test, n_samples=n_samples, n_steps=100, seed=0
-    )
+    y_samples = model.sample(X_test, n_samples=n_samples, n_parallel=50, n_steps=30, seed=0)
 
     y_samples = y_samples.flatten()
     y_test = y_test.flatten()
@@ -134,7 +131,3 @@ def test_ode_based_nll_gaussian_mixture():
 
     relative_error = np.abs(nll_treeffuser / nll_true - 1)
     assert relative_error < 0.05, f"relative error: {relative_error}"
-
-
-# test_ode_based_nll_gaussian_mixture()
-test_treeffuser_bimodal_linear_regression()

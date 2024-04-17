@@ -505,13 +505,14 @@ class LightGBMTreeffuser(Treeffuser):
 
         ------
         TO DO:
-        - create a divergence score function:
+        - clean up method
+        - replace numerical divergence with true divergence method from _tree
+        - Achille's idea for evaluating the divergence efficiently:
           - get dict representation of score
           - for each leaf that has y as a feature:
             - set the intercept equal to the sum of all the coefficients that refer to y
             - set all the coefficients to 0, or set leaf_features = [0] and leaf_coeff = [0]
           - initialize a LightGBM model from the modified dict
-        - update documentation to add formula of divergence. should this go to the public method?
         """
         if self.linear_tree is False:
             raise ValueError(
@@ -523,8 +524,12 @@ class LightGBMTreeffuser(Treeffuser):
 
         # score_dict = self._dump_model()
 
+        # parameters for ODE discretization
+        dt = 1 / n_steps
+        timestamps = np.arange(0.01, self._sde.T, dt)
+
         nll = 0
-        ite = -1
+        ite = 1
         for y0, x in zip(y, X):  # tuttapposto
             y0 = y0.reshape(1, y_dim)
             x = x.reshape(1, x_dim)
@@ -541,100 +546,73 @@ class LightGBMTreeffuser(Treeffuser):
                 else x
             )
 
-            ite += 1
-            print(f"{'#' * 20}")
-            print(f"{ite} of {len(y)}")
-            print(f"y0={y0}")
-            print(f"x={x}")
+            if verbose:
+                print(f"{'#' * 20}")
+                print(f"{ite} of {len(y)}")
+                print(f"y0={y0}")
+                print(f"x={x}")
 
-            # define score helper functions for transformed data
+            # first, diffuse data via the probability flow
             def _score_fn(y, x, t):
                 score = self._score_model.score(
                     y.reshape(1, y_dim), x.reshape(1, x_dim), t=np.array(t).reshape(-1, 1)
                 )
                 return score.reshape(-1)
 
-            # diffuse the transformed data via the probability flow
             def _probability_flow(y, t, x=x_new):
                 drift, diffusion = self._sde.drift_and_diffusion(y, t)
                 return drift - 0.5 * diffusion**2 * _score_fn(y=y, x=x, t=t)
 
-            n_steps = 10**3
-            ts = np.arange(0.01, self._sde.T, 1 / n_steps)
-            if True:
-                y_new = [y0_new]
-                for t in ts:
-                    y_next = y_new[-1] + _probability_flow(y_new[-1], t) / n_steps
-                    y_new.append(y_next)
-                y_new = np.array(y_new).reshape(-1)
-                y_new = y_new[1:]
-            else:
-                y_new = odeint(func=_probability_flow, y0=y0_new.reshape(-1), t=ts).reshape(
-                    -1
-                )[1:]
+            y_new = [y0_new]
+            for t in timestamps:
+                y_next = y_new[-1] + _probability_flow(y_new[-1], t) * dt
+                y_new.append(y_next)
+            y_new = np.array(y_new).reshape(-1)
+            y_new = y_new[1:]
 
-            # compute divergences w.r.t. transformed data
-            drift_div_ts = np.array(
-                [
-                    self._sde._get_drift_and_diffusion_divergence(
-                        y.reshape(1, y_dim), t.reshape(1, 1)
-                    )[0]
-                    for y, t in zip(y_new, ts)
-                ]  # y_ts[0] is y(T)
-            ).reshape(-1)
+            # next, compute integral of divergence of derivative of probability flow
+            integral = 0
+            for y, t in zip(y_new, timestamps):
+                drift_div = self._sde._get_drift_and_diffusion_divergence(
+                    y.reshape(1, y_dim), t.reshape(1, 1)
+                )[0]
 
-            diffusion_coeff_ts = np.array(
-                [
-                    self._sde.drift_and_diffusion(y.reshape(1, y_dim), t.reshape(1, 1))[1]
-                    for y, t in zip(y_new, ts)
-                ]
-            ).reshape(-1)
+                diffusion_coeff = self._sde.drift_and_diffusion(
+                    y.reshape(1, y_dim), t.reshape(1, 1)
+                )[1]
 
-            score_div_ts = np.array(
-                [
-                    # _compute_score_divergence(score_dict, self.learning_rate, y, x, t)
-                    _compute_score_divergence_numerical(
-                        _score_fn, y.reshape(1, y_dim), x_new, t.reshape(1, 1)
-                    )
-                    for y, t in zip(y_new, ts)
-                ]
-            ).reshape(-1)
-
-            # compute likelihood of transformed data via the instantaneous change of variable formula
-            if self.sde_name.lower == "vesde":
-                log_p_T = self._sde.get_likelihood_theoretical_prior(
-                    y_new[-1].reshape(y_dim),  # y0_new.reshape(y_dim)
+                score_div = _compute_score_divergence_numerical(
+                    _score_fn, y.reshape(1, y_dim), x_new, t.reshape(1, 1)
                 )
-            else:
-                log_p_T = self._sde.get_likelihood_theoretical_prior(y_new[-1].reshape(y_dim))
 
-            log_p_0 = (
-                log_p_T
-                + (drift_div_ts - 0.5 * diffusion_coeff_ts**2 * score_div_ts).sum() / n_steps
-            )
+                integral += (drift_div - 0.5 * diffusion_coeff**2 * score_div).sum()
 
+            integral *= dt
+
+            # finally, compute likelihood via the instantaneous change of variable formula
+            log_p_T = self._sde.get_likelihood_theoretical_prior(y_new[-1].reshape(y_dim))
+            log_p_0 = log_p_T + integral
+
+            # rescale log likelihood for transformed data
             if self.transform_data:
-                log_p_0 = log_p_0 + np.log(
-                    self._y_preprocessor._scaler.scale_
-                )  # rescale log likelihood
+                log_p_0 = log_p_0 + np.log(self._y_preprocessor._scaler.scale_)
 
-            print(f"log_p_0_ode={-log_p_0}")
-            print(
-                f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=100)}"
-            )
-            # nll -=
+            nll -= log_p_0
+
+            # Debug messages
+            if verbose:
+                print(f"log_p_0_ode={-log_p_0}")
+                print(
+                    f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=100)}"
+                )
+
         return nll
 
     def _dump_model(self):
+        """
+        Returns the boosted forest in dictionary form. It assumes that y_dim=1.
+        """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        return self._score_model.models[0]._Booster.dump_model()["tree_info"]  # multiple dims?
-
-
-# TO DO:
-# check probability flow ode [done]
-# check instantaneous change of variable formula
-# - account for transformed data
-# - check when transform_data=False
-# - check the math
+        return self._score_model.models[0]._Booster.dump_model()["tree_info"]

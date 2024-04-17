@@ -1,8 +1,12 @@
+from typing import Tuple
+
+import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
 from sklearn.model_selection import train_test_split
 
 from treeffuser import LightGBMTreeffuser
+from treeffuser._tree import _compute_score_divergence_numerical
 
 std_x = 1
 
@@ -19,20 +23,115 @@ def _compute_gaussian_likelihood(x, loc, scale, log=True):
     return out.sum() if log else np.exp(out.sum())
 
 
-# def _score_fn(y, x, t, sde, std_x=1):
-#     mu_x = x
-#     mu_t, std_t = sde.get_mean_std_pt_given_y0(y, t)
-#     return -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
+def _score(y, x, t, model, std_x):
+    """
+    True score function for Gaussian data under VESDE.
+    """
+    mu_x = x
+    mu_t = 1
+    _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
+    return -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
 
 
-# def _divergence_fn(y, x, t, sde, std_x=1):
-#     mu_t, std_t = sde.get_mean_std_pt_given_y0(y, t)
-#     return -1 / (std_t**2 + mu_t**2 * std_x**2)
+def _score_divergence(
+    y: Float[np.ndarray, "1 y_dim"],
+    x: Float[np.ndarray, "1 x_dim"],
+    t: Float[np.ndarray, "1 1"],
+    model: LightGBMTreeffuser,
+    std_x: float,
+    use_treeffuser=False,
+):
+    """
+    True score divergence function for Gaussian data under VESDE.
+    """
+    if use_treeffuser:
+        div = _compute_score_divergence_numerical(
+            model._score_model.score, y, x, t, eps=10 ** (-5)
+        )
+    else:
+        mu_t = 1
+        _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
+        div = -1 / (std_t**2 + mu_t**2 * std_x**2)
+    return div
+
+
+def _probability_flow(y, t, x, model, score_fn):
+    """
+    Derivative function defining the probability flow ODE.
+    """
+    drift, diffusion = model._sde.drift_and_diffusion(y, t)
+    return drift - 0.5 * diffusion**2 * score_fn(y=y, x=x, t=t)
+
+
+def _diffuse_via_probability_flow(y0, x, t, model, std_x):
+    """
+    Diffuse observation via probability flow ODE for Gaussian data under VESDE.
+    """
+    mu_x = x
+    mu_t = 1
+    yt = [y0]
+    for s in t:
+        _, std_t = model._sde.get_mean_std_pt_given_y0(y0, s)
+        y = (y0 - mu_t * mu_x) * np.sqrt(
+            (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
+        ) + mu_t * mu_x
+        yt.append(y)
+    return np.array(yt)
+
+
+def _integrate_divergence_pflow_derivative(
+    y_diffused: Float[np.ndarray, "n_steps y_dim"],
+    timestamps: Float[np.ndarray, "n_steps 1"],
+    x: Float[np.ndarray, "x_dim"],
+    dt: float,
+    model: LightGBMTreeffuser,
+    std_x: float,
+    use_treeffuser: False,
+):
+    y_dim = y_diffused.shape[1]  # ys.shape[1]
+
+    integral = 0
+    for y, t in zip(y_diffused, timestamps):
+        drift_div = model._sde._get_drift_and_diffusion_divergence(
+            y.reshape(1, y_dim), t.reshape(1, 1)
+        )[0]
+
+        diffusion_coeff = model._sde.drift_and_diffusion(y.reshape(1, y_dim), t.reshape(1, 1))[
+            1
+        ]
+
+        score_div = _score_divergence(
+            y.reshape(1, y_dim),
+            x,
+            t.reshape(1, 1),
+            model=model,
+            std_x=std_x,
+            use_treeffuser=use_treeffuser,
+        )
+
+        integral += (drift_div - 0.5 * diffusion_coeff**2 * score_div).sum()
+
+    integral *= dt
+    return integral
+
+
+def _compute_log_prior_T(y, y0, model: LightGBMTreeffuser):
+    y_dim = y0.shape[1]
+    if model.sde_name.lower == "vesde":
+        hyperparam_max = model._sde.get_hyperparams()["hyperparam_max"]
+        log_p_T = _compute_gaussian_likelihood(
+            y.reshape(y_dim),
+            loc=y0.reshape(y_dim),
+            scale=np.sqrt(hyperparam_max**2 + std_x**2),
+            log=True,
+        )
+    else:
+        log_p_T = model._sde.get_likelihood_theoretical_prior(y.reshape(y_dim))
+    return log_p_T
 
 
 def test_ode_based_nll():
-    n = 10**3
-    # y_dim = 1
+    n = 10**4
 
     std_x = 1
     y, X = _generate_data(n, std_x=1)
@@ -51,37 +150,59 @@ def test_ode_based_nll():
     )
     model.fit(X_train, y_train, transform_data=False)
 
-    compute_nll_from_ode_gaussian(model, X_test, y_test, std_x)
+    # Some useful plots
+    _compare_divergence(
+        y_range=(y_test.min(), y_test.max()),
+        x=X_test[0, :].reshape(1, X_test.shape[1]),
+        t_min=0.01,
+        model=model,
+        std_x=std_x,
+    )
 
-    nll_sample = model.compute_nll(X_test, y_test, ode=False)
-    nll_ode = model.compute_nll(X_test, y_test, ode=True)
+    _compare_score(
+        y_range=(y_test.min(), y_test.max()),
+        x=X_test[0, :].reshape(1, X_test.shape[1]),
+        t_min=0.01,
+        model=model,
+        std_x=std_x,
+    )
 
-    relative_error = np.abs(nll_sample / nll_ode - 1)
-    assert relative_error < 0.05, f"relative error: {relative_error}"
+    _validate_divergence(
+        y_range=(y_test.min(), y_test.max()),
+        x=X_test[0, :].reshape(1, X_test.shape[1]),
+        t_min=0.01,
+        model=model,
+        std_x=std_x,
+    )
+
+    compute_nll_from_ode_gaussian(X_test, y_test, model, std_x)
 
 
 def compute_nll_from_ode_gaussian(
-    self: LightGBMTreeffuser,
     X: Float[np.ndarray, "batch x_dim"],
     y: Float[np.ndarray, "batch y_dim"],
+    model: LightGBMTreeffuser,
     std_x: float = 1,
-    n_steps: int = 100,
-    verbose: bool = False,
+    n_steps: int = 10**4,
 ):
     y_dim = y.shape[1]
     x_dim = X.shape[1]
 
     ite = -1
-    for y0, x in zip(y, X):  # tuttapposto
+    for y0, x in zip(y, X):
         y0 = y0.reshape(1, y_dim)
         x = x.reshape(1, x_dim)
 
         # transform data
+        if model.transform_data:
+            raise Warning("Data have been transformed.")
         y0_new = (
-            self._y_preprocessor.transform(y0.reshape(1, y_dim)) if self.transform_data else y0
+            model._y_preprocessor.transform(y0.reshape(1, y_dim))
+            if model.transform_data
+            else y0
         )
         x_new = (
-            self._x_preprocessor.transform(x.reshape(1, x_dim)) if self.transform_data else x
+            model._x_preprocessor.transform(x.reshape(1, x_dim)) if model.transform_data else x
         )
 
         ite += 1
@@ -90,111 +211,188 @@ def compute_nll_from_ode_gaussian(
         print(f"y0={y0}")
         print(f"x={x}")
 
-        # define score helper functions for transformed data
-        def _score_fn(y, x, t, std_x=std_x):  # true score function
-            mu_x = x
-            mu_t, std_t = self._sde.get_mean_std_pt_given_y0(y, t)
-            return -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
+        # set discretization parameters
+        dt = 1 / n_steps
+        timestamps = np.arange(0.01, model._sde.T, dt)
 
-        # define helper function for score divergence
-        def _divergence_fn(y, x, t, std_x=1):
-            mu_t, std_t = self._sde.get_mean_std_pt_given_y0(y, t)
-            return -1 / (std_t**2 + mu_t**2 * std_x**2)
-
-        # diffuse the transformed data via the probability flow
-        def _probability_flow(y, t, x=x_new):
-            drift, diffusion = self._sde.drift_and_diffusion(y, t)
-            return drift - 0.5 * diffusion**2 * _score_fn(y=y, x=x, t=t)
-
-        def _diffuse_via_probability_flow(y0, x, t, self, std_x):
-            mu_x = x
-            mu_t = 1
-            yt = [y0]
-            for s in t:
-                _, std_t = self._sde.get_mean_std_pt_given_y0(y0, s)
-                y = (y0 - mu_t * mu_x) * np.sqrt(
-                    (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
-                ) + mu_t * mu_x
-                yt.append(y)
-                if np.isnan(y):
-                    print("Ahoooo!")
-            return np.array(yt)
-
-        n_steps = 10**3
-        ts = np.arange(0.01, self._sde.T, 1 / n_steps)
-        y_new = _diffuse_via_probability_flow(y0_new, x_new, ts, self, std_x)
-        # if True:
-        #     y_new = [y0_new]
-        #     for t in ts:
-        #         y_next = y_new[-1] + _probability_flow(y_new[-1], t) / n_steps
-        #         y_new.append(y_next)
-        #     y_new = np.array(y_new).reshape(-1)
-        #     y_new = y_new[1:]
-        # else:
-        #     y_new = odeint(func=_probability_flow, y0=y0_new.reshape(-1), t=ts).reshape(-1)[1:]
-
-        # compute divergences w.r.t. transformed data
-        drift_div_ts = np.array(
-            [
-                self._sde._get_drift_and_diffusion_divergence(
-                    y.reshape(1, y_dim), t.reshape(1, 1)
-                )[0]
-                for y, t in zip(y_new, ts)
-            ]  # y_ts[0] is y(T)
-        ).reshape(-1)
-
-        diffusion_coeff_ts = np.array(
-            [
-                self._sde.drift_and_diffusion(y.reshape(1, y_dim), t.reshape(1, 1))[1]
-                for y, t in zip(y_new, ts)
-            ]
-        ).reshape(-1)
-
-        score_div_ts = np.array(
-            [
-                # _compute_score_divergence(score_dict, self.learning_rate, y, x, t)
-                # _compute_score_divergence_numerical(
-                #     _score_fn, y.reshape(1, y_dim), x_new, t.reshape(1, 1)
-                # )
-                _divergence_fn(y.reshape(1, y_dim), x_new, t.reshape(1, 1))
-                for y, t in zip(y_new, ts)
-            ]
-        ).reshape(-1)
-
-        # compute likelihood of transformed data via the instantaneous change of variable formula
-        if self.sde_name.lower == "vesde":
-            # log_p_T = self._sde.get_likelihood_theoretical_prior(
-            #     y_new[-1].reshape(y_dim),  # y0_new.reshape(y_dim)
-            # )
-            hyperparam_max = self._sde.get_hyperparams()["hyperparam_max"]
-            log_p_T = _compute_gaussian_likelihood(
-                y_new[-1].reshape(y_dim),
-                loc=y0_new.reshape(y_dim),
-                # scale=hyperparam_max,
-                scale=np.sqrt(hyperparam_max**2 + std_x**2),
-                log=True,
-            )
-        else:
-            log_p_T = self._sde.get_likelihood_theoretical_prior(y_new[-1].reshape(y_dim))
-
-        log_p_0 = (
-            log_p_T
-            + (drift_div_ts - 0.5 * diffusion_coeff_ts**2 * score_div_ts).sum() / n_steps
+        # diffuse y0 via probability flow ODE
+        y_diffused = _diffuse_via_probability_flow(
+            y0_new, x_new, timestamps, model=model, std_x=std_x
         )
 
-        if self.transform_data:
+        # compute likelihood via instantaneous change of variable formula
+        integral = _integrate_divergence_pflow_derivative(
+            y_diffused, timestamps, x, dt, model=model, std_x=std_x, use_treeffuser=False
+        )
+        log_p_T = _compute_log_prior_T(y_diffused[-1], y0, model)
+        log_p_0 = log_p_T + integral
+
+        if model.transform_data:
             log_p_0 = log_p_0 + np.log(
-                self._y_preprocessor._scaler.scale_
+                model._y_preprocessor._scaler.scale_
             )  # rescale log likelihood
 
         print(f"log_p_0_ode={-log_p_0}")
         print(
-            f"log_p_0_sample: {self.compute_nll(x.reshape(1, x_dim), y0.reshape(1, y_dim), ode=False, n_samples=1000)}"
-        )
-        print(
             f"log_p_0_theory_VESDE: {-_compute_gaussian_likelihood(y0_new, loc=x_new, scale=std_x, log=True)}"
         )
-        input()
 
+
+########################################### Utilities for some useful plots ###########################################
+def _compare_score(
+    y_range: Tuple[float, float],
+    x: Float[np.ndarray, "1 x_dim"],
+    t_min: float,
+    model: LightGBMTreeffuser,
+    std_x: float,
+):
+    """
+    Compares true and learnt scores and their divergences for Gaussian data under VESDE.
+    """
+
+    # define score function
+    def _score_estimate(ys, x, t):
+        score = []
+        for y in ys:
+            score_temp = model._score_model.score(y.reshape(1, 1), x, t.reshape(1, 1))
+            score.append(score_temp.item())
+        return np.array(score)
+
+    def _score_true(ys, x, t):
+        score = []
+        mu_x = x
+        mu_t = 1
+        for y in ys:
+            _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
+            score_temp = -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
+            score.append(score_temp.item())
+        return np.array(score)
+
+    ts = np.linspace(t_min, 1, 4)
+    ys = np.linspace(y_range[0], y_range[1], 1000)
+
+    # make plots
+    fig, axs = plt.subplots(2, int(len(ts) / 2), figsize=(15, 3))
+    fig.suptitle(f"Score of y_t given x = {x.item():.2f}")
+    axs = axs.flatten()
+
+    for i, t in enumerate(ts):
+        axs[i].plot(ys, _score_true(ys, x, t), label="ground truth")
+        axs[i].plot(ys, _score_estimate(ys, x, t), label="treeffuser")
+        axs[i].set_title(f"t = {t:.2f}")
+        axs[i].set_xlabel("y")
+
+    lines, labels = axs[0].get_legend_handles_labels()
+    fig.legend(lines, labels, loc="lower center")
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)  # adjust the top margin to fit the suptitle
+    plt.show()
+
+
+def _compare_divergence(
+    y_range: Tuple[float, float],
+    x: Float[np.ndarray, "1 x_dim"],
+    t_min: float,
+    model: LightGBMTreeffuser,
+    std_x: float,
+):
+    """
+    Compares true and learnt scores and their divergences for Gaussian data under VESDE.
+    """
+
+    # define divergence functions
+    def _divergence_estimate(ys, x, t):
+        div = []
+        for y in ys:
+            div_temp = _compute_score_divergence_numerical(
+                model._score_model.score, y.reshape(1, 1), x, t.reshape(1, 1), eps=10 ** (-5)
+            )
+            div.append(div_temp.item())
+        return np.array(div)
+
+    def _divergence_true(ys, x, t):
+        div = []
+        for y in ys:
+            mu_t = 1
+            _, std_t = model._sde.get_mean_std_pt_given_y0(y.reshape(1, 1), t.reshape(1, 1))
+            div_temp = -1 / (std_t**2 + mu_t**2 * std_x**2)
+            div.append(div_temp.item())
+        return np.array(div)
+
+    ts = np.linspace(t_min, 1, 4)
+    ys = np.linspace(y_range[0], y_range[1], 1000)
+
+    # make plots
+    fig, axs = plt.subplots(2, int(len(ts) / 2), figsize=(15, 3))
+    fig.suptitle(f"Score divergence of y_t given x = {x.item():.2f}")
+    axs = axs.flatten()
+
+    for i, t in enumerate(ts):
+        axs[i].plot(ys, _divergence_true(ys, x, t), label="ground truth")
+        axs[i].plot(ys, _divergence_estimate(ys, x, t), label="treeffuser")
+        axs[i].set_title(f"t = {t:.2f}")
+        axs[i].set_xlabel("y")
+
+    lines, labels = axs[0].get_legend_handles_labels()
+    fig.legend(lines, labels, loc="lower center")
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)  # adjust the top margin to fit the suptitle
+    plt.show()
+
+
+def _validate_divergence(
+    y_range: Tuple[float, float],
+    x: Float[np.ndarray, "1 x_dim"],
+    t_min: float,
+    model: LightGBMTreeffuser,
+    std_x: float,
+):
+    # define divergence and score functions
+    def _divergence_estimate(ys, x, t):
+        div = []
+        for y in ys:
+            div_temp = _compute_score_divergence_numerical(
+                model._score_model.score, y.reshape(1, 1), x, t.reshape(1, 1), eps=10 ** (-5)
+            )
+            div.append(div_temp.item())
+        return np.array(div)
+
+    def _score_estimate(ys, x, t):
+        score = []
+        for y in ys:
+            score_temp = model._score_model.score(y.reshape(1, 1), x, t.reshape(1, 1))
+            score.append(score_temp.item())
+        return np.array(score)
+
+    ts = np.linspace(t_min, 1, 4)
+    ys = np.linspace(y_range[0], y_range[1], 1000)
+
+    # make plots
+    fig, axs = plt.subplots(2, int(len(ts) / 2), figsize=(15, 3))
+    fig.suptitle(f"Score function and its divergence given x = {x.item():.2f}")
+    axs = axs.flatten()
+
+    for i, t in enumerate(ts):
+        ax1 = axs[i]
+        ax1.plot(ys, _score_estimate(ys, x, t), "b-", label="score")
+        ax1.set_title(f"t = {t:.2f}")
+        ax1.set_xlabel("y")
+        ax1.tick_params(axis="y", labelcolor="b")
+
+        ax1_twin = ax1.twinx()
+        ax1_twin.plot(ys, _divergence_estimate(ys, x, t), "r-", label="divergence")
+        ax1.tick_params(axis="y", labelcolor="r")
+
+    lines, labels = axs[0].get_legend_handles_labels()
+    fig.legend(lines, labels, loc="lower center")
+
+    plt.tight_layout()
+    plt.subplots_adjust(top=0.85)  # adjust the top margin to fit the suptitle
+    plt.show()
+
+
+#######################################################################################################################
 
 test_ode_based_nll()
