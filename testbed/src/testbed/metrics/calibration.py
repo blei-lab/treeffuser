@@ -49,7 +49,7 @@ class SharpnessFromSamplesMetric(Metric):
         sharpness : dict
             A single scalar which quantifies the average of the standard deviations.
         """
-        y_preds = model.predict_distribution(X_test).sample(self.n_samples)
+        y_preds = model.sample(X_test, self.n_samples)
         y_stds = np.std(y_preds, axis=0)
         sharpness = np.sqrt(np.mean(y_stds**2))
         return {"sharpness": sharpness}
