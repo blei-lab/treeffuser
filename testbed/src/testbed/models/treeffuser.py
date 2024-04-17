@@ -23,6 +23,11 @@ class Treeffuser(ProbabilisticModel):
     ):
         super().__init__()
         self.n_estimators = n_estimators
+        self.n_repeats = n_repeats
+        self.learning_rate = learning_rate
+        self.early_stopping_rounds = early_stopping_rounds
+        self.num_leaves = num_leaves
+
         self.model = LightGBMTreeffuser(
             n_estimators=n_estimators,
             n_repeats=n_repeats,
