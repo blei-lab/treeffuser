@@ -57,7 +57,7 @@ class Treeffuser(ProbabilisticModel):
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_estimators": Integer(100, 2000, "log-uniform"),
+            "n_estimators": Integer(100, 5000, "log-uniform"),
             "n_repeats": Integer(10, 100),
             "learning_rate": Real(0.01, 1),
             "early_stopping_rounds": Integer(1, 100),
