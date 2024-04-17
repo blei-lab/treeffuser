@@ -16,3 +16,9 @@ class Metric(abc.ABC):
         y_test: Float[ndarray, "batch y_dim"],
     ) -> Dict[str, float]:
         pass
+
+    def __str__(self):
+        return self.__class__.__name__
+
+    def __repr__(self):
+        return self.__str__()
