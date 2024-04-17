@@ -49,7 +49,7 @@ class Treeffuser(ProbabilisticModel):
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self.model.sample(X, n_samples, n_parallel=5, n_steps=50)
 
-    @classmethod
+    @staticmethod
     def search_space() -> dict:
         return {
             "n_repeats": Integer(1, 100),

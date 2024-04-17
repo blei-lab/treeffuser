@@ -41,9 +41,9 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Sample from the probability distribution for each input.
         """
 
-    @classmethod
+    @staticmethod
     @abstractmethod
-    def search_space(self) -> dict:
+    def search_space() -> dict:
         """
         Return the search space for parameters of the model.
 
@@ -175,7 +175,7 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self._model.sample(X, n_samples)
 
-    @classmethod
+    @staticmethod
     def search_space() -> dict:
         """
         This has no hyperparameters to optimize.

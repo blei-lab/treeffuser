@@ -291,8 +291,8 @@ class Card(ProbabilisticModel):
     ) -> Float[ndarray, "batch"]:
         raise NotImplementedError
 
-    @classmethod
-    def search_space(self) -> dict:
+    @staticmethod
+    def search_space() -> dict:
 
         return {
             "n_layers": Integer(1, 7),

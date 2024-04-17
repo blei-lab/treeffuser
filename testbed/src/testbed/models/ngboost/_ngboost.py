@@ -57,8 +57,8 @@ class NGBoostGaussian(ProbabilisticModel):
         """
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
-    @classmethod
-    def search_space(self) -> dict:
+    @staticmethod
+    def search_space() -> dict:
         """
         Return the search space for parameters of the model.
         """
@@ -118,7 +118,8 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         """
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
-    def search_space(self) -> dict:
+    @staticmethod
+    def search_space() -> dict:
         """
         Return the search space for parameters of the model.
         """
