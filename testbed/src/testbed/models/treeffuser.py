@@ -15,9 +15,9 @@ class Treeffuser(ProbabilisticModel):
 
     def __init__(
         self,
-        n_estimators: int = 10000,
+        n_estimators: int = 1000,
         n_repeats: int = 30,
-        learning_rate: float = 0.01,
+        learning_rate: float = 0.1,
         early_stopping_rounds: int = 50,
         num_leaves: int = 31,
     ):
@@ -57,8 +57,9 @@ class Treeffuser(ProbabilisticModel):
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_repeats": Integer(1, 100),
+            "n_estimators": Integer(100, 2000, "log-uniform"),
+            "n_repeats": Integer(10, 100),
             "learning_rate": Real(0.01, 1),
-            "early_stopping_rounds": Integer(1, 1000),
-            "num_leaves": Integer(2, 1000),
+            "early_stopping_rounds": Integer(1, 100),
+            "num_leaves": Integer(2, 100),
         }
