@@ -62,7 +62,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        n_samples: int = 100,
+        n_samples: int = 50,
         bandwidth: float = 1.0,
     ) -> float:
         """
@@ -126,13 +126,13 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
     def __init__(
         self,
         model_class: Type[ProbabilisticModel],
-        n_iter: int = 50,
+        n_iter_bayes_opt: int = 50,
         cv: int = 5,
         n_jobs: int = -1,
     ):
         """
         model_class: The class of the model to be optimized.
-        n_iter: The number of iterations for the Bayesian optimization.
+        n_iter_bayes_opt: The number of iterations for the Bayesian optimization.
         cv: The number of cross-validation folds.
         n_jobs: The number of parallel jobs to run. -1 means using all processors.
         """
@@ -140,7 +140,7 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         self._model_class = model_class
         self._model = None
         self._model_search_space = None
-        self._n_iter = n_iter
+        self._n_iter_bayes_opt = n_iter_bayes_opt
         self._cv = cv
         self._n_jobs = n_jobs
 
@@ -155,11 +155,12 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         opt = BayesSearchCV(
             estimator=model,
             search_spaces=self._model_search_space,
-            n_iter=self._n_iter,
+            n_iter=self._n_iter_bayes_opt,
             cv=self._cv,
             n_jobs=self._n_jobs,
-            verbose=1,
-            random_state=42,
+            verbose=2,
+            random_state=0,
+            optimizer_kwargs={"base_estimator": "GBRT"},
         )
 
         opt.fit(X, y)

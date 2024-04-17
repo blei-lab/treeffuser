@@ -162,9 +162,9 @@ def parse_args():
     msg = "Number of iterations for the Bayesian optimization. To use"
     msg += " this option, the --optimize_hyperparameters flag must be set."
     parser.add_argument(
-        "--n_iter",
+        "--n_iter_bayes_opt",
         type=int,
-        default=10,
+        default=20,
         help=msg,
     )
 
@@ -198,8 +198,8 @@ def check_args(args):
             msg += f" Available metrics: {lst_to_new_line(AVAILABLE_METRICS)}"
             raise ValueError(msg)
 
-    # check that n_iter is positive
-    if args.n_iter <= 0:
+    # check that n_iter_bayes_opt is positive
+    if args.n_iter_bayes_opt <= 0:
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
 
@@ -252,7 +252,7 @@ def run_model_on_dataset(
     model_name: str,
     metrics: List[Metric],
     optimize_hyperparameters: bool,
-    n_iter: int,
+    n_iter_bayes_opt: int = 20,
 ) -> Dict[str, float]:
     """
     Run a model on a dataset and compute the metrics specified.
@@ -261,7 +261,7 @@ def run_model_on_dataset(
         model_name (str): Name of the model to run.
         dataset_name (str): Name of the dataset to run the model on.
         metrics (List[Metric]): List of metrics to compute.
-        n_iter (int): Number of iterations for the Bayesian optimization.
+        n_iter_bayes_opt (int): Number of iterations for the Bayesian optimization.
             Not used if optimize_hyperparameters is False.
         optimize_hyperparameters: Wether to use bayesian optimizatoin when
             fitting the model or not
@@ -272,7 +272,7 @@ def run_model_on_dataset(
     model_class = MODEL_TO_CLASS[model_name]
     if optimize_hyperparameters:
         model = BayesOptProbabilisticModel(
-            model_class=model_class, n_iter=n_iter, cv=3, n_jobs=1
+            model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
         )
     else:
         model = model_class()
