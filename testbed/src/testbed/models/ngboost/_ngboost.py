@@ -1,6 +1,8 @@
 from jaxtyping import Float
 from ngboost import NGBRegressor
 from numpy import ndarray
+from skopt.space import Integer
+from skopt.space import Real
 
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
@@ -55,6 +57,16 @@ class NGBoostGaussian(ProbabilisticModel):
         """
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
+    @staticmethod
+    def search_space() -> dict:
+        """
+        Return the search space for parameters of the model.
+        """
+        return {
+            "n_estimators": Integer(100, 10000),
+            "learning_rate": Real(0.01, 1),
+        }
+
 
 class NGBoostMixtureGaussian(ProbabilisticModel):
     """
@@ -105,3 +117,14 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         Sample from the probability distribution for each input.
         """
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
+
+    @staticmethod
+    def search_space() -> dict:
+        """
+        Return the search space for parameters of the model.
+        """
+        return {
+            "n_estimators": Integer(100, 10000),
+            "learning_rate": Real(0.01, 1),
+            "k": Integer(1, 50),
+        }

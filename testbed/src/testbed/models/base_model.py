@@ -6,9 +6,6 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
-from skopt.space import Categorical
-from skopt.space import Integer
-from skopt.space import Real
 
 
 class ProbabilisticModel(ABC, BaseEstimator):
@@ -44,15 +41,9 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Sample from the probability distribution for each input.
         """
 
-    # @abstractmethod
-    # def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
-    #     """
-    #     Predict the probability distribution for each input.
-    #     """
-
+    @staticmethod
     @abstractmethod
-    @property
-    def search_space(self) -> dict:
+    def search_space() -> dict:
         """
         Return the search space for parameters of the model.
 
@@ -66,6 +57,30 @@ class ProbabilisticModel(ABC, BaseEstimator):
             "param4": Categorical(["a", "b", "c"]),
         }
         """
+
+    def score(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        n_samples: int = 50,
+        bandwidth: float = 1.0,
+    ) -> float:
+        """
+        Return the negative log-likelihood of the model on the data.
+        This function is used for hyperparameter optimization and
+        compatibility with scikit-learn.
+
+        n_samples: The number of samples to draw from the model's predictive
+            distribution to compute an estimate of the log likelihood.
+        bandwidth: The bandwidth of the kernel density estimator used to fit the samples.
+        """
+        # Avoid circular import
+        import testbed.metrics.log_likelihood as log_likelihood
+
+        metric = log_likelihood.LogLikelihoodFromSamplesMetric(
+            n_samples=n_samples, bandwidth=bandwidth
+        )
+        return -1.0 * metric.compute(self, X, y)["nll"]
 
 
 class CachedProbabilisticModel(ProbabilisticModel):
@@ -102,7 +117,7 @@ class CachedProbabilisticModel(ProbabilisticModel):
         self._cache = {}
 
 
-class BayesSearchProbabilisticModel(ProbabilisticModel):
+class BayesOptProbabilisticModel(ProbabilisticModel):
     """
     A probabilistic model that uses Bayesian optimization to find the best hyperparameters.
     It is a wrapper around a probabilistic model that uses the skopt library.
@@ -111,21 +126,21 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
     def __init__(
         self,
         model_class: Type[ProbabilisticModel],
-        n_iter: int = 50,
+        n_iter_bayes_opt: int = 50,
         cv: int = 5,
         n_jobs: int = -1,
     ):
         """
         model_class: The class of the model to be optimized.
-        n_iter: The number of iterations for the Bayesian optimization.
+        n_iter_bayes_opt: The number of iterations for the Bayesian optimization.
         cv: The number of cross-validation folds.
         n_jobs: The number of parallel jobs to run. -1 means using all processors.
         """
         super().__init__()
         self._model_class = model_class
         self._model = None
-        self._search_space = None
-        self._n_iter = n_iter
+        self._model_search_space = None
+        self._n_iter_bayes_opt = n_iter_bayes_opt
         self._cv = cv
         self._n_jobs = n_jobs
 
@@ -135,19 +150,17 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
         y: Float[ndarray, "batch y_dim"],
     ) -> ProbabilisticModel:
         model = self._model_class()
-        self._search_space = self._model_class.search_space
-        search_space = {
-            key: self._convert_space(space) for key, space in self._search_space.items()
-        }
+        self._model_search_space = self._model_class.search_space()
 
         opt = BayesSearchCV(
             estimator=model,
-            search_spaces=search_space,
-            n_iter=self._n_iter,
+            search_spaces=self._model_search_space,
+            n_iter=self._n_iter_bayes_opt,
             cv=self._cv,
             n_jobs=self._n_jobs,
-            verbose=1,
-            random_state=42,
+            verbose=2,
+            random_state=0,
+            optimizer_kwargs={"base_estimator": "GBRT"},
         )
 
         opt.fit(X, y)
@@ -163,16 +176,9 @@ class BayesSearchProbabilisticModel(ProbabilisticModel):
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         return self._model.sample(X, n_samples)
 
-    def _convert_space(self, space):
-        if isinstance(space, tuple):
-            if len(space) == 2:
-                return Real(*space)
-            elif len(space) == 3:
-                if space[2] == "log-uniform":
-                    return Real(*space[:2], prior="log-uniform")
-                elif space[2] == "int":
-                    return Integer(*space[:2])
-        elif isinstance(space, list):
-            return Categorical(space)
-        else:
-            raise ValueError(f"Unsupported space type: {type(space)}")
+    @staticmethod
+    def search_space() -> dict:
+        """
+        This has no hyperparameters to optimize.
+        """
+        return {}

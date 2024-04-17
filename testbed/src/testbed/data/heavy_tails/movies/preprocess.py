@@ -37,7 +37,7 @@ def main(path_raw_dataset_dir: Path):
         nan_mask = X.iloc[:, col].isna()
         X.iloc[:, col] = X.iloc[:, col].astype("category").cat.codes
         # Put nans back
-        X.iloc[:, col][nan_mask] = np.nan
+        X.loc[nan_mask, X.columns[col]] = np.nan
 
     # remove rows with nans
     x_has_nan = X.isna().any(axis=1)
