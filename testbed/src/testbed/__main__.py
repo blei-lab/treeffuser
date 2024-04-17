@@ -245,10 +245,10 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 
 
 def run_model_on_dataset(
-    X_train: Float[ndarray, "train_size", "n_features"],
-    X_test: Float[ndarray, "test_size", "n_features"],
-    y_train: Float[ndarray, "train_size, 1"],
-    y_test: Float[ndarray, "test_size, 1"],
+    X_train: Float[ndarray, "train_size n_features"],
+    X_test: Float[ndarray, "test_size n_features"],
+    y_train: Float[ndarray, "train_size 1"],
+    y_test: Float[ndarray, "test_size 1"],
     model_name: str,
     metrics: List[Metric],
     optimize_hyperparameters: bool,
