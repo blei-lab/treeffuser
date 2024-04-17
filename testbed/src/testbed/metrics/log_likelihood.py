@@ -1,5 +1,6 @@
-from typing import Dict, Union
+from typing import Dict
 from typing import Optional
+from typing import Union
 
 import numpy as np
 from jaxtyping import Float

@@ -1,6 +1,8 @@
 from abc import ABC
 from abc import abstractmethod
-from typing import Type, Optional, Union
+from typing import Optional
+from typing import Type
+from typing import Union
 
 from jaxtyping import Float
 from numpy import ndarray

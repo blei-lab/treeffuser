@@ -11,7 +11,8 @@ from sklearn.model_selection import train_test_split
 
 from testbed.data.utils import get_data
 from testbed.data.utils import list_data
-from testbed.metrics import AccuracyMetric, LogLikelihoodFromSamplesMetric
+from testbed.metrics import AccuracyMetric
+from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
 from testbed.models.base_model import BayesOptProbabilisticModel
