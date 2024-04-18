@@ -1,5 +1,5 @@
 """
-Helper functions to compute the score and its divergence from a boosted forest from Booster.dump_model().
+Helper functions to evaluate predictions and their divergence from a boosted forest from Booster.dump_model().
 """
 
 from typing import List
@@ -8,46 +8,31 @@ import numpy as np
 from jaxtyping import Float
 
 
-def _compute_score_divergence_numerical(score_function, y, x, t, eps=10 ** (-5)):
-    div = (
-        score_function((y + eps).reshape(y.shape), x, t)
-        - score_function(y - eps, x, t)  # centered differences
-    ) / (2 * eps)
-    return div.reshape(-1)
-
-
-def _compute_score(
+def _predict(
     forest: List[dict],
-    learning_rate: float,
     y: Float[np.ndarray, "y_dim"],
     x: Float[np.ndarray, "x_dim"],
     t: float,
-    std_t: float,
 ):
-    """
-    TO DO:
-        - add std correction to compute score
-    """
-    y_dim = y.shape[1]
     score = 0
     for tree in forest:
         leaf = _get_leaf(tree["tree_structure"], y, x, t)
-        score += _compute_score_leaf(leaf, y_dim)
-    return learning_rate * score / std_t
+        score += _predict_leaf(leaf, y, x, t)
+    return score
 
 
-def _compute_score_leaf(
+def _predict_leaf(
     node: dict,
-    y_dim: int,
     y: Float[np.ndarray, "y_dim"],
     x: Float[np.ndarray, "x_dim"],
     t: float,
 ):
+    y_dim = len(y)
     n_features = y_dim + len(x) + 1
 
     score = 0
     for feature_index, feature_coef in zip(node["leaf_features"], node["leaf_coeff"]):
-        if feature_index <= y_dim:
+        if feature_index < y_dim:
             feature_value = y[feature_index]
         elif feature_index == n_features - 1:
             feature_value = t
@@ -57,26 +42,24 @@ def _compute_score_leaf(
     return node["leaf_const"] + score
 
 
-def _compute_score_divergence(
+def _compute_prediction_divergence(
     forest: List[dict],
-    learning_rate: float,
     y: Float[np.ndarray, "y_dim"],
     x: Float[np.ndarray, "x_dim"],
     t: float,
-    std_t: float,
 ):
-    y_dim = y.shape[1]
+    y_dim = len(y)
     div = 0
     for tree in forest:
         leaf = _get_leaf(tree["tree_structure"], y, x, t)
-        div += _compute_score_divergence_leaf(leaf, y_dim)
-    return learning_rate * div / std_t
+        div += _compute_prediction_divergence_leaf(leaf, y_dim)
+    return div
 
 
-def _compute_score_divergence_leaf(node: dict, y_dim: int):
+def _compute_prediction_divergence_leaf(node: dict, y_dim: int):
     div = 0
     for feature_index, feature_coef in zip(node["leaf_features"], node["leaf_coeff"]):
-        if feature_index <= y_dim:
+        if feature_index < y_dim:
             div += feature_coef
     return div
 

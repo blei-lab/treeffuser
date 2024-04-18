@@ -21,7 +21,6 @@ from tqdm import tqdm
 import treeffuser._score_models as _score_models
 from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
-from treeffuser._tree import _compute_score_divergence_numerical
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
@@ -571,6 +570,16 @@ class LightGBMTreeffuser(Treeffuser):
             y_new = y_new[1:]
 
             # next, compute integral of divergence of derivative of probability flow
+            def _compute_score_divergence_numerical(y, x, t, eps=10 ** (-5)):
+                """
+                Temporary function for numerical divergence for debugging.
+                """
+                div = (
+                    _score_fn((y + eps).reshape(y.shape), x, t)
+                    - _score_fn(y - eps, x, t)  # centered differences
+                ) / (2 * eps)
+                return div.reshape(-1)
+
             integral = 0
             for y, t in zip(y_new, timestamps):
                 drift_div = self._sde._get_drift_and_diffusion_divergence(
