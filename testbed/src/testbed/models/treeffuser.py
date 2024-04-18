@@ -15,9 +15,9 @@ class Treeffuser(ProbabilisticModel):
 
     def __init__(
         self,
-        n_estimators: int = 1000,
+        n_estimators: int = 3000,
         n_repeats: int = 30,
-        learning_rate: float = 0.1,
+        learning_rate: float = 0.5,
         early_stopping_rounds: int = 50,
         num_leaves: int = 31,
     ):

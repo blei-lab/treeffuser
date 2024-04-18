@@ -41,7 +41,7 @@ AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
 
 METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
-    "quantile_calibration_error": QuantileCalibrationErrorMetric,
+    # "quantile_calibration_error": QuantileCalibrationErrorMetric,
     "log_likelihood": LogLikelihoodFromSamplesMetric,
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
