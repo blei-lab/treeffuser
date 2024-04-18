@@ -1,3 +1,12 @@
+"""
+TO DO:
+Extend the following functions to treeffuser:
+- score
+- diffuse probability flow
+- run full pipeline on untranformed data
+- run full pipeline on transformed data
+"""
+
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -6,7 +15,6 @@ from jaxtyping import Float
 from sklearn.model_selection import train_test_split
 
 from treeffuser import LightGBMTreeffuser
-from treeffuser._tree import _compute_score_divergence_numerical
 
 std_x = 1
 
@@ -23,14 +31,20 @@ def _compute_gaussian_likelihood(x, loc, scale, log=True):
     return out.sum() if log else np.exp(out.sum())
 
 
-def _score(y, x, t, model, std_x):
+def _score(y, x, t, model, std_x, use_treeffuser):
     """
     True score function for Gaussian data under VESDE.
     """
     mu_x = x
     mu_t = 1
-    _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
-    return -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
+    if use_treeffuser:
+        score = model._score_model.score(
+            y.reshape((1, -1)), x.reshape((1, -1)), t.reshape(1, 1)
+        )
+    else:
+        _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
+        score = -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
+    return score
 
 
 def _score_divergence(
@@ -55,33 +69,62 @@ def _score_divergence(
     return div
 
 
-def _probability_flow(y, t, x, model, score_fn):
+def _compute_score_divergence_numerical(score_fn, y, x, t, eps=10 ** (-5)):
+    """
+    Temporary function for numerical divergence for debugging.
+    """
+    div = (
+        score_fn((y + eps).reshape(y.shape), x, t)
+        - score_fn(y - eps, x, t)  # centered differences
+    ) / (2 * eps)
+    return div.reshape(-1)
+
+
+def _probability_flow(y, x, t, model, score_fn):
     """
     Derivative function defining the probability flow ODE.
     """
     drift, diffusion = model._sde.drift_and_diffusion(y, t)
-    return drift - 0.5 * diffusion**2 * score_fn(y=y, x=x, t=t)
+    return (drift - 0.5 * diffusion**2 * score_fn(y=y, x=x, t=t)).reshape(-1)
 
 
-def _diffuse_via_probability_flow(y0, x, t, model, std_x):
+def _diffuse_via_probability_flow(y0, x, dt, model, std_x, use_treeffuser=False):
     """
     Diffuse observation via probability flow ODE for Gaussian data under VESDE.
     """
-    mu_x = x
-    mu_t = 1
-    yt = [y0]
-    for s in t:
-        _, std_t = model._sde.get_mean_std_pt_given_y0(y0, s)
-        y = (y0 - mu_t * mu_x) * np.sqrt(
-            (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
-        ) + mu_t * mu_x
-        yt.append(y)
-    return np.array(yt)
+    timestamps = np.arange(0.01, model._sde.T, dt)
+
+    y_t = [y0.reshape(-1)]
+    if use_treeffuser:
+
+        def _score_fn(y, x, t):
+            return model._score_model.score(y, x, t)
+
+        for s in timestamps:
+            y = (
+                y_t[-1]
+                + _probability_flow(
+                    y_t[-1].reshape(1, -1), x, s.reshape(1, 1), model, _score_fn
+                )
+                * dt
+            )
+            y_t.append(y)
+
+    else:
+        mu_x = x.reshape(-1)
+        mu_t = 1
+        for s in timestamps:
+            _, std_t = model._sde.get_mean_std_pt_given_y0(y0, s)
+            y = (y0 - mu_t * mu_x) * np.sqrt(
+                (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
+            ) + mu_t * mu_x
+            y_t.append(y.reshape(-1))
+
+    return np.array(y_t)
 
 
 def _integrate_divergence_pflow_derivative(
     y_diffused: Float[np.ndarray, "n_steps y_dim"],
-    timestamps: Float[np.ndarray, "n_steps 1"],
     x: Float[np.ndarray, "x_dim"],
     dt: float,
     model: LightGBMTreeffuser,
@@ -89,6 +132,7 @@ def _integrate_divergence_pflow_derivative(
     use_treeffuser: False,
 ):
     y_dim = y_diffused.shape[1]  # ys.shape[1]
+    timestamps = np.arange(0.01, model._sde.T, dt)
 
     integral = 0
     for y, t in zip(y_diffused, timestamps):
@@ -130,7 +174,7 @@ def _compute_log_prior_T(y, y0, model: LightGBMTreeffuser):
     return log_p_T
 
 
-def test_ode_based_nll():
+def test_ode_based_nll(n_steps=10**3, use_treffuser=False, press_key_for_next=False):
     n = 10**4
 
     std_x = 1
@@ -150,32 +194,34 @@ def test_ode_based_nll():
     )
     model.fit(X_train, y_train, transform_data=False)
 
-    # Some useful plots
-    _compare_divergence(
-        y_range=(y_test.min(), y_test.max()),
-        x=X_test[0, :].reshape(1, X_test.shape[1]),
-        t_min=0.01,
-        model=model,
-        std_x=std_x,
-    )
+    # # Some useful plots
+    # _compare_divergence(
+    #     y_range=(y_test.min(), y_test.max()),
+    #     x=X_test[0, :].reshape(1, X_test.shape[1]),
+    #     t_min=0.01,
+    #     model=model,
+    #     std_x=std_x,
+    # )
 
-    _compare_score(
-        y_range=(y_test.min(), y_test.max()),
-        x=X_test[0, :].reshape(1, X_test.shape[1]),
-        t_min=0.01,
-        model=model,
-        std_x=std_x,
-    )
+    # _compare_score(
+    #     y_range=(y_test.min(), y_test.max()),
+    #     x=X_test[0, :].reshape(1, X_test.shape[1]),
+    #     t_min=0.01,
+    #     model=model,
+    #     std_x=std_x,
+    # )
 
-    _validate_divergence(
-        y_range=(y_test.min(), y_test.max()),
-        x=X_test[0, :].reshape(1, X_test.shape[1]),
-        t_min=0.01,
-        model=model,
-        std_x=std_x,
-    )
+    # _validate_divergence(
+    #     y_range=(y_test.min(), y_test.max()),
+    #     x=X_test[0, :].reshape(1, X_test.shape[1]),
+    #     t_min=0.01,
+    #     model=model,
+    #     std_x=std_x,
+    # )
 
-    compute_nll_from_ode_gaussian(X_test, y_test, model, std_x)
+    compute_nll_from_ode_gaussian(
+        X_test, y_test, model, std_x, n_steps, use_treffuser, press_key_for_next
+    )
 
 
 def compute_nll_from_ode_gaussian(
@@ -184,6 +230,8 @@ def compute_nll_from_ode_gaussian(
     model: LightGBMTreeffuser,
     std_x: float = 1,
     n_steps: int = 10**4,
+    use_treffuser: bool = False,
+    press_key_for_next: bool = False,
 ):
     y_dim = y.shape[1]
     x_dim = X.shape[1]
@@ -213,16 +261,20 @@ def compute_nll_from_ode_gaussian(
 
         # set discretization parameters
         dt = 1 / n_steps
-        timestamps = np.arange(0.01, model._sde.T, dt)
 
         # diffuse y0 via probability flow ODE
         y_diffused = _diffuse_via_probability_flow(
-            y0_new, x_new, timestamps, model=model, std_x=std_x
+            y0_new, x_new, dt, model=model, std_x=std_x, use_treeffuser=use_treffuser
         )
 
         # compute likelihood via instantaneous change of variable formula
         integral = _integrate_divergence_pflow_derivative(
-            y_diffused, timestamps, x, dt, model=model, std_x=std_x, use_treeffuser=False
+            y_diffused,
+            x,
+            dt,
+            model=model,
+            std_x=std_x,
+            use_treeffuser=use_treffuser,
         )
         log_p_T = _compute_log_prior_T(y_diffused[-1], y0, model)
         log_p_0 = log_p_T + integral
@@ -232,10 +284,17 @@ def compute_nll_from_ode_gaussian(
                 model._y_preprocessor._scaler.scale_
             )  # rescale log likelihood
 
-        print(f"log_p_0_ode={-log_p_0}")
+        if use_treffuser:
+            print(f"log_p_0_ode_treeffuser={-log_p_0}")
+            print(f"log_p_0_sample: {model.compute_nll(x, y0, ode=False)}")
+        else:
+            print(f"log_p_0_ode_true={-log_p_0}")
         print(
             f"log_p_0_theory_VESDE: {-_compute_gaussian_likelihood(y0_new, loc=x_new, scale=std_x, log=True)}"
         )
+
+        if press_key_for_next:
+            input("press key for next point in test set")
 
 
 ########################################### Utilities for some useful plots ###########################################
@@ -395,4 +454,4 @@ def _validate_divergence(
 
 #######################################################################################################################
 
-test_ode_based_nll()
+test_ode_based_nll(n_steps=10**3, use_treffuser=True, press_key_for_next=True)
