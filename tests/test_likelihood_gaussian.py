@@ -150,18 +150,19 @@ def _integrate_divergence_pflow_derivative(
     return integral
 
 
-def _compute_log_prior_T(y, y0, model: LightGBMTreeffuser, use_treeffuser: bool):
-    y_dim = y0.shape[1]
+def _compute_log_prior_T(y, x, model: LightGBMTreeffuser, use_treeffuser: bool):
     if model.sde_name.lower == "vesde" and not use_treeffuser:
-        hyperparam_max = model._sde.get_hyperparams()["hyperparam_max"]
+        x_dim = x.shape[1]
+        mu_t = 1
+        _, std_t = model._sde.get_mean_std_pt_given_y0(y.reshape(1, -1), model._sde.T)
         log_p_T = _compute_gaussian_likelihood(
-            y.reshape(y_dim),
-            loc=y0.reshape(y_dim),
-            scale=np.sqrt(hyperparam_max**2 + std_x**2),
+            y,
+            loc=x.reshape(x_dim),
+            scale=np.sqrt(std_t**2 + mu_t**2 * std_x**2),
             log=True,
         )
     else:
-        log_p_T = model._sde.get_likelihood_theoretical_prior(y.reshape(y_dim))
+        log_p_T = model._sde.get_likelihood_theoretical_prior(y)
     return log_p_T
 
 
@@ -276,12 +277,12 @@ def compute_nll_from_ode_gaussian(
             )  # rescale log likelihood
 
         if use_treffuser:
-            print(f"log_p_0_treeffuser_ode: {-log_p_0}")
-            print(f"log_p_0_treeffuser_sample: {model.compute_nll(x, y0, ode=False)}")
+            print(f"-log_p_0_treeffuser_ode: {-log_p_0}")
+            print(f"-log_p_0_treeffuser_sample: {model.compute_nll(x, y0, ode=False)}")
         else:
-            print(f"log_p_0_ode_true={-log_p_0}")
+            print(f"-log_p_0_ode_true={-log_p_0}")
         print(
-            f"log_p_0_theory_VESDE: {-_compute_gaussian_likelihood(y0_new, loc=x_new, scale=std_x, log=True)}"
+            f"-log_p_0_theory_VESDE: {-_compute_gaussian_likelihood(y0_new, loc=x_new, scale=std_x, log=True)}"
         )
 
         if press_key_for_next:
