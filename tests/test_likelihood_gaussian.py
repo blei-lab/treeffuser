@@ -1,12 +1,3 @@
-"""
-TO DO:
-Extend the following functions to treeffuser:
-- score
-- diffuse probability flow
-- run full pipeline on untranformed data
-- run full pipeline on transformed data
-"""
-
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -159,9 +150,9 @@ def _integrate_divergence_pflow_derivative(
     return integral
 
 
-def _compute_log_prior_T(y, y0, model: LightGBMTreeffuser):
+def _compute_log_prior_T(y, y0, model: LightGBMTreeffuser, use_treeffuser: bool):
     y_dim = y0.shape[1]
-    if model.sde_name.lower == "vesde":
+    if model.sde_name.lower == "vesde" and not use_treeffuser:
         hyperparam_max = model._sde.get_hyperparams()["hyperparam_max"]
         log_p_T = _compute_gaussian_likelihood(
             y.reshape(y_dim),
@@ -276,7 +267,7 @@ def compute_nll_from_ode_gaussian(
             std_x=std_x,
             use_treeffuser=use_treffuser,
         )
-        log_p_T = _compute_log_prior_T(y_diffused[-1], y0, model)
+        log_p_T = _compute_log_prior_T(y_diffused[-1], y0, model, use_treeffuser=use_treffuser)
         log_p_0 = log_p_T + integral
 
         if model.transform_data:
@@ -285,8 +276,8 @@ def compute_nll_from_ode_gaussian(
             )  # rescale log likelihood
 
         if use_treffuser:
-            print(f"log_p_0_ode_treeffuser={-log_p_0}")
-            print(f"log_p_0_sample: {model.compute_nll(x, y0, ode=False)}")
+            print(f"log_p_0_treeffuser_ode: {-log_p_0}")
+            print(f"log_p_0_treeffuser_sample: {model.compute_nll(x, y0, ode=False)}")
         else:
             print(f"log_p_0_ode_true={-log_p_0}")
         print(
