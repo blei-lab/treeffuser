@@ -1,9 +1,20 @@
+"""
+TO DO:
+- compare forward diffusions via pflow ODE: true score vs. treeffuser score.
+    given y0, the trajectories of the forward pflow odes are deterministic.
+    as such, they can be compared.
+    if treeffuser score ~= true score, the trajectories should be very similar.
+"""
+
+from typing import Callable
 from typing import Tuple
 
 import matplotlib.pyplot as plt
 import numpy as np
 from jaxtyping import Float
+from scipy.integrate import solve_ivp
 from sklearn.model_selection import train_test_split
+from tqdm import tqdm
 
 from treeffuser import LightGBMTreeffuser
 
@@ -26,13 +37,13 @@ def _score(y, x, t, model, std_x, use_treeffuser):
     """
     True score function for Gaussian data under VESDE.
     """
-    mu_x = x
-    mu_t = 1
     if use_treeffuser:
         score = model._score_model.score(
-            y.reshape((1, -1)), x.reshape((1, -1)), t.reshape(1, 1)
+            y=y.reshape((1, -1)), X=x.reshape((1, -1)), t=np.array(t).reshape(1, 1)
         )
     else:
+        mu_x = x
+        mu_t = 1
         _, std_t = model._sde.get_mean_std_pt_given_y0(y, t)
         score = -(y - mu_t * mu_x) / (std_t**2 + mu_t**2 * std_x**2)
     return score
@@ -47,7 +58,7 @@ def _score_divergence(
     use_treeffuser=False,
 ):
     """
-    True score divergence function for Gaussian data under VESDE.
+    When use_treeffuser=False, returns the true score divergence for Gaussian data under VESDE.
     """
     if use_treeffuser:
         div = _compute_score_divergence_numerical(
@@ -79,29 +90,27 @@ def _probability_flow(y, x, t, model, score_fn):
     return (drift - 0.5 * diffusion**2 * score_fn(y=y, x=x, t=t)).reshape(-1)
 
 
-def _diffuse_via_probability_flow(y0, x, dt, model, std_x, use_treeffuser=False):
+def _diffuse_via_probability_flow(
+    y0,
+    x,
+    dt,
+    model,
+    std_x,
+    use_treeffuser=False,
+    use_exact_solution=False,
+    use_scipy=True,
+):
     """
     Diffuse observation via probability flow ODE for Gaussian data under VESDE.
+
+    If use_treeffuser is False:
+    - and use_exact_solution is True, it diffuses y(0)=y0 using the closed form solution for y(t).
+    - and use_exact_solution is False, it diffuse y(0)=y0 using the discretized ODE via the true score fuction.
     """
     timestamps = np.arange(0.01, model._sde.T, dt)
 
     y_t = [y0.reshape(-1)]
-    if use_treeffuser:
-
-        def _score_fn(y, x, t):
-            return model._score_model.score(y, x, t)
-
-        for s in timestamps:
-            y = (
-                y_t[-1]
-                + _probability_flow(
-                    y_t[-1].reshape(1, -1), x, s.reshape(1, 1), model, _score_fn
-                )
-                * dt
-            )
-            y_t.append(y)
-
-    else:
+    if not use_treeffuser and use_exact_solution:  # diffuse via exact solution
         mu_x = x.reshape(-1)
         mu_t = 1
         for s in timestamps:
@@ -110,7 +119,49 @@ def _diffuse_via_probability_flow(y0, x, dt, model, std_x, use_treeffuser=False)
                 (std_t**2 + mu_t**2 * std_x**2) / (mu_t**2 * std_x**2)
             ) + mu_t * mu_x
             y_t.append(y.reshape(-1))
+    else:
 
+        def _score_fn(y, x, t):
+            return _score(y, x, t, model, std_x, use_treeffuser)
+
+        if use_scipy:
+
+            def _probability_flow_scipy_helper(t, y):
+                return _probability_flow(
+                    y.reshape(1, -1),
+                    x=x,
+                    t=np.array(t).reshape(1, 1),
+                    model=model,
+                    score_fn=_score_fn,
+                )
+
+            _plot_probability_flow_ODE_derivative(
+                _probability_flow_scipy_helper,
+                y0=y0.item(),
+                n_steps=len(timestamps),
+                model=model,
+            )
+
+            print("Scipy: The solver started working on the probability flow ODE.")
+            y_t = solve_ivp(
+                fun=_probability_flow_scipy_helper,
+                t_span=[timestamps[0], timestamps[-1]],
+                y0=y0.reshape(-1),
+                method="RK45",  # "BDF"
+                t_eval=timestamps,
+            )
+            print(f"Scipy: {y_t['message']}")
+            y_t = y_t["y"].T
+        else:
+            for s in timestamps:
+                y = (
+                    y_t[-1]
+                    + _probability_flow(
+                        y_t[-1].reshape(1, -1), x, s.reshape(1, 1), model, _score_fn
+                    )
+                    * dt
+                )
+                y_t.append(y)
     return np.array(y_t)
 
 
@@ -444,6 +495,35 @@ def _validate_divergence(
     plt.show()
 
 
+def _plot_probability_flow_ODE_derivative(
+    probability_flow_fn: Callable, y0: float, n_steps: int, model: LightGBMTreeffuser
+):
+    t_values = np.concatenate((np.linspace(0.01, 0.5, 5), np.linspace(0.51, model._sde.T, 20)))
+    y_values = np.linspace(-5 * np.abs(y0), 5 * abs(y0), 20)
+    T, Y = np.meshgrid(t_values, y_values)
+    F = np.zeros_like(T)
+
+    # Compute f(t, y) for each element in T and Y
+    for i in tqdm(range(T.shape[0]), desc="Plotting pflow problem"):
+        for j in range(T.shape[1]):
+            F[i, j] = probability_flow_fn(T[i, j], Y[i, j]).item()
+
+    # Create a 3D plot to visualize the derivatives
+    fig = plt.figure()
+    ax = fig.add_subplot(111, projection="3d")
+    surf = ax.plot_surface(T, Y, F, cmap="viridis")
+
+    # Add labels and title
+    ax.set_xlabel("t")
+    ax.set_ylabel("y")
+    ax.set_title("Probability flow ODE as a function of (t, y)")
+
+    # Add a color bar which maps values to colors
+    fig.colorbar(surf, ax=ax, shrink=0.5, aspect=5)
+
+    plt.show()
+
+
 #######################################################################################################################
 
-test_ode_based_nll(n_steps=10**3, use_treffuser=True, press_key_for_next=True)
+test_ode_based_nll(n_steps=10**4, use_treffuser=True, press_key_for_next=True)

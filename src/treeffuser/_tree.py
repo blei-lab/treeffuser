@@ -22,7 +22,7 @@ def _predict(
 
 
 def _predict_leaf(
-    node: dict,
+    leaf: dict,
     y: Float[np.ndarray, "y_dim"],
     x: Float[np.ndarray, "x_dim"],
     t: float,
@@ -30,8 +30,8 @@ def _predict_leaf(
     y_dim = len(y)
     n_features = y_dim + len(x) + 1
 
-    score = 0
-    for feature_index, feature_coef in zip(node["leaf_features"], node["leaf_coeff"]):
+    score = np.zeros(y_dim)
+    for feature_index, feature_coef in zip(leaf["leaf_features"], leaf["leaf_coeff"]):
         if feature_index < y_dim:
             feature_value = y[feature_index]
         elif feature_index == n_features - 1:
@@ -39,7 +39,7 @@ def _predict_leaf(
         else:
             feature_value = x[feature_index - y_dim]
         score += feature_coef * feature_value
-    return node["leaf_const"] + score
+    return leaf["leaf_const"] + score
 
 
 def _compute_prediction_divergence(
@@ -56,9 +56,9 @@ def _compute_prediction_divergence(
     return div
 
 
-def _compute_prediction_divergence_leaf(node: dict, y_dim: int):
+def _compute_prediction_divergence_leaf(leaf: dict, y_dim: int):
     div = 0
-    for feature_index, feature_coef in zip(node["leaf_features"], node["leaf_coeff"]):
+    for feature_index, feature_coef in zip(leaf["leaf_features"], leaf["leaf_coeff"]):
         if feature_index < y_dim:
             div += feature_coef
     return div
