@@ -6,6 +6,7 @@ from jaxtyping import Float
 from numpy import ndarray
 
 from .base_sde import BaseSDE
+from .base_sde import ProbabilityFlow
 from .base_sde import ReverseSDE
 
 _AVAILABLE_SOLVERS = {}
@@ -21,6 +22,7 @@ def sdeint(
     score_fn=None,
     n_samples=1,
     seed=None,
+    probability_flow=False,
 ):
     """
     Integrate an SDE (i.e. sample from an SDE).
@@ -39,8 +41,11 @@ def sdeint(
         The integration method to use. Currently only "euler" is supported.
     n_steps : int
         The number of steps to use for the integration.
-    score_fn : callable
+    score_fn : callable, optional
         The score function for the reverse SDE. Needed only if the SDE is reversed (i.e. t1 < t0).
+    probability_flow: bool, optional
+        Needed only if the SDE is reversed.
+        If True, integrates the probability flow ODE rather than the reverse SDE. Default is False.
     n_samples : int
         The number of samples to generate per input point.
     seed : int
@@ -53,7 +58,10 @@ def sdeint(
                 "`score_fn` must be provided for reverse SDE (the SDE is reversed "
                 f"because `t1` is smaller than `t0`: t0={t0}, t1={t1})."
             )
-        sde = ReverseSDE(sde, t0, score_fn)
+        if probability_flow:
+            sde = ProbabilityFlow(sde, t0, score_fn)
+        else:
+            sde = ReverseSDE(sde, t0, score_fn)
         t0, t1 = 0.0, t0 - t1
     if n_samples > 1:
         y0 = np.broadcast_to(y0, (n_samples, *y0.shape))

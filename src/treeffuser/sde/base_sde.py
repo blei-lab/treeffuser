@@ -1,6 +1,7 @@
 import abc
 from typing import Callable
 
+import numpy as np
 from jaxtyping import Float
 from numpy import ndarray
 
@@ -47,10 +48,10 @@ class ReverseSDE(BaseSDE):
     The `ReverseSDE` class represents a stochastic differential equation (SDE) reversed
     in time.
 
-    An SDE requires a transformation of the drift term to be reversed, which is based on
-    the score function of the marginal distributions induced by the original SDE [1].
-    The original SDE `dY = f(Y, t) dt + g(Y, t) dW` can be reversed from time `T` to
-    define a new SDE:
+    A Reverse SDE requires a transformation of the drift term to be reversed, which is
+    based on the score function of the marginal distributions induced by the original
+    SDE [1]. The original SDE `dY = f(Y, t) dt + g(Y, t) dW` can be reversed from time
+    `T` to define a new SDE:
     `dY(T-t) = (-f(Y, T-t) + g(Y, T-t)² ∇[log p(Y(T-t))]) dt + g(Y, T-t) dW`.
 
     Args:
@@ -83,6 +84,30 @@ class ReverseSDE(BaseSDE):
 
     def __repr__(self):
         return f"ReverseSDE(sde={self.sde}, t_origin={self.t_reverse_origin}, score_fn={self.score_fn})"
+
+
+class ProbabilityFlow(ReverseSDE):
+    """
+    The `ProbabilityFlow` class represents an ordinary differential equation (ODE).
+
+    Args:
+        sde (BaseSDE): The original SDE.
+        t_reverse_origin (float): The time from which to reverse the SDE.
+        score_fn: The score function of the original SDE induced marginal distributions.
+
+    References:
+        [1] https://openreview.net/pdf?id=PxTIG12RRHS
+    """
+
+    def drift_and_diffusion(
+        self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
+    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
+        drift, diffusion = self.sde.drift_and_diffusion(y, self.t_reverse_origin - t)
+        drift = -drift + 0.5 * diffusion**2 * self.score_fn(y, self.t_reverse_origin - t)
+        return drift, np.zeros_like(diffusion)
+
+    def __repr__(self):
+        return f"ProbabilityFlowODE(sde={self.sde}, t_origin={self.t_reverse_origin}, score_fn={self.score_fn})"
 
 
 class CustomSDE(BaseSDE):

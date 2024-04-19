@@ -46,7 +46,9 @@ def test_treeffuser_bimodal_linear_regression():
     )
     model.fit(X_train, y_train)
 
-    y_samples = model.sample(X_test, n_samples=n_samples, n_parallel=50, n_steps=30, seed=0)
+    y_samples = model.sample(
+        X_test, n_samples=n_samples, n_parallel=50, n_steps=30, seed=0, probability_flow=True
+    )
 
     y_samples = y_samples.flatten()
     y_test = y_test.flatten()
@@ -81,17 +83,25 @@ def test_sample_based_nll_gaussian_mixture():
     )
     model.fit(x_train, y_train)
 
-    nll_treeffuser = model.compute_nll(x_test, y_test, ode=False, n_samples=10**3, bandwidth=1)
-    nll_true = -(
-        gaussian_mixture_pdf(
-            y_test, x_test, np.abs(x_test), -x_test, np.abs(x_test), 0.5, log=True
+    for probability_flow in [True, False]:
+        nll_treeffuser = model.compute_nll(
+            x_test,
+            y_test,
+            sample=True,
+            probability_flow=probability_flow,
+            n_samples=10**3,
+            bandwidth=1,
         )
-        .sum()
-        .item()
-    )
+        nll_true = -(
+            gaussian_mixture_pdf(
+                y_test, x_test, np.abs(x_test), -x_test, np.abs(x_test), 0.5, log=True
+            )
+            .sum()
+            .item()
+        )
 
-    relative_error = np.abs(nll_treeffuser / nll_true - 1)
-    assert relative_error < 0.05, f"relative error: {relative_error}"
+        relative_error = np.abs(nll_treeffuser / nll_true - 1)
+        assert relative_error < 0.05, f"relative error: {relative_error}"
 
 
 def test_ode_based_nll_gaussian_mixture():

@@ -122,6 +122,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         n_parallel: int = 100,
         n_steps: int = 100,
         seed=None,
+        probability_flow: bool = False,
         verbose: int = 1,
     ) -> Float[ndarray, "batch n_samples y_dim"]:
         """
@@ -163,6 +164,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 method="euler",
                 seed=seed + n_samples_sampled if seed is not None else None,
                 score_fn=_score_fn,
+                probability_flow=probability_flow,
             )
             n_samples_sampled += batch_size_samples
             y_samples.append(y_batch_samples)
@@ -248,7 +250,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        ode: bool = True,
+        sample: bool = True,
+        probability_flow: bool = False,
         n_samples: int = 10,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -263,9 +266,26 @@ class Treeffuser(BaseEstimator, abc.ABC):
             Input data with shape (batch, x_dim).
         y : np.ndarray
             Target data with shape (batch, y_dim).
-        ode : bool, optional
+        sample : bool, optional
+            If False, computes the negative log likelihood from samples.
             If True, computes the negative log likelihood from ODE.
-            If False, computes it from samples. Default is True.
+            Default is True.
+        probability_flow: bool, optional
+            If True, it uses the probability flow ODE for sample-based or ode-based negative log likelihood.
+            If False, it uses the ReverseSDE.
+            Default it False.
+        sample : bool, optional
+            Determines the method for comoputing the negative log likelihood (NLL).
+            - If False, computes NLL via the instantaneous change of variable formula based on the probability flow ODE.
+            - If True, computes NLL based on sampled data:
+                - If probability_flow is True, samples are generated from the probability flow ODE.
+                - If probability_flow is False, samples are generated from the reverse SDE.
+            Default is True.
+        probability_flow: bool, optional
+            Specifies the underlying diffrential equation for sample generation or computation method:
+            - If True, uses the probability flow ODE.
+            - If False, uses the reverse SDE (only if sample is True).
+            Default is False.
         n_samples : int, optional
             Number of samples to draw if computing the negative log likelihood from samples. Default is 10.
         bandwidth : Union[float, Literal["scott", "silverman"]], optional
@@ -280,10 +300,10 @@ class Treeffuser(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        if ode:
-            return self._compute_nll_from_ode(X, y, verbose=verbose)
-        else:
+        if sample:
             return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
+        else:
+            return self._compute_nll_from_ode(X, y, verbose=verbose)
 
     def _compute_nll_from_ode(
         self,
@@ -435,53 +455,6 @@ class LightGBMTreeffuser(Treeffuser):
     @property
     def _score_model_class(self):
         return _score_models.LightGBMScore
-
-    def _sample_from_probability_flow(
-        self,
-        X: Float[ndarray, "batch x_dim"],
-        n_samples: int,
-        n_steps: int = 100,
-        seed=None,
-        verbose: int = 1,
-    ):
-        x_dim = X.shape[1]
-        y_dim = self._y_dim
-
-        X_new = self._x_preprocessor.transform(X) if self.transform_data else X
-
-        samples = []
-        for x_new in tqdm(X_new):  # tuttapposto
-            x_new = x_new.reshape(1, x_dim)
-
-            def _score_fn(y, t, x=x_new):
-                score = self._score_model.score(
-                    y.reshape(1, y_dim),
-                    x.reshape(1, x_dim),
-                    t=np.array(t).reshape(-1, 1),
-                )
-                return score.reshape(-1)
-
-            def _probability_flow(y, t):
-                drift, diffusion = self._sde.drift_and_diffusion(
-                    y.reshape(1, y_dim), t.reshape(1, 1)
-                )
-                return drift - 0.5 * diffusion**2 * _score_fn(y, t)
-
-            ts = np.arange(self._sde.T, 0.01, -1 / n_steps)
-
-            sample_x = []
-            for _ in range(n_samples):
-                y_new = self._sde.sample_from_theoretical_prior((1, y_dim))
-                for t in ts:
-                    y_new = y_new - _probability_flow(y_new, t).reshape(1, y_dim) / n_steps
-
-                if self.transform_data:
-                    y_new = self._y_preprocessor.inverse_transform(y_new)
-
-                sample_x.append(y_new)
-
-            samples.append(np.array(sample_x).reshape(-1))
-        return np.array(samples)
 
     def _compute_nll_from_ode(
         self,
