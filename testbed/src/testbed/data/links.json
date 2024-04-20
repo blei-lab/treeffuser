@@ -3,5 +3,15 @@
     "protein": "https://archive.ics.uci.edu/static/public/265/physicochemical+properties+of+protein+tertiary+structure.zip",
     "wine": "https://archive.ics.uci.edu/static/public/186/wine+quality.zip",
     "yacht": "https://archive.ics.uci.edu/static/public/243/yacht+hydrodynamics.zip",
-    "movies": "https://raw.githubusercontent.com/danielgrijalva/movie-stats/master/movies.csv"
+    "movies": "https://raw.githubusercontent.com/danielgrijalva/movie-stats/master/movies.csv",
+    "bike": "https://archive.ics.uci.edu/static/public/275/bike+sharing+dataset.zip",
+    "communities": "https://archive.ics.uci.edu/static/public/183/communities+and+crime.zip",
+    "concrete": "https://archive.ics.uci.edu/static/public/165/concrete+compressive+strength.zip",
+    "energy": "https://archive.ics.uci.edu/static/public/242/energy+efficiency.zip",
+    "facebook": "https://archive.ics.uci.edu/static/public/363/facebook+comment+volume+dataset.zip",
+    "yearMSD": "https://archive.ics.uci.edu/static/public/203/yearpredictionmsd.zip",
+    "news": "https://archive.ics.uci.edu/static/public/332/online+news+popularity.zip",
+    "power": "https://archive.ics.uci.edu/static/public/294/combined+cycle+power+plant.zip",
+    "superconductor": "https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip",
+    "wave": "https://archive.ics.uci.edu/static/public/494/wave+energy+converters.zip"
 }
