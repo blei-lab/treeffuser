@@ -98,7 +98,8 @@ def _diffuse_via_probability_flow(
     std_x,
     use_treeffuser=False,
     use_exact_solution=False,
-    use_scipy=True,
+    use_scipy=False,
+    plot_ode_problem=False,
 ):
     """
     Diffuse observation via probability flow ODE for Gaussian data under VESDE.
@@ -135,12 +136,13 @@ def _diffuse_via_probability_flow(
                     score_fn=_score_fn,
                 )
 
-            _plot_probability_flow_ODE_derivative(
-                _probability_flow_scipy_helper,
-                y0=y0.item(),
-                n_steps=len(timestamps),
-                model=model,
-            )
+            if plot_ode_problem:
+                _plot_probability_flow_ODE_derivative(
+                    _probability_flow_scipy_helper,
+                    y0=y0.item(),
+                    n_steps=len(timestamps),
+                    model=model,
+                )
 
             print("Scipy: The solver started working on the probability flow ODE.")
             y_t = solve_ivp(
@@ -329,7 +331,12 @@ def compute_nll_from_ode_gaussian(
 
         if use_treffuser:
             print(f"-log_p_0_treeffuser_ode: {-log_p_0}")
-            print(f"-log_p_0_treeffuser_sample: {model.compute_nll(x, y0, ode=False)}")
+            print(
+                f"-log_p_0_treeffuser_sample_pflow: {model.compute_nll(x, y0, sample=True, probability_flow=True, n_samples=100)}"
+            )
+            print(
+                f"-log_p_0_treeffuser_sample_reverseSDE: {model.compute_nll(x, y0, sample=True, probability_flow=False, n_samples=100)}"
+            )
         else:
             print(f"-log_p_0_ode_true={-log_p_0}")
         print(
@@ -526,4 +533,4 @@ def _plot_probability_flow_ODE_derivative(
 
 #######################################################################################################################
 
-test_ode_based_nll(n_steps=10**4, use_treffuser=True, press_key_for_next=True)
+test_ode_based_nll(n_steps=10**2, use_treffuser=True, press_key_for_next=True)
