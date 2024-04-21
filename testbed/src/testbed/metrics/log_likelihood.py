@@ -74,8 +74,8 @@ class LogLikelihoodFromSamplesMetric(Metric):
 
         n_samples, batch, y_dim = y_samples.shape
 
-        assert batch == X_test.shape[0]
-        assert y_dim == y_test.shape[1]
+        assert batch == X_test.shape[0], f"batch={batch} != X_test.shape[0]={X_test.shape[0]}"
+        assert y_dim == y_test.shape[1], f"y_dim={y_dim} != y_test.shape[1]={y_test.shape[1]}"
         assert n_samples == self.n_samples
 
         nll = 0
