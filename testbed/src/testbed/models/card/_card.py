@@ -22,11 +22,10 @@ from lightning_uq_box.uq_methods import DeterministicRegression
 from numpy import ndarray
 from skopt.space import Integer
 from skopt.space import Real
-from torch.optim import Adam
-from tqdm import tqdm
-
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.card._data_module import GenericDataModule
+from torch.optim import Adam
+from tqdm import tqdm
 
 
 def _to_tensor(X: Float[np.ndarray, "batch x_dim"]) -> Float[t.Tensor, "batch x_dim"]:
