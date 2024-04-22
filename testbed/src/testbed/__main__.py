@@ -1,5 +1,6 @@
 import argparse
 import logging
+import warnings
 from typing import Dict
 from typing import List
 
@@ -309,9 +310,20 @@ def main() -> None:
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
-            X_train, X_test, y_train, y_test = train_test_split(
-                data["x"], data["y"], test_size=0.2, random_state=args.seed
-            )
+            if "test" not in data:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    data["x"], data["y"], test_size=0.2, random_state=args.seed
+                )
+            else:
+                warnings.warn(
+                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored."
+                )
+                X_train, X_test, y_train, y_test = (
+                    data["x"],
+                    data["test"]["x"],
+                    data["y"],
+                    data["test"]["y"],
+                )
 
             results = run_model_on_dataset(
                 X_train=X_train,

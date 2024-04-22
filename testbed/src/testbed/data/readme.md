@@ -52,10 +52,11 @@ To introduce a new dataset:
 
 ## Preprocessed data files
 
-Preprocessed data should be saved in `data.npy` files. These files contain a dictionary with three keys:
+Preprocessed data should be saved in `data.npy` files. These files contain a dictionary with the following keys:
 - `x`: a `np.ndarray` with features.
 - `y`: a `np.ndarray` with the outcome.
 - `categorical`: a list with the indices of categorical features. Use an empty list if there are no categorical variables.
+- `test` (optional): a dictionary with two ndarrays `x` and `y` for prescribed test data.
 
 ## Adding download links
 
@@ -94,4 +95,4 @@ if __name__ == "__main__":
 
 ## Note
 
-The dataset links are updated as of March 9, 2024. Any changes to the raw files after this date may require adjustments to the preprocessing scripts.
+The dataset links are updated as of April 22, 2024. Any changes to the raw files after this date may require adjustments to the preprocessing scripts.
