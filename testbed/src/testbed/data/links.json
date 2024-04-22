@@ -9,7 +9,7 @@
     "concrete": "https://archive.ics.uci.edu/static/public/165/concrete+compressive+strength.zip",
     "energy": "https://archive.ics.uci.edu/static/public/242/energy+efficiency.zip",
     "facebook": "https://archive.ics.uci.edu/static/public/363/facebook+comment+volume+dataset.zip",
-    "yearMSD": "https://archive.ics.uci.edu/static/public/203/yearpredictionmsd.zip",
+    "msd": "https://archive.ics.uci.edu/static/public/203/yearpredictionmsd.zip",
     "news": "https://archive.ics.uci.edu/static/public/332/online+news+popularity.zip",
     "power": "https://archive.ics.uci.edu/static/public/294/combined+cycle+power+plant.zip",
     "superconductor": "https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip",
