@@ -316,7 +316,8 @@ def main() -> None:
                 )
             else:
                 warnings.warn(
-                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored."
+                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                    stacklevel=2,
                 )
                 X_train, X_test, y_train, y_test = (
                     data["x"],
