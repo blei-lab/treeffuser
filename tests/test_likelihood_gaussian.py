@@ -7,6 +7,7 @@ TO DO:
 """
 
 from typing import Callable
+from typing import Optional
 from typing import Tuple
 
 import matplotlib.pyplot as plt
@@ -14,6 +15,7 @@ import numpy as np
 from jaxtyping import Float
 from scipy.integrate import solve_ivp
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 from treeffuser import LightGBMTreeffuser
@@ -21,11 +23,14 @@ from treeffuser import LightGBMTreeffuser
 std_x = 1
 
 
-def _generate_data(n, std_x=1):
+def _generate_data(n, std_x=1, given_x=None):
     rng = np.random.default_rng(seed=0)
-    X = rng.uniform(-1, 1, size=(n, 1))
-    y = rng.normal(loc=X, scale=std_x, size=(n, 1))
-    return y, X
+    if given_x:
+        return rng.normal(loc=given_x, scale=std_x, size=(n, 1))
+    else:
+        X = rng.uniform(-1, 1, size=(n, 1))
+        y = rng.normal(loc=X, scale=std_x, size=(n, 1))
+        return y, X
 
 
 def _compute_gaussian_likelihood(x, loc, scale, log=True):
@@ -149,7 +154,7 @@ def _diffuse_via_probability_flow(
                 fun=_probability_flow_scipy_helper,
                 t_span=[timestamps[0], timestamps[-1]],
                 y0=y0.reshape(-1),
-                method="RK45",  # "BDF"
+                method="BDF",
                 t_eval=timestamps,
             )
             print(f"Scipy: {y_t['message']}")
@@ -203,7 +208,48 @@ def _integrate_divergence_pflow_derivative(
     return integral
 
 
-def _compute_log_prior_T(y, x, model: LightGBMTreeffuser, use_treeffuser: bool):
+def _compute_log_prior_T(
+    y,
+    x,
+    model: LightGBMTreeffuser,
+    use_treeffuser: bool,
+    empirical: bool = False,
+    dt: Optional[float] = None,
+):
+    if empirical:
+        n = 10**3
+        y0_sims = _generate_data(n, std_x=std_x, given_x=x)
+        yT_sims = []
+        for y0 in tqdm(y0_sims):
+            yT_temp = _diffuse_via_probability_flow(
+                y0, x, dt=dt, model=model, std_x=std_x, use_treeffuser=use_treeffuser
+            )[-1]
+            yT_sims.append(yT_temp)
+        yT_sims = np.sort(yT_sims, axis=0)
+
+        kde = KernelDensity(bandwidth=1.0, algorithm="auto", kernel="gaussian")
+        kde.fit(yT_sims)
+
+        # plot empirical distribution vs SDE prior
+        plt.figure()
+        plt.hist(yT_sims, bins=30, density=True)
+        prior_density = np.array(
+            [
+                model._sde.get_likelihood_theoretical_prior(yT_sim, log=False)
+                for yT_sim in yT_sims
+            ]
+        )
+        plt.plot(yT_sims, prior_density, label=f"SDE prior at T={model._sde.T}")
+        plt.plot(
+            yT_sims,
+            np.exp([kde.score(yT_sim.reshape(1, -1)) for yT_sim in yT_sims]),
+            label="KDE estimate",
+        )
+        plt.legend()
+        plt.show()
+
+        return kde.score(y.reshape(1, -1))
+
     if model.sde_name.lower == "vesde" and not use_treeffuser:
         x_dim = x.shape[1]
         mu_t = 1
@@ -219,7 +265,9 @@ def _compute_log_prior_T(y, x, model: LightGBMTreeffuser, use_treeffuser: bool):
     return log_p_T
 
 
-def test_ode_based_nll(n_steps=10**3, use_treffuser=False, press_key_for_next=False):
+def test_ode_based_nll(
+    n_steps=10**3, use_treeffuser=False, press_key_for_next=False, empirical_prior=True
+):
     n = 10**4
 
     std_x = 1
@@ -265,7 +313,14 @@ def test_ode_based_nll(n_steps=10**3, use_treffuser=False, press_key_for_next=Fa
     # )
 
     compute_nll_from_ode_gaussian(
-        X_test, y_test, model, std_x, n_steps, use_treffuser, press_key_for_next
+        X_test,
+        y_test,
+        model,
+        std_x,
+        n_steps,
+        use_treeffuser,
+        press_key_for_next,
+        empirical_prior,
     )
 
 
@@ -275,8 +330,9 @@ def compute_nll_from_ode_gaussian(
     model: LightGBMTreeffuser,
     std_x: float = 1,
     n_steps: int = 10**4,
-    use_treffuser: bool = False,
+    use_treeffuser: bool = False,
     press_key_for_next: bool = False,
+    empirical_prior: bool = False,
 ):
     y_dim = y.shape[1]
     x_dim = X.shape[1]
@@ -300,16 +356,20 @@ def compute_nll_from_ode_gaussian(
 
         ite += 1
         print(f"{'#' * 20}")
-        print(f"{ite} of {len(y)}")
+        print(f"{ite} of {len(y)-1}")
         print(f"y0={y0}")
         print(f"x={x}")
+
+        if ite != 2 and ite != 6:
+            print("Skipping ite!")
+            continue
 
         # set discretization parameters
         dt = 1 / n_steps
 
         # diffuse y0 via probability flow ODE
         y_diffused = _diffuse_via_probability_flow(
-            y0_new, x_new, dt, model=model, std_x=std_x, use_treeffuser=use_treffuser
+            y0_new, x_new, dt, model=model, std_x=std_x, use_treeffuser=use_treeffuser
         )
 
         # compute likelihood via instantaneous change of variable formula
@@ -319,9 +379,16 @@ def compute_nll_from_ode_gaussian(
             dt,
             model=model,
             std_x=std_x,
-            use_treeffuser=use_treffuser,
+            use_treeffuser=use_treeffuser,
         )
-        log_p_T = _compute_log_prior_T(y_diffused[-1], y0, model, use_treeffuser=use_treffuser)
+        log_p_T = _compute_log_prior_T(
+            y_diffused[-1],
+            y0,
+            model,
+            use_treeffuser=use_treeffuser,
+            empirical=empirical_prior,
+            dt=dt,
+        )
         log_p_0 = log_p_T + integral
 
         if model.transform_data:
@@ -329,13 +396,13 @@ def compute_nll_from_ode_gaussian(
                 model._y_preprocessor._scaler.scale_
             )  # rescale log likelihood
 
-        if use_treffuser:
+        if use_treeffuser:
             print(f"-log_p_0_treeffuser_ode: {-log_p_0}")
             print(
-                f"-log_p_0_treeffuser_sample_pflow: {model.compute_nll(x, y0, sample=True, probability_flow=True, n_samples=100)}"
+                f"-log_p_0_treeffuser_sample_pflow: {model.compute_nll(x, y0, sample=True, probability_flow=True, n_samples=1000)}"
             )
             print(
-                f"-log_p_0_treeffuser_sample_reverseSDE: {model.compute_nll(x, y0, sample=True, probability_flow=False, n_samples=100)}"
+                f"-log_p_0_treeffuser_sample_reverseSDE: {model.compute_nll(x, y0, sample=True, probability_flow=False, n_samples=1000)}"
             )
         else:
             print(f"-log_p_0_ode_true={-log_p_0}")
@@ -533,4 +600,6 @@ def _plot_probability_flow_ODE_derivative(
 
 #######################################################################################################################
 
-test_ode_based_nll(n_steps=10**2, use_treffuser=True, press_key_for_next=True)
+test_ode_based_nll(
+    n_steps=10**3, use_treeffuser=True, press_key_for_next=True, empirical_prior=True
+)
