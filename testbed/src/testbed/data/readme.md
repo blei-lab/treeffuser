@@ -7,8 +7,18 @@ This folder contains utilities to automate the downloading and preprocessing of 
 The utilities currently support the following datasets:
 
 - **UCI Datasets:**
+  - `bike`
+  - `communities`
+  - `concrete`
+  - `energy`
+  - `facebook`
+  - `msd`
   - `naval`
+  - `news`
+  - `power`
   - `protein`
+  - `superconductor`
+  - `wave`
   - `wine`
   - `yacht`
 
