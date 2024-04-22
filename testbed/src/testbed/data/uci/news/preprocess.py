@@ -15,9 +15,10 @@ def main(path_raw_dataset_dir: Path):
     path_raw_data_file.unlink()
 
     # import data
-    data = pd.read_csv(
-        path_raw_dataset_dir / "OnlineNewsPopularity/OnlineNewsPopularity.csv", header=None
-    )
+    data = pd.read_csv(path_raw_dataset_dir / "OnlineNewsPopularity/OnlineNewsPopularity.csv")
+
+    # remove url and timedelta columns
+    data = data.drop(columns=["url", " timedelta"])
 
     # extract outcome and covariates
     X = data.iloc[:, :-1]

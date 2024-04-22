@@ -17,15 +17,13 @@ def main(path_raw_dataset_dir: Path):
     # import data
     data = pd.read_csv(path_raw_dataset_dir / "communities.data", header=None, na_values="?")
 
+    # remove community name column
+    data = data.drop(data.columns[3], axis=1)
+
     # extract outcome and covariates
     X = data.iloc[:, :-1]
     y = data.iloc[:, -1]
     categorical = []
-
-    # # remove missing values
-    # has_nan = X.isna().any(axis=1) | y.isna()
-    # X = X[~has_nan]
-    # y = y[~has_nan]
 
     # save preprocessed data
     np.save(
