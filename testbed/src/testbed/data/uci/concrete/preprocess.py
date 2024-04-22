@@ -15,17 +15,12 @@ def main(path_raw_dataset_dir: Path):
     path_raw_data_file.unlink()
 
     # import data
-    data = pd.read_csv(path_raw_dataset_dir / "communities.data", header=None, na_values="?")
+    data = pd.read_excel(path_raw_dataset_dir / "Concrete_Data.xls")
 
     # extract outcome and covariates
     X = data.iloc[:, :-1]
     y = data.iloc[:, -1]
     categorical = []
-
-    # # remove missing values
-    # has_nan = X.isna().any(axis=1) | y.isna()
-    # X = X[~has_nan]
-    # y = y[~has_nan]
 
     # save preprocessed data
     np.save(
