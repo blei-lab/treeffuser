@@ -14,7 +14,8 @@ from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
 from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
-from testbed.metrics import QuantileCalibrationErrorMetric
+
+# from testbed.metrics import QuantileCalibrationErrorMetric
 from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
