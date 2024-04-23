@@ -39,6 +39,7 @@ class NGBoostGaussian(ProbabilisticModel):
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
             early_stopping_rounds=10,
+            verbose=False,
         )
         self.model.fit(X, y)
         return self
@@ -100,6 +101,7 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
             Dist=self._dist,
             early_stopping_rounds=10,
             natural_gradient=False,
+            verbose=False,
         )
         self.model.fit(X, y)
         return self
