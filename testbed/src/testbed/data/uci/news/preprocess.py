@@ -1,18 +1,14 @@
 import argparse
-import zipfile
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from testbed.data.utils import _extract_and_delete_zipfile
 
 
 def main(path_raw_dataset_dir: Path):
-    # unzip and delte original raw files
-    path_raw_data_file = path_raw_dataset_dir / "temp.zip"
-    with zipfile.ZipFile(path_raw_data_file, "r") as archive:
-        for file in archive.namelist():
-            archive.extract(file, path_raw_dataset_dir)
-    path_raw_data_file.unlink()
+    # unzip and delete original arhchive with raw files
+    _extract_and_delete_zipfile(path_raw_dataset_dir)
 
     # import data
     data = pd.read_csv(path_raw_dataset_dir / "OnlineNewsPopularity/OnlineNewsPopularity.csv")
