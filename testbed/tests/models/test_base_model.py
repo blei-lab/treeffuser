@@ -4,10 +4,15 @@ import numpy as np
 import pytest
 from testbed.models import BayesOptProbabilisticModel
 from testbed.models import ProbabilisticModel
+from testbed.models.lightning_uq_models import DeepEnsemble
+from testbed.models.lightning_uq_models import MCDropout
+from testbed.models.lightning_uq_models import QuantileRegression
 from testbed.models.ngboost import NGBoostGaussian
 
 
-@pytest.mark.parametrize("model_class", [NGBoostGaussian])
+@pytest.mark.parametrize(
+    "model_class", [NGBoostGaussian, MCDropout, DeepEnsemble, QuantileRegression]
+)
 def test_bayes_opt_works(model_class: Type[ProbabilisticModel]):
     """
     Simple test to check if our wrapper for bayesian optimization works
@@ -21,11 +26,13 @@ def test_bayes_opt_works(model_class: Type[ProbabilisticModel]):
     n_targets = 1
 
     X = np.random.rand(n_samples, n_features)
-    epsilon = np.random.rand(n_samples, n_targets)
+    epsilon = np.random.rand(n_samples, n_targets) * 0.1
     beta = np.random.rand(n_features, n_targets)
 
     y = X @ beta + epsilon
-    model = BayesOptProbabilisticModel(model_class=model_class, n_iter=2, cv=2, n_jobs=1)
+    model = BayesOptProbabilisticModel(
+        model_class=model_class, n_iter_bayes_opt=2, cv=2, n_jobs=1
+    )
     model.fit(X, y)
 
     # Check that everything runs
