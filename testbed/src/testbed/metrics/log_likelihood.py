@@ -28,7 +28,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
     def __init__(
         self, n_samples: int = 50, bandwidth: Optional[Union[str, float]] = "scott"
     ) -> None:
-
+        super().__init__()
         self.n_samples = n_samples
         self.bandwidth = bandwidth
 
@@ -57,7 +57,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         """
 
         y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
-            X=X_test, n_samples=self.n_samples
+            X=X_test, n_samples=self.n_samples, seed=self.seed
         )
         n_samples, batch, y_dim = y_samples.shape
 
@@ -70,6 +70,8 @@ class LogLikelihoodFromSamplesMetric(Metric):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
             nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi], bandwidth=self.bandwidth)
+
+        nll /= batch
 
         return {
             "nll": nll,
