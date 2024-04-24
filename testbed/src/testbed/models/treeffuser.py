@@ -20,8 +20,9 @@ class Treeffuser(ProbabilisticModel):
         learning_rate: float = 0.5,
         early_stopping_rounds: int = 50,
         num_leaves: int = 31,
+        seed: int = 0,
     ):
-        super().__init__()
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.n_repeats = n_repeats
         self.learning_rate = learning_rate
@@ -35,6 +36,7 @@ class Treeffuser(ProbabilisticModel):
             learning_rate=learning_rate,
             early_stopping_rounds=early_stopping_rounds,
             num_leaves=num_leaves,
+            seed=self.seed,
         )
 
     def fit(
@@ -46,13 +48,13 @@ class Treeffuser(ProbabilisticModel):
         return self
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
-        y_samples = self.sample(X, n_samples=50)
+        y_samples = self.sample(X, n_samples=50, seed=0)
         return y_samples.mean(axis=0)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
-        return self.model.sample(X, n_samples, n_parallel=5, n_steps=50)
+        return self.model.sample(X, n_samples, n_parallel=5, n_steps=50, seed=seed)
 
     @staticmethod
     def search_space() -> dict:

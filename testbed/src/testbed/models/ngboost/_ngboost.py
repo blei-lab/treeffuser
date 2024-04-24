@@ -1,3 +1,4 @@
+import numpy as np
 from jaxtyping import Float
 from ngboost import NGBRegressor
 from numpy import ndarray
@@ -15,8 +16,8 @@ class NGBoostGaussian(ProbabilisticModel):
     NGBoost only accepts 1 dimensional y values.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05):
-        super().__init__()
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, seed=0):
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.model = None
@@ -40,6 +41,7 @@ class NGBoostGaussian(ProbabilisticModel):
             learning_rate=self.learning_rate,
             early_stopping_rounds=10,
             verbose=False,
+            random_state=self.seed,
         )
         self.model.fit(X, y)
         return self
@@ -51,11 +53,12 @@ class NGBoostGaussian(ProbabilisticModel):
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
+        np.random.seed(seed)
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
     @staticmethod
@@ -74,8 +77,8 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
     A probabilistic model that uses NGBoost with a Gaussian mixture likelihood.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=3):
-        super().__init__()
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=3, seed=0):
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.k = k
@@ -102,6 +105,7 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
             early_stopping_rounds=10,
             natural_gradient=False,
             verbose=False,
+            random_state=self.seed,
         )
         self.model.fit(X, y)
         return self
@@ -113,12 +117,12 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
-        return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
+        return self.model.pred_dist(X).sample(n_samples, seed=seed).reshape(n_samples, -1, 1)
 
     @staticmethod
     def search_space() -> dict:

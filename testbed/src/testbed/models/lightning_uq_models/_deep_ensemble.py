@@ -58,6 +58,7 @@ class DeepEnsemble(ProbabilisticModel):
             burnin_epochs: The number of initial epochs before contributing to the
 
         """
+        super().__init__(seed)
         self._models = None
 
         self._y_dim = None
@@ -75,12 +76,11 @@ class DeepEnsemble(ProbabilisticModel):
         self.n_ensembles = n_ensembles
         self.burnin_epochs = burnin_epochs
 
-        self.seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
 
     def fit(
         self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
@@ -147,11 +147,15 @@ class DeepEnsemble(ProbabilisticModel):
 
     @torch.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int = 10,
+        seed=None,
     ) -> Float[torch.Tensor, "n_samples batch y_dim"]:
         """
         Samples from the DeepEnsemble model by combining samples from multiple models.
         """
+        # todo: check seed and sampling
         if self._models is None:
             raise ValueError("The model must be trained before calling sample.")
         X = _to_tensor(X)

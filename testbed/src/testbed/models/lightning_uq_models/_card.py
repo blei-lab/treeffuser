@@ -78,6 +78,7 @@ class Card(ProbabilisticModel):
                 does not improve.
 
         """
+        super().__init__()
         self._cond_model: nn.Module = None
         self._diff_model: nn.Module = None
 
@@ -97,12 +98,11 @@ class Card(ProbabilisticModel):
         self._patience = patience
         self._use_gpu = use_gpu
 
-        self._seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
 
     def fit(
         self,
@@ -228,7 +228,11 @@ class Card(ProbabilisticModel):
 
     @t.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int, batch_size: int = 64
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int,
+        batch_size: int = 64,
+        seed=None,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Geneters n_samples of p(y|x) for each input x in X using the diffusion model.
@@ -242,6 +246,7 @@ class Card(ProbabilisticModel):
                 a time, therefore the diffusion model will be run 25 times. This
                 is useful for managing memory usage.
         """
+        # TODO: check if seed is used
         self._diff_model.eval()
         self._cond_model.eval()
 

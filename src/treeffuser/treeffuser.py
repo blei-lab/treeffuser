@@ -134,7 +134,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         while n_samples_sampled < n_samples:
             batch_size_samples = min(n_parallel, n_samples - n_samples_sampled)
             y_batch = self._sde.sample_from_theoretical_prior(
-                (batch_size_samples * batch_size_x, y_dim)
+                (batch_size_samples * batch_size_x, y_dim),
+                seed=seed,
             )
             if x_batched is None or x_batched.shape[0] != batch_size_samples:
                 # Reuse the same batch of x as much as possible
