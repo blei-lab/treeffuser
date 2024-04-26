@@ -1,4 +1,5 @@
 from typing import Dict
+from typing import List
 from typing import Optional
 from typing import Union
 
@@ -10,6 +11,9 @@ from sklearn.neighbors import KernelDensity
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
+
+# Corresponds to event with probability of 10^-6
+INT_LIKELIHOOD_CUTOFF = -6
 
 
 class LogLikelihoodFromSamplesMetric(Metric):
@@ -23,14 +27,22 @@ class LogLikelihoodFromSamplesMetric(Metric):
     bandwidth : float, optional
         The bandwidth of the kernel density estimator used to fit the samples.
         If None, the bandwidth is estimated using cross-validation.
+    is_int : bool, optional
+        Whether the samples are meant to be integers. If True, the
+        likelihood is estimated via simple binning to the neares integer.
+
     """
 
     def __init__(
-        self, n_samples: int = 50, bandwidth: Optional[Union[str, float]] = "scott"
+        self,
+        n_samples: int = 50,
+        bandwidth: Optional[Union[str, float]] = "scott",
+        is_int=False,
     ) -> None:
 
         self.n_samples = n_samples
         self.bandwidth = bandwidth
+        self.is_int = is_int
 
     def compute(
         self,
@@ -55,6 +67,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         log_likelihood : dict
             A single scalar which quantifies the log likelihood of the predictive distribution from empirical samples.
         """
+        # use seaborn to plot stuff
 
         y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
             X=X_test, n_samples=self.n_samples
@@ -69,11 +82,37 @@ class LogLikelihoodFromSamplesMetric(Metric):
         for i in range(batch):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
-            nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi], bandwidth=self.bandwidth)
+
+            if self.is_int:
+                nll -= fit_and_evaluate_int_prob(y_train_xi, [y_test_xi])
+            else:
+                nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi], bandwidth=None)
 
         return {
             "nll": nll,
         }
+
+
+def fit_and_evaluate_int_prob(y_train: Float[ndarray, "n_samples y_dim"], y_test: List[float]):
+    """
+    Used only when y_train is meant to represent integer values.
+
+    We fit an empirical distribution to the training data using simple counting.
+    We leave one count for unseen values.
+    """
+    # Currently only works with 1D y_train
+    assert y_train.shape[1] == 1
+
+    y_test_int = np.round(y_test).flatten()
+    y_train_int = np.round(y_train).flatten()
+
+    unique, counts = np.unique(y_train_int, return_counts=True)
+    total_counts = np.sum(counts) + 1  # one extra count for unseen values
+
+    counts_dict = dict(zip(unique, counts))
+    probs_test = [counts_dict.get(y, 1) / total_counts for y in y_test_int]
+    log_probs_test = np.log(probs_test)
+    return np.sum(log_probs_test)
 
 
 def fit_and_evaluate_kde(y_train: Float[ndarray, "n_samples y_dim"], y_test, bandwidth=None):
@@ -87,11 +126,13 @@ def fit_and_evaluate_kde(y_train: Float[ndarray, "n_samples y_dim"], y_test, ban
         grid = GridSearchCV(
             kde,
             {"bandwidth": np.logspace(log_std - 3, log_std + 3, 10, base=10)},
-            cv=4,
+            cv=5,
         )
         grid.fit(y_train)
         kde = grid.best_estimator_
 
+    # plot the kde
     kde.fit(y_train)
 
-    return kde.score_samples(y_test)[0]
+    score = kde.score_samples(y_test)[0]
+    return score
