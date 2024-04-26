@@ -48,7 +48,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
 
     def __init__(
         self,
-        sde_name: str = "vpsde",
+        sde_name: str = "vesde",
         sde_initialize_with_data: Optional[bool] = False,
         sde_manual_hyperparams: Optional[dict] = None,
     ):
@@ -85,8 +85,13 @@ class Treeffuser(BaseEstimator, abc.ABC):
         """
         _check_arguments(X, y)
 
+        x_transformed = self._x_preprocessor.fit_transform(X)
+        y_transformed = self._y_preprocessor.fit_transform(y)
+        # x_transformed = X
+        # y_transformed = y
+
         if self._sde_initialize_with_data:
-            self._sde = initialize_sde(self._sde_name, y)
+            self._sde = initialize_sde(self._sde_name, y_transformed)
         else:
             sde_cls = get_sde(self._sde_name)
             if self._sde_manual_hyperparams:
@@ -96,11 +101,6 @@ class Treeffuser(BaseEstimator, abc.ABC):
 
         self._score_config.update({"sde": self._sde})
         self._score_config = FrozenConfigDict(self._score_config)
-
-        # x_transformed = self._x_preprocessor.fit_transform(X)
-        # y_transformed = self._y_preprocessor.fit_transform(y)
-        x_transformed = X
-        y_transformed = y
 
         self._score_model = self._score_model_class(**self.score_config)
         self._score_model.fit(x_transformed, y_transformed)
@@ -124,8 +124,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        # x_transformed = self._x_preprocessor.transform(X)
-        x_transformed = X
+        x_transformed = self._x_preprocessor.transform(X)
+        # x_transformed = X
 
         batch_size_x = x_transformed.shape[0]
         y_dim = self._y_dim
@@ -165,8 +165,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         pbar.close()
 
         y_transformed = np.concatenate(y_samples, axis=0)
-        # y_untransformed = self._y_preprocessor.inverse_transform(y_transformed)
-        y_untransformed = y_transformed
+        y_untransformed = self._y_preprocessor.inverse_transform(y_transformed)
         y_untransformed = rearrange(
             y_untransformed,
             "(n_samples batch) y_dim -> n_samples batch  y_dim",

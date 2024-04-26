@@ -39,7 +39,7 @@ class Preprocessor:
 
         X_non_cat = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
 
-        self._scaler = StandardScaler()
+        self._scaler = StandardScaler(with_mean=True, with_std=True)
         self._scaler.fit(X_non_cat)
         self._cat_idx = cat_idx
         self._is_fitted = True
