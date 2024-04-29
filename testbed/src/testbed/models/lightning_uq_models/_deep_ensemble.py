@@ -5,7 +5,6 @@ from pathlib import Path
 import numpy as np
 import torch
 import torch as t
-import torch.nn as nn
 from jaxtyping import Float
 from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
@@ -13,6 +12,7 @@ from lightning_uq_box.models import MLP
 from lightning_uq_box.uq_methods import DeepEnsembleRegression
 from lightning_uq_box.uq_methods import MVERegression
 from numpy import ndarray
+from sklearn.preprocessing import StandardScaler
 from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
@@ -32,7 +32,7 @@ class DeepEnsemble(ProbabilisticModel):
         burnin_epochs: int = 10,
         learning_rate: float = 1e-2,
         batch_size: int = 32,
-        enable_progress_bar: bool = False,
+        enable_progress_bar: bool = True,
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
@@ -78,6 +78,9 @@ class DeepEnsemble(ProbabilisticModel):
         self.seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
+        self.scaler_x = None
+        self.scaler_y = None
+
         if seed is not None:
             np.random.seed(seed)
             torch.manual_seed(seed)
@@ -91,6 +94,19 @@ class DeepEnsemble(ProbabilisticModel):
         self._y_dim = y.shape[1]
         self._x_dim = X.shape[1]
 
+        self.scaler_x = StandardScaler()
+        self.scaler_y = StandardScaler()
+
+        X = self.scaler_x.fit_transform(X.copy())
+        y = self.scaler_y.fit_transform(y.copy())
+
+        # print has nans
+        print("x has nans", np.isnan(X).any())
+        print("y has nans", np.isnan(y).any())
+
+        print("first 10 x", X[:10])
+        print("first 10 y", y[:10])
+
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
         trained_models = []
@@ -99,7 +115,7 @@ class DeepEnsemble(ProbabilisticModel):
                 n_inputs=self._x_dim,
                 n_hidden=self.layers,
                 n_outputs=self._y_dim * 2,  # mean and variance
-                activation_fn=nn.Tanh(),
+                activation_fn=torch.nn.ReLU(),
             )
 
             ensemble_member = MVERegression(
@@ -123,6 +139,7 @@ class DeepEnsemble(ProbabilisticModel):
                 check_val_every_n_epoch=1,
                 default_root_dir=self._my_temp_dir,
                 callbacks=[early_stop_callback],
+                gradient_clip_val=1,
             )
             trainer.fit(ensemble_member, dm)
             save_path = Path(self._my_temp_dir) / f"model_{i}.ckpt"
@@ -138,11 +155,14 @@ class DeepEnsemble(ProbabilisticModel):
         """
         if self._models is None:
             raise ValueError("The model must be trained before calling predict.")
+
+        X = self.scaler_x.transform(X.copy())
         X = _to_tensor(X)
 
         preds = self._models.predict_step(X)
         y = preds["pred"]
         y_np = y.cpu().numpy()
+        y_np = self.scaler_y.inverse_transform(y_np)
         return y_np
 
     @torch.no_grad()
@@ -154,18 +174,24 @@ class DeepEnsemble(ProbabilisticModel):
         """
         if self._models is None:
             raise ValueError("The model must be trained before calling sample.")
+        X = self.scaler_x.transform(X.copy())
         X = _to_tensor(X)
 
         preds = self._models.predict_step(X)
 
         mean = preds["pred"]
-        std = preds["pred_uct"].reshape(-1, self._y_dim)
+        # std = preds["pred_uct"].reshape(-1, self._y_dim)
+        std = preds["aleatoric_uct"].reshape(-1, self._y_dim)
+        # print(preds)
 
         samples = (
             t.distributions.Normal(mean, std).sample((n_samples, 1)).squeeze()
         )  # batch, num_samples
-        samples = samples.unsqueeze(-1)
-        return samples.cpu().numpy()
+        samples = samples.cpu().numpy()
+        print("samples", samples)
+        samples = self.scaler_y.inverse_transform(samples)
+        # add extra dim
+        return samples[:, :, None]
 
     @staticmethod
     def search_space() -> dict:
@@ -174,4 +200,7 @@ class DeepEnsemble(ProbabilisticModel):
             "hidden_size": Integer(10, 500),
             "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
             "n_ensembles": Integer(2, 10),
+            "patience": Integer(5, 50),
+            "burnin_epochs": Integer(1, 30),
+            "batch_size": Integer(16, 512),
         }

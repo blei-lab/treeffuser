@@ -8,6 +8,7 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import GridSearchCV
 from sklearn.neighbors import KernelDensity
+from tqdm import tqdm
 
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
@@ -30,7 +31,8 @@ class LogLikelihoodFromSamplesMetric(Metric):
     is_int : bool, optional
         Whether the samples are meant to be integers. If True, the
         likelihood is estimated via simple binning to the neares integer.
-
+    verbose : bool, optional
+        Whether to print progress information.
     """
 
     def __init__(
@@ -38,11 +40,13 @@ class LogLikelihoodFromSamplesMetric(Metric):
         n_samples: int = 50,
         bandwidth: Optional[Union[str, float]] = "scott",
         is_int=False,
+        verbose=False,
     ) -> None:
 
         self.n_samples = n_samples
         self.bandwidth = bandwidth
         self.is_int = is_int
+        self.verbose = verbose
 
     def compute(
         self,
@@ -79,7 +83,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         assert n_samples == self.n_samples
 
         nll = 0
-        for i in range(batch):
+        for i in tqdm(range(batch), disable=not self.verbose):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
 
@@ -126,7 +130,7 @@ def fit_and_evaluate_kde(y_train: Float[ndarray, "n_samples y_dim"], y_test, ban
         grid = GridSearchCV(
             kde,
             {"bandwidth": np.logspace(log_std - 3, log_std + 3, 10, base=10)},
-            cv=5,
+            cv=3,
         )
         grid.fit(y_train)
         kde = grid.best_estimator_
