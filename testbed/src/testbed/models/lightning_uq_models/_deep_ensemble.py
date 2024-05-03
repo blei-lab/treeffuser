@@ -1,128 +1,191 @@
 import tempfile
 from functools import partial
-from pathlib import Path
+from typing import Callable
+from typing import List
+from typing import Tuple
 
+import lightning as L
 import numpy as np
 import torch
-import torch as t
 from jaxtyping import Float
 from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
-from lightning_uq_box.models import MLP
-from lightning_uq_box.uq_methods import DeepEnsembleRegression
-from lightning_uq_box.uq_methods import MVERegression
 from numpy import ndarray
 from sklearn.preprocessing import StandardScaler
 from skopt.space import Integer
 from skopt.space import Real
+from torch import Tensor
+from torch import nn
 from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
-from testbed.models.lightning_uq_models._utils import _to_tensor
+
+
+class MLP(nn.Module):
+    """
+    A simple multilayer perceptron (MLP) for regression tasks with flexible depth and hidden layer sizes.
+
+    Parameters:
+        n_inputs (int): Number of input features.
+        n_hidden (List[int]): List containing the size of each hidden layer.
+        n_outputs (int): Number of outputs.
+        activation_fn (Callable): Activation function to use in hidden layers (default is ReLU).
+    """
+
+    def __init__(
+        self,
+        n_inputs: int,
+        n_hidden: List[int],
+        n_outputs: int,
+        activation_fn: Callable = nn.ReLU,
+    ):
+        super().__init__()
+        layers = []
+        input_dim = n_inputs
+        for hidden_dim in n_hidden:
+            layers.append(nn.Linear(input_dim, hidden_dim))
+            layers.append(activation_fn())
+            input_dim = hidden_dim
+        layers.append(nn.Linear(input_dim, n_outputs))
+        self.network = nn.Sequential(*layers)
+
+    def forward(self, x: Float[Tensor, "batch x_dim"]) -> Float[Tensor, "batch 2 * y_dim"]:
+        return self.network(x)
+
+
+class MVERegression(L.LightningModule):
+    """
+    Model for regression with mean-variance estimation (MVE), encapsulating the prediction model.
+
+    Parameters:
+        model (nn.Module): The neural network model that outputs both mean and log-variance.
+        optimizer_func (Callable): Function to create the optimizer.
+        burnin_epochs (int): Number of epochs for burn-in phase.
+    """
+
+    def __init__(self, model: nn.Module, optimizer_func: Callable, burnin_epochs: int):
+        super().__init__()
+        self.model = model
+        self.optimizer_func = optimizer_func
+        self.burnin_epochs = burnin_epochs
+
+    def forward(
+        self, x: Float[ndarray, "batch x_dim"]
+    ) -> Tuple[Float[Tensor, "batch y_dim"], Float[Tensor, "batch y_dim"]]:
+        preds = self.model(x)
+        y_dim = preds.shape[1] // 2
+        mean = preds[:, :y_dim]
+        log_varish = preds[:, y_dim:]
+        var = nn.functional.softplus(log_varish)
+        return mean, var
+
+    def training_step(self, batch: dict, batch_idx: int) -> Tensor:
+        x, y = batch["input"], batch["target"]
+        mean, var = self(x)
+        loss = self.loss_fn(mean, var, y)
+        return loss
+
+    def validation_step(self, batch: dict, batch_idx: int) -> Tensor:
+        x, y = batch["input"], batch["target"]
+        mean, var = self(x)
+        loss = self.loss_fn(mean, var, y)
+        self.log("val_loss", loss)
+        return loss
+
+    def loss_fn(
+        self,
+        mean: Float[Tensor, "batch y_dim"],
+        var: Float[Tensor, "batch y_dim"],
+        y: Float[Tensor, "batch y_dim"],
+    ) -> Float[Tensor, ""]:
+        dist = torch.distributions.Normal(mean, var.sqrt())
+        log_likelihood = dist.log_prob(y).mean()
+        return -log_likelihood
+
+    def sample(
+        self, x: Float[ndarray, "batch x_dim"], n_samples: int
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
+        mean, var = self(x)
+        samples = torch.randn(n_samples, *mean.shape)
+        samples = samples * torch.sqrt(var) + mean
+        return samples
+
+    def configure_optimizers(self) -> Callable:
+        return self.optimizer_func(self.parameters())
 
 
 class DeepEnsemble(ProbabilisticModel):
+    """
+    Implements a deep ensemble for regression tasks, where each model in the ensemble outputs both mean and variance.
+    This approach is designed to provide predictions with associated uncertainty estimates.
+
+    Attributes:
+        n_layers (int): Number of hidden layers in each model of the ensemble.
+        hidden_size (int): Size of each hidden layer.
+        max_epochs (int): Maximum number of training epochs for each model.
+        learning_rate (float): Learning rate for the optimizer.
+        batch_size (int): Batch size used during training.
+        use_gpu (bool): If True, training is performed on GPU.
+        patience (int): Number of epochs with no improvement after which training will be stopped early.
+        seed (int): Random seed for reproducibility.
+        n_ensembles (int): Number of models in the ensemble.
+        burnin_epochs (int): Number of initial epochs during which the model parameters stabilize.
+        enable_progress_bar (bool): If True, enables the display of a progress bar during training.
+    """
 
     def __init__(
         self,
         n_layers: int = 3,
         hidden_size: int = 50,
         max_epochs: int = 300,
-        burnin_epochs: int = 10,
         learning_rate: float = 1e-2,
         batch_size: int = 32,
-        enable_progress_bar: bool = True,
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
         n_ensembles: int = 5,
+        burnin_epochs: int = 10,
+        enable_progress_bar: bool = True,
     ):
-        """
-        Implements DeepEnsemble using the uq_box library for uncertainty quantification.
-
-        DeepEnsemble trains multiple neural networks with different initializations and
-        combines their predictions to estimate uncertainty.
-
-        Args:
-            n_layers: The number of hidden layers to use in the MLP model.
-            hidden_size: The size of the hidden layers to use in the MLP model.
-            max_epochs: The maximum number of epochs to train the model.
-            learning_rate: The learning rate to use when training the model.
-            batch_size: The batch size to use when training the model.
-            enable_progress_bar: Whether to display a progress bar during training.
-            use_gpu: Whether to use the GPU for training.
-            patience: The number of epochs to wait for improvement before early stopping.
-            seed: The random seed for reproducibility.
-            n_ensembles: The number of ensemble members to train.
-            burnin_epochs: The number of initial epochs before contributing to the
-
-        """
-        self._models = None
-
-        self._y_dim = None
-        self._x_dim = None
-
-        self.layers = [hidden_size] * n_layers
+        self.n_layers = n_layers
+        self.hidden_size = hidden_size
+        self.max_epochs = max_epochs
         self.learning_rate = learning_rate
         self.batch_size = batch_size
-        self.max_epochs = max_epochs
-        self.enable_progress_bar = enable_progress_bar
         self.use_gpu = use_gpu
         self.patience = patience
-        self.hidden_size = hidden_size
-        self.n_layers = n_layers
+        self.seed = seed
         self.n_ensembles = n_ensembles
         self.burnin_epochs = burnin_epochs
-
-        self.seed = seed
-        self._my_temp_dir = tempfile.mkdtemp()
-
-        self.scaler_x = None
-        self.scaler_y = None
-
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
-
-    def fit(
-        self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
-    ) -> None:
-        """
-        Fits the DeepEnsemble model using provided training data.
-        """
-        self._y_dim = y.shape[1]
-        self._x_dim = X.shape[1]
-
+        self.enable_progress_bar = enable_progress_bar
+        self._models: List[MVERegression] = []
         self.scaler_x = StandardScaler()
         self.scaler_y = StandardScaler()
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+        self._my_temp_dir = tempfile.mkdtemp()
 
-        X = self.scaler_x.fit_transform(X.copy())
-        y = self.scaler_y.fit_transform(y.copy())
+    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
+        """
+        Fits the ensemble models to the provided training data.
 
-        # print has nans
-        print("x has nans", np.isnan(X).any())
-        print("y has nans", np.isnan(y).any())
-
-        print("first 10 x", X[:10])
-        print("first 10 y", y[:10])
-
+        Parameters:
+            X (np.ndarray): The input features for training.
+            y (np.ndarray): The target outputs for training.
+        """
+        X = self.scaler_x.fit_transform(X)
+        y = self.scaler_y.fit_transform(y.reshape(-1, 1))
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
-        trained_models = []
-        for i in range(self.n_ensembles):
-            network = MLP(
-                n_inputs=self._x_dim,
-                n_hidden=self.layers,
-                n_outputs=self._y_dim * 2,  # mean and variance
-                activation_fn=torch.nn.ReLU(),
+        for _ in range(self.n_ensembles):
+            model = MLP(
+                n_inputs=X.shape[1],
+                n_hidden=[self.hidden_size] * self.n_layers,
+                n_outputs=y.shape[1] * 2,  # outputs for both mean and log-variance
             )
-
-            ensemble_member = MVERegression(
-                model=network,
-                optimizer=partial(Adam, lr=self.learning_rate),
-                burnin_epochs=self.burnin_epochs,
-            )
+            optimizer_func = partial(Adam, lr=self.learning_rate)
+            mve_model = MVERegression(model, optimizer_func, self.burnin_epochs)
 
             early_stop_callback = EarlyStopping(
                 monitor="val_loss",
@@ -131,70 +194,97 @@ class DeepEnsemble(ProbabilisticModel):
                 verbose=False,
                 mode="min",
             )
+
             trainer = Trainer(
                 max_epochs=self.max_epochs,
                 accelerator="gpu" if self.use_gpu else "cpu",
                 enable_checkpointing=False,
                 enable_progress_bar=self.enable_progress_bar,
-                check_val_every_n_epoch=1,
                 default_root_dir=self._my_temp_dir,
                 callbacks=[early_stop_callback],
-                gradient_clip_val=1,
             )
-            trainer.fit(ensemble_member, dm)
-            save_path = Path(self._my_temp_dir) / f"model_{i}.ckpt"
-            trainer.save_checkpoint(save_path)
-            trained_models.append({"base_model": ensemble_member, "ckpt_path": save_path})
+            trainer.fit(model=mve_model, datamodule=dm)
+            self._models.append(mve_model)
 
-        self._models = DeepEnsembleRegression(self.n_ensembles, trained_models)
-
-    @torch.no_grad()
-    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[torch.Tensor, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """
-        Predicts using the DeepEnsemble model by combining predictions from multiple models.
+        Predicts the mean response for new data using the trained ensemble models.
+
+        Parameters:
+            X (np.ndarray): The input features for prediction.
+
+        Returns:
+            np.ndarray: The mean predictions from the ensemble.
         """
-        if self._models is None:
-            raise ValueError("The model must be trained before calling predict.")
+        X = self.scaler_x.transform(X)
+        X_tensor = torch.tensor(X, dtype=torch.float)
+        predictions = [
+            model(X_tensor)[0].detach().numpy() for model in self._models
+        ]  # Only extracting means
+        mean_predictions = np.mean(predictions, axis=0)
+        return self.scaler_y.inverse_transform(mean_predictions)
 
-        X = self.scaler_x.transform(X.copy())
-        X = _to_tensor(X)
-
-        preds = self._models.predict_step(X)
-        y = preds["pred"]
-        y_np = y.cpu().numpy()
-        y_np = self.scaler_y.inverse_transform(y_np)
-        return y_np
-
-    @torch.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
-    ) -> Float[torch.Tensor, "n_samples batch y_dim"]:
+        self, X: Float[ndarray, "batch x_dim"], n_samples: int
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
-        Samples from the DeepEnsemble model by combining samples from multiple models.
+        Samples from the predictive distribution for given inputs using the trained ensemble models.
+
+        Parameters:
+            X (np.ndarray): Input features.
+            n_samples (int): Number of samples to draw from the predictive distribution.
+
+        Returns:
+            np.ndarray: Samples drawn from the ensemble's predictive distribution.
         """
-        if self._models is None:
-            raise ValueError("The model must be trained before calling sample.")
-        X = self.scaler_x.transform(X.copy())
-        X = _to_tensor(X)
+        X = self.scaler_x.transform(X)
+        X_tensor = torch.tensor(X, dtype=torch.float)
+        samples = []
+        for model in self._models:
+            model.eval()
+            model_samples = model.sample(X_tensor, n_samples)
+            model_samples = model_samples.detach().numpy()
+            samples.append(model_samples)
 
-        preds = self._models.predict_step(X)
+        samples = np.concatenate(samples, axis=0)
+        # Choose random samples from the ensemble
+        indices = np.random.choice(range(samples.shape[0]), n_samples)
+        samples = samples[indices]
 
-        mean = preds["pred"]
-        # std = preds["pred_uct"].reshape(-1, self._y_dim)
-        std = preds["aleatoric_uct"].reshape(-1, self._y_dim)
-        # print(preds)
-
-        samples = (
-            t.distributions.Normal(mean, std).sample((n_samples, 1)).squeeze()
-        )  # batch, num_samples
-        samples = samples.cpu().numpy()
-        print("samples", samples)
+        samples = samples.reshape(n_samples, -1)
         samples = self.scaler_y.inverse_transform(samples)
-        # add extra dim
-        return samples[:, :, None]
+        return samples.reshape(n_samples, -1, self.scaler_y.scale_.shape[0])
+
+    def log_likelihood(
+        self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]
+    ) -> float:
+        """
+        Computes the log likelihood of the observed data under the predictive distribution of the ensemble.
+        The log-likelihood is under the scaled data
+
+        Parameters:
+            X (np.ndarray): Input features.
+            y (np.ndarray): Observed target values.
+
+        Returns:
+            float: The average log likelihood across all ensemble models.
+        """
+        X = self.scaler_x.transform(X)
+        y = self.scaler_y.transform(y.reshape(-1, 1))
+        X_tensor = torch.tensor(X, dtype=torch.float)
+        y_tensor = torch.tensor(y, dtype=torch.float)
+        log_likelihoods = []
+        for model in self._models:
+            model.eval()
+            mean, var = model(X_tensor)
+            dist = torch.distributions.Normal(mean, var.sqrt())
+            log_likelihood = dist.log_prob(y_tensor).mean().detach().numpy()
+            log_likelihoods.append(log_likelihood)
+
+        return np.mean(log_likelihoods)
 
     @staticmethod
-    def search_space() -> dict:
+    def search_space():
         return {
             "n_layers": Integer(1, 7),
             "hidden_size": Integer(10, 500),
