@@ -46,7 +46,7 @@ class NGBoostGaussian(ProbabilisticModel):
             early_stopping_rounds=10,
             minibatch_frac=minibatch_frac,
             validation_fraction=validation_fraction,
-            verbose_eval=1,
+            verbose_eval=50,
         )
         self.model.fit(X, y)
         return self
