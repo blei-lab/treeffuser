@@ -209,6 +209,7 @@ def parse_args():
         "--wandb_project",
         type=str,
         help=msg,
+        default=None,
     )
 
     return parser.parse_args()
@@ -333,13 +334,20 @@ def run_model_on_dataset(
     else:
         model = model_class(seed=seed)
 
+    train_start = time.time()
     model.fit(X_train, y_train)
+    train_end = time.time()
 
     results = {}
-    for metric in metrics:
-        metric = METRIC_TO_CLASS[metric]()
+    results["train_time"] = train_end - train_start
+
+    for metric_name in metrics:
+        metric = METRIC_TO_CLASS[metric_name]()
+        metric_time_start = time.time()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
+        metric_time_end = time.time()
         results.update(res)
+        results[f"{metric_name}_time"] = metric_time_end - metric_time_start
 
     results.update(model.get_params())
     return results
@@ -376,6 +384,15 @@ def main() -> None:
                     data["x"], data["y"], test_size=0.2, random_state=args.seed
                 )
 
+            if args.wandb_project is not None:
+                import wandb
+
+                wandb.init(
+                    project=args.wandb_project,
+                    name=f"{model_name}_{dataset_name}",
+                    # config=args,
+                )
+
             results = run_model_on_dataset(
                 X_train=X_train,
                 X_test=X_test,
@@ -390,8 +407,15 @@ def main() -> None:
             results["model"] = model_name
             results["dataset"] = dataset_name
             results["evaluation_mode"] = args.evaluation_mode
+            results["seed"] = args.seed
             if args.evaluation_mode == "cross_val":
                 results["split_idx"] = args.split_idx
+            if args.evaluation_mode == "bayes_opt":
+                results["n_iter_bayes_opt"] = args.n_iter_bayes_opt
+
+            if args.wandb_project is not None:
+                wandb.log(results)
+                wandb.finish()
 
             full_results.append(results)
             results_string = format_results(model_name, dataset_name, results)
