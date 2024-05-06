@@ -2,8 +2,10 @@ import argparse
 import logging
 from typing import Dict
 from typing import List
+from typing import Tuple
 
 import namesgenerator
+import numpy as np
 import pandas as pd
 from jaxtyping import Float
 from numpy import ndarray
@@ -14,6 +16,7 @@ from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
+from testbed.models import make_autoregressive_probabilistic_model
 from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
@@ -168,6 +171,15 @@ def parse_args():
         help=msg,
     )
 
+    msg = "Dim-output of the model. If None, the model is not multioutput."
+    msg += "If a number, the model is multioutput by using conditional regression."
+    parser.add_argument(
+        "--dim_output",
+        type=int,
+        default=None,
+        help=msg,
+    )
+
     return parser.parse_args()
 
 
@@ -202,6 +214,11 @@ def check_args(args):
     if args.n_iter_bayes_opt <= 0:
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
+
+    if args.dim_output is not None:
+        if args.dim_output <= 0:
+            msg = "The dimension of the output must be positive."
+            raise ValueError(msg)
 
 
 def format_results(model_name: str, dataset_name: str, results: Dict[str, float]) -> str:
@@ -247,8 +264,8 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 def run_model_on_dataset(
     X_train: Float[ndarray, "train_size n_features"],
     X_test: Float[ndarray, "test_size n_features"],
-    y_train: Float[ndarray, "train_size 1"],
-    y_test: Float[ndarray, "test_size 1"],
+    y_train: Float[ndarray, "train_size n_targets"],
+    y_test: Float[ndarray, "test_size n_targets"],
     model_name: str,
     metrics: List[Metric],
     optimize_hyperparameters: bool,
@@ -270,6 +287,11 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = MODEL_TO_CLASS[model_name]
+    use_autoregressive = model_name != "treeffuser" and y_train
+
+    if use_autoregressive:
+        model_class = make_autoregressive_probabilistic_model(model_class)
+
     if optimize_hyperparameters:
         model = BayesOptProbabilisticModel(
             model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
@@ -285,6 +307,40 @@ def run_model_on_dataset(
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         results.update(res)
     return results
+
+
+def make_multi_output_dataset(
+    X: Float[ndarray, "batch n_features"],
+    y: Float[ndarray, "batch n_targets"],
+    dim_output: int,
+) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
+    """
+    Create a multi-output dataset from a single-output dataset by using conditional regression.
+
+    Args:
+        X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
+        y (Float[ndarray, "n_samples 1"]): Target of the dataset.
+        dim_output (int): Dimension of the output.
+
+    Returns:
+        Tuple[Float[ndarray, "n_samples n_features"], Float[ndarray, "n_samples n_targets"]]: Multi-output dataset.
+    """
+    _, n_features = X.shape
+    n_targets = y.shape[1]
+
+    new_n_targets = dim_output
+    new_n_features = n_features + n_targets - new_n_targets
+
+    # randomly select the new features
+    new_features = np.random.choice(n_features, new_n_features, replace=False)
+    new_output = np.array([i for i in range(n_features) if i not in new_features])
+    Xy = np.concatenate([X, y], axis=1)
+
+    # create the new dataset
+    new_X = Xy[:, new_features]
+    new_y = Xy[:, new_output]
+
+    return new_X, new_y
 
 
 ###########################################################
@@ -309,8 +365,14 @@ def main() -> None:
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
+
+            if args.dim_output is not None and args.dim_output > 1:
+                X, y = make_multi_output_dataset(data["x"], data["y"], args.dim_output)
+            else:
+                X, y = data["x"], data["y"]
+
             X_train, X_test, y_train, y_test = train_test_split(
-                data["x"], data["y"], test_size=0.2, random_state=args.seed
+                X, y, test_size=0.2, random_state=args.seed
             )
 
             results = run_model_on_dataset(
@@ -322,6 +384,7 @@ def main() -> None:
                 metrics=args.metrics,
                 optimize_hyperparameters=args.optimize_hyperparameters,
             )
+
             results["model"] = model_name
             results["dataset"] = dataset_name
             full_results.append(results)
