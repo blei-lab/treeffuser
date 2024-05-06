@@ -1,7 +1,6 @@
 """Helper functions to import preprocessed datasets in ./data/."""
 
 import json
-import subprocess
 from pathlib import Path
 from typing import List
 from typing import Union
@@ -36,14 +35,15 @@ def _download_raw_data(url: str, path_raw_dataset_dir: Path, verbose: bool = Fal
 def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
     path_preprocess_script = path_dataset_dir / "preprocess.py"
     path_raw_dataset_dir = path_dataset_dir / "raw"
-    subprocess.run(
-        [  # noqa: S603, S607 (S603 `subprocess` call: check for execution of untrusted input,  S607 Starting a process with a partial executable path)
-            "python3",
-            path_preprocess_script,
-            path_raw_dataset_dir,
-        ],
-        check=True,
-    )
+
+    # import main function from preprocess.py
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("preprocess", path_preprocess_script)
+    preprocess = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(preprocess)
+    preprocess.main(path_raw_dataset_dir)
+
     if verbose:
         print("Preprocessing completed.")
 
