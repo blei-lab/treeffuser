@@ -25,8 +25,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
 
     Parameters
     ----------
-    n_samples : int, optional
-        The number of samples to draw from the model's predictive distribution.
+
     bandwidth : float, optional
         The bandwidth of the kernel density estimator used to fit the samples.
         If None, the bandwidth is estimated using cross-validation.
@@ -41,7 +40,6 @@ class LogLikelihoodFromSamplesMetric(Metric):
         verbose=False,
     ) -> None:
 
-        self.n_samples = n_samples
         self.bandwidth = bandwidth
         self.verbose = verbose
 
@@ -50,6 +48,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         model: ProbabilisticModel,
         X_test: Float[ndarray, "batch n_features"],
         y_test: Float[ndarray, "batch y_dim"],
+        n_samples: Optional[int] = None,
         samples: Float[ndarray, "n_samples batch y_dim"] = None,
     ) -> Dict[str, float]:
         """
@@ -57,6 +56,8 @@ class LogLikelihoodFromSamplesMetric(Metric):
 
         Parameters
         ----------
+        n_samples : int, optional
+            The number of samples to draw from the model's predictive distribution.
         model : ProbabilisticModel
             The model to evaluate.
         X_test : ndarray of shape (batch, n_features)
@@ -75,13 +76,12 @@ class LogLikelihoodFromSamplesMetric(Metric):
             y_samples = samples
         else:
             y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
-                X=X_test, n_samples=self.n_samples
+                X=X_test, n_samples=n_samples
             )
-        n_samples, batch, y_dim = y_samples.shape
+        _, batch, y_dim = y_samples.shape
 
         assert batch == X_test.shape[0], f"batch={batch} != X_test.shape[0]={X_test.shape[0]}"
         assert y_dim == y_test.shape[1], f"y_dim={y_dim} != y_test.shape[1]={y_test.shape[1]}"
-        # assert n_samples == self.n_samples
 
         nll = 0
         y_test_rounded = np.round(y_test)

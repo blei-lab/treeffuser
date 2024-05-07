@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from testbed.data.utils import get_data
 from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
+from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
 from testbed.models import make_autoregressive_probabilistic_model
@@ -44,6 +45,7 @@ AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
 METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
     "quantile_calibration_error": QuantileCalibrationErrorMetric,
+    "log_likelihood": LogLikelihoodFromSamplesMetric,
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -287,7 +289,7 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = MODEL_TO_CLASS[model_name]
-    use_autoregressive = model_name != "treeffuser" and y_train
+    use_autoregressive = model_name != "treeffuser" and y_train.shape[1] > 1
 
     if use_autoregressive:
         model_class = make_autoregressive_probabilistic_model(model_class)
@@ -327,18 +329,23 @@ def make_multi_output_dataset(
     """
     _, n_features = X.shape
     n_targets = y.shape[1]
+    n_total = n_features + n_targets
 
     new_n_targets = dim_output
-    new_n_features = n_features + n_targets - new_n_targets
+    new_n_features = n_total - new_n_targets
 
     # randomly select the new features
-    new_features = np.random.choice(n_features, new_n_features, replace=False)
-    new_output = np.array([i for i in range(n_features) if i not in new_features])
+    new_features = np.random.choice(n_total, new_n_features, replace=False)
+    new_output = np.array([i for i in range(n_total) if i not in new_features])
     Xy = np.concatenate([X, y], axis=1)
 
     # create the new dataset
     new_X = Xy[:, new_features]
     new_y = Xy[:, new_output]
+
+    # We add a bit of noise to new_y
+    noise = np.random.normal(0, 0.001, new_y.shape) * np.std(new_y)
+    new_y += noise
 
     return new_X, new_y
 
