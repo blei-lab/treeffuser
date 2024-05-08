@@ -26,7 +26,7 @@ class DeepEnsemble(ProbabilisticModel):
 
     def __init__(
         self,
-        n_layers: int = 3,
+        n_layers: int = 1,
         hidden_size: int = 50,
         max_epochs: int = 300,
         burnin_epochs: int = 10,
@@ -162,7 +162,7 @@ class DeepEnsemble(ProbabilisticModel):
 
         preds = self._models.predict_step(X)
 
-        mean = preds["pred"]
+        mean = preds["pred"].reshape(-1, self._y_dim)
         std = preds["pred_uct"].reshape(-1, self._y_dim)
 
         samples = (
