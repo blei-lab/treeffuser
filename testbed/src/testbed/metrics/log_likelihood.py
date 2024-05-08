@@ -114,7 +114,7 @@ def fit_and_evaluate_int_prob(y_train: Float[ndarray, "n_samples y_dim"], y_test
     unique, counts = np.unique(y_train_int, return_counts=True)
 
     epsilon = 1 / n_vals
-    total_counts = np.sum(counts) + n_vals * epsilon
+    total_counts = np.sum(counts) + 1
 
     counts_dict = dict(zip(unique, counts))
     probs_test = np.array(
