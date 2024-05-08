@@ -3,6 +3,7 @@ import lightgbm as lgb  # noqa F401
 
 import argparse
 import logging
+import warnings
 from pathlib import Path
 import time
 from typing import Dict
@@ -393,9 +394,21 @@ def main() -> None:
                 X_test = data["x"][data["k_fold_splits"] == args.split_idx]
                 y_test = data["y"][data["k_fold_splits"] == args.split_idx]
             else:
-                X_train, X_test, y_train, y_test = train_test_split(
-                    data["x"], data["y"], test_size=0.2, random_state=args.seed
-                )
+                if "test" not in data:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        data["x"], data["y"], test_size=0.2, random_state=args.seed
+                    )
+                else:
+                    warnings.warn(
+                        f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                        stacklevel=2,
+                    )
+                    X_train, X_test, y_train, y_test = (
+                        data["x"],
+                        data["test"]["x"],
+                        data["y"],
+                        data["test"]["y"],
+                    )
 
             if args.wandb_project is not None:
                 import wandb

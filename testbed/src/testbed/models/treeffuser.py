@@ -1,3 +1,6 @@
+from typing import Dict
+from typing import Optional
+
 from jaxtyping import Float
 from numpy import ndarray
 from skopt.space import Integer
@@ -21,6 +24,10 @@ class Treeffuser(ProbabilisticModel):
         early_stopping_rounds: int = 50,
         num_leaves: int = 31,
         seed: int = 0,
+        subsample: float = 1.0,
+        subsample_freq: int = 0,
+        verbose: bool = 0,
+        sde_manual_hyperparams: Optional[Dict[str, float]] = None,
     ):
         super().__init__(seed)
         self.n_estimators = n_estimators
@@ -28,6 +35,10 @@ class Treeffuser(ProbabilisticModel):
         self.learning_rate = learning_rate
         self.early_stopping_rounds = early_stopping_rounds
         self.num_leaves = num_leaves
+        self.subsample = subsample
+        self.subsample_freq = subsample_freq
+        self.verbose = verbose
+        self.sde_manual_hyperparams = sde_manual_hyperparams
 
         self.model = LightGBMTreeffuser(
             n_estimators=n_estimators,
@@ -37,6 +48,10 @@ class Treeffuser(ProbabilisticModel):
             early_stopping_rounds=early_stopping_rounds,
             num_leaves=num_leaves,
             seed=self.seed,
+            subsample=subsample,
+            subsample_freq=subsample_freq,
+            verbose=verbose,
+            sde_manual_hyperparams=sde_manual_hyperparams,
         )
 
     def fit(

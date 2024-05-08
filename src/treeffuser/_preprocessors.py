@@ -3,6 +3,7 @@ from typing import Optional
 
 from jaxtyping import Float
 from numpy import ndarray
+from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 
 
@@ -17,11 +18,13 @@ class Preprocessor:
 
     def __init__(
         self,
+        use_min_max: bool = False,
     ) -> None:
         self._scaler = None
         self._cat_idx = None
         self._is_fitted = False
         self._x_dim = None
+        self._use_min_max = use_min_max
 
     def fit(self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None):
         """
@@ -39,7 +42,10 @@ class Preprocessor:
 
         X_non_cat = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
 
-        self._scaler = StandardScaler()
+        if self._use_min_max:
+            self._scaler = MinMaxScaler(feature_range=(-1, 1))
+        else:
+            self._scaler = StandardScaler(with_mean=True, with_std=True)
         self._scaler.fit(X_non_cat)
         self._cat_idx = cat_idx
         self._is_fitted = True

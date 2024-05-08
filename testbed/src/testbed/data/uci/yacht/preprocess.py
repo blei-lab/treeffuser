@@ -1,17 +1,14 @@
 import argparse
-import zipfile
 from pathlib import Path
 
 import numpy as np
 from testbed.data.utils import _assign_k_splits
+from testbed.data.utils import _extract_and_delete_zipfile
 
 
 def main(path_raw_dataset_dir: Path):
-    # unzip and delete original raw files
-    path_raw_data_file = path_raw_dataset_dir / "temp.zip"
-    with zipfile.ZipFile(path_raw_data_file, "r") as raw_zip:
-        raw_zip.extractall(path_raw_dataset_dir)
-    path_raw_data_file.unlink()
+    # unzip and delete original arhchive with raw files
+    _extract_and_delete_zipfile(path_raw_dataset_dir)
 
     # extract outcome and covariates
     x = np.genfromtxt(path_raw_dataset_dir / "yacht_hydrodynamics.data", skip_header=False)

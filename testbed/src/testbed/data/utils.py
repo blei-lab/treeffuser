@@ -1,6 +1,7 @@
 """Helper functions to import preprocessed datasets in ./data/."""
 
 import json
+import zipfile
 from pathlib import Path
 from typing import List
 from typing import Union
@@ -70,7 +71,7 @@ def list_data(verbose: bool = False) -> dict:
     # extract all leaves of data folder
     datasets = []
     for d in path_data_dir.glob("**/"):
-        if d.is_dir() and d.name != "raw" and not d.name.startswith((".", "_")):
+        if d.is_dir() and "raw" not in d.parts and not d.name.startswith((".", "_")):
             subdirs = [
                 subdir
                 for subdir in d.iterdir()
@@ -171,3 +172,11 @@ def _assign_k_splits(n_observations: int, k_splits: int = 10, seed: int = 0) -> 
         split_ids[split] = i
 
     return split_ids
+
+
+def _extract_and_delete_zipfile(path_raw_dataset_dir: Path, zipfile_name: str = "temp.zip"):
+    path_raw_data_file = path_raw_dataset_dir / zipfile_name
+    with zipfile.ZipFile(path_raw_data_file, "r") as archive:
+        for file in archive.namelist():
+            archive.extract(file, path_raw_dataset_dir)
+    path_raw_data_file.unlink()
