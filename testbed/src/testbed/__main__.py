@@ -1,10 +1,16 @@
+# noinspection PyUnresolvedReferences
+import lightgbm as lgb  # noqa F401
+
 import argparse
 import logging
+from pathlib import Path
+import time
 from typing import Dict
 from typing import List
 from typing import Literal
 from typing import Optional
 from typing import Type
+import sys
 
 import namesgenerator
 import pandas as pd
@@ -12,15 +18,20 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
-from testbed.data.utils import get_data
-from testbed.data.utils import list_data
-from testbed.metrics import AccuracyMetric
-from testbed.metrics import LogLikelihoodExactMetric
-from testbed.metrics import LogLikelihoodFromSamplesMetric
-from testbed.metrics import Metric
-from testbed.metrics import QuantileCalibrationErrorMetric
-from testbed.models.base_model import BayesOptProbabilisticModel
-from testbed.models.base_model import ProbabilisticModel
+current_dir = Path(__file__).resolve().parent
+sys.path.append(str(current_dir / "/../"))
+sys.path.append(str(current_dir / "/../../../src"))
+
+
+from testbed.data.utils import get_data  # noqa E402
+from testbed.data.utils import list_data  # noqa E402
+from testbed.metrics import AccuracyMetric  # noqa E402
+from testbed.metrics import LogLikelihoodExactMetric  # noqa E402
+from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
+from testbed.metrics import Metric  # noqa E402
+from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
+from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
+from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
 
