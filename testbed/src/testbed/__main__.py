@@ -1,5 +1,6 @@
 import argparse
 import logging
+import warnings
 from typing import Dict
 from typing import List
 
@@ -12,8 +13,10 @@ from sklearn.model_selection import train_test_split
 from testbed.data.utils import get_data
 from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
+from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
-from testbed.metrics import QuantileCalibrationErrorMetric
+
+# from testbed.metrics import QuantileCalibrationErrorMetric
 from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
@@ -40,7 +43,8 @@ AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
 
 METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
-    "quantile_calibration_error": QuantileCalibrationErrorMetric,
+    # "quantile_calibration_error": QuantileCalibrationErrorMetric,
+    "log_likelihood": LogLikelihoodFromSamplesMetric,
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -139,7 +143,7 @@ def parse_args():
     parser.add_argument(
         "--seed",
         type=int,
-        default=42,
+        default=0,
         help=msg,
     )
 
@@ -284,6 +288,12 @@ def run_model_on_dataset(
         metric = METRIC_TO_CLASS[metric]()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         results.update(res)
+
+    if optimize_hyperparameters:
+        results.update(model._model.get_params())
+        results["n_iter_bayes_opt"] = n_iter_bayes_opt
+    else:
+        results.update(model.get_params())
     return results
 
 
@@ -309,9 +319,21 @@ def main() -> None:
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
-            X_train, X_test, y_train, y_test = train_test_split(
-                data["x"], data["y"], test_size=0.2, random_state=args.seed
-            )
+            if "test" not in data:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    data["x"], data["y"], test_size=0.2, random_state=args.seed
+                )
+            else:
+                warnings.warn(
+                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                    stacklevel=2,
+                )
+                X_train, X_test, y_train, y_test = (
+                    data["x"],
+                    data["test"]["x"],
+                    data["y"],
+                    data["test"]["y"],
+                )
 
             results = run_model_on_dataset(
                 X_train=X_train,
@@ -321,6 +343,7 @@ def main() -> None:
                 model_name=model_name,
                 metrics=args.metrics,
                 optimize_hyperparameters=args.optimize_hyperparameters,
+                n_iter_bayes_opt=args.n_iter_bayes_opt,
             )
             results["model"] = model_name
             results["dataset"] = dataset_name
