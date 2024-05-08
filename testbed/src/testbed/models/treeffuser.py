@@ -34,6 +34,9 @@ class Treeffuser(ProbabilisticModel):
         self.learning_rate = learning_rate
         self.early_stopping_rounds = early_stopping_rounds
         self.num_leaves = num_leaves
+        self.subsample = subsample
+        self.subsample_freq = subsample_freq
+        self.verbose = verbose
         self.sde_manual_hyperparams = sde_manual_hyperparams
 
         self.model = LightGBMTreeffuser(
