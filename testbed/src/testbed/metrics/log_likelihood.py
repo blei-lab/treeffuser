@@ -27,7 +27,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
     """
 
     def __init__(
-        self, n_samples: int = 50, bandwidth: Optional[Union[str, float]] = "scott"
+        self, n_samples: int = 500, bandwidth: Optional[Union[str, float]] = None
     ) -> None:
         super().__init__()
         self.n_samples = n_samples
@@ -75,7 +75,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         nll /= batch
 
         return {
-            "nll": nll,
+            "nll_samples": nll,
         }
 
 
