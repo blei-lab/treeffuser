@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from jaxtyping import Float
 from ngboost import NGBRegressor
 from numpy import ndarray
@@ -51,6 +52,17 @@ class NGBoostGaussian(ProbabilisticModel):
         Predict the mean for each input.
         """
         return self.model.predict(X).reshape(-1, 1)
+
+    def predict_distribution(self, X) -> torch.distributions.Distribution:
+        """
+        Predict the distribution for each input.
+        """
+        dist_ngboost = self.model.pred_dist(X)
+        mean = torch.tensor(dist_ngboost.dist.mean().reshape(-1, 1))
+        std = torch.tensor(dist_ngboost.dist.std().reshape(-1, 1))
+        dist = torch.distributions.Normal(mean, std)
+
+        return dist
 
     def sample(
         self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None

@@ -4,6 +4,7 @@ from typing import Optional
 from typing import Type
 from typing import Union
 
+import torch.distributions
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
@@ -35,6 +36,14 @@ class ProbabilisticModel(ABC, BaseEstimator):
         """
         Predict the mean for each input.
         """
+
+    def predict_distribution(
+        self, X: Float[ndarray, "batch x_dim"]
+    ) -> torch.distributions.Distribution:
+        """
+        Predict the distribution for each input.
+        """
+        raise NotImplementedError
 
     @abstractmethod
     def sample(

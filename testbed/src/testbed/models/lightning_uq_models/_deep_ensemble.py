@@ -168,8 +168,23 @@ class DeepEnsemble(ProbabilisticModel):
         samples = (
             t.distributions.Normal(mean, std).sample((n_samples, 1)).squeeze()
         )  # batch, num_samples
-        samples = samples.unsqueeze(-1)
-        return samples.cpu().numpy()
+        return samples.cpu().numpy().reshape(n_samples, -1, self._y_dim)
+
+    @torch.no_grad()
+    def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
+        """
+        Predicts the distribution using the DeepEnsemble model.
+        """
+        if self._models is None:
+            raise ValueError("The model must be trained before calling predict_distribution.")
+        X = _to_tensor(X)
+
+        preds = self._models.predict_step(X)
+
+        mean = preds["pred"]
+        std = preds["pred_uct"]
+
+        return t.distributions.Normal(mean, std)
 
     @staticmethod
     def search_space() -> dict:
