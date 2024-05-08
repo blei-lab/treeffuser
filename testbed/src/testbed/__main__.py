@@ -15,6 +15,7 @@ from sklearn.model_selection import train_test_split
 from testbed.data.utils import get_data
 from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
+from testbed.metrics import LogLikelihoodExactMetric
 from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
 from testbed.metrics import QuantileCalibrationErrorMetric
@@ -96,6 +97,7 @@ METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
     "quantile_calibration_error": QuantileCalibrationErrorMetric,
     "log_likelihood": LogLikelihoodFromSamplesMetric,
+    "log_likelihood_closed_form": LogLikelihoodExactMetric,
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
