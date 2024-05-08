@@ -87,7 +87,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
 
         nll = 0
         y_test_rounded = np.round(y_test)
-        is_int = np.mean(np.abs(y_test - y_test_rounded)) < 1e-10
+        is_int = np.max(np.abs(y_test - y_test_rounded)) < 1e-10
         for i in tqdm(range(batch), disable=not self.verbose):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
