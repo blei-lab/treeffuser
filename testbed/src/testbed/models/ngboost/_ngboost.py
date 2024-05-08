@@ -7,6 +7,9 @@ from skopt.space import Real
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
 
+MAX_MINIBATCH_SIZE = 50_000
+MAX_VALIDATION_SIZE = 20_000
+
 
 class NGBoostGaussian(ProbabilisticModel):
     """
@@ -34,11 +37,15 @@ class NGBoostGaussian(ProbabilisticModel):
             raise ValueError("NGBoost only accepts 1 dimensional y values.")
 
         y = y[:, 0]
+        minibatch_frac = min(MAX_MINIBATCH_SIZE, X.shape[0]) / X.shape[0]
+        validation_fraction = min(int(0.1 * X.shape[0]), MAX_VALIDATION_SIZE) / X.shape[0]
 
         self.model = NGBRegressor(
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
             early_stopping_rounds=10,
+            minibatch_frac=minibatch_frac,
+            validation_fraction=validation_fraction,
             verbose=False,
         )
         self.model.fit(X, y)
@@ -74,7 +81,7 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
     A probabilistic model that uses NGBoost with a Gaussian mixture likelihood.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=3):
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=10):
         super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
@@ -95,14 +102,20 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
 
         y = y[:, 0]
 
+        minibatch_frac = min(MAX_MINIBATCH_SIZE, X.shape[0]) / X.shape[0]
+        validation_fraction = min(int(0.1 * X.shape[0]), MAX_VALIDATION_SIZE) / X.shape[0]
+
         self.model = NGBRegressor(
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
             Dist=self._dist,
             early_stopping_rounds=10,
             natural_gradient=False,
+            minibatch_frac=minibatch_frac,
+            validation_fraction=validation_fraction,
             verbose=False,
         )
+
         self.model.fit(X, y)
         return self
 

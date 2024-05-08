@@ -12,10 +12,15 @@ from tqdm import tqdm
 from testbed.metrics.base_metric import Metric
 from testbed.models.base_model import ProbabilisticModel
 
+# Corresponds to event with probability of 10^-6
+INT_LIKELIHOOD_CUTOFF = -6
+
 
 class LogLikelihoodFromSamplesMetric(Metric):
     """
     Computes the log likelihood of a model's predictive distribution given empirical samples of the model.
+    If the arguments passed are integers the log likelihood is computed using a simple counting method.
+    Otherwise, a kernel density estimator is fit to the samples and the log likelihood is computed using the KDE.
 
     Parameters
     ----------
@@ -50,6 +55,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         model: ProbabilisticModel,
         X_test: Float[ndarray, "batch n_features"],
         y_test: Float[ndarray, "batch y_dim"],
+        samples: Float[ndarray, "n_samples batch y_dim"] = None,
     ) -> Dict[str, float]:
         """
         Compute the log likelihood of the predictive distribution.
@@ -68,21 +74,25 @@ class LogLikelihoodFromSamplesMetric(Metric):
         log_likelihood : dict
             A single scalar which quantifies the log likelihood of the predictive distribution from empirical samples.
         """
-        y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
-            X=X_test, n_samples=self.n_samples
-        )
-        n_samples, batch, y_dim = y_samples.shape
+        if samples is not None:
+            y_samples = samples
+        else:
+            y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
+                X=X_test, n_samples=self.n_samples
+            )
+        _, batch, y_dim = y_samples.shape
 
         assert batch == X_test.shape[0], f"batch={batch} != X_test.shape[0]={X_test.shape[0]}"
         assert y_dim == y_test.shape[1], f"y_dim={y_dim} != y_test.shape[1]={y_test.shape[1]}"
-        assert n_samples == self.n_samples
 
         nll = 0
+        y_test_rounded = np.round(y_test)
+        is_int = np.max(np.abs(y_test - y_test_rounded)) < 1e-10
         for i in tqdm(range(batch), disable=not self.verbose):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
 
-            if self.is_int:
+            if is_int:
                 nll -= fit_and_evaluate_int_prob(y_train_xi, [y_test_xi])
             else:
                 nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi], bandwidth=None)
