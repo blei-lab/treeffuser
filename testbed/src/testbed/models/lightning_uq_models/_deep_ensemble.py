@@ -166,6 +166,8 @@ class DeepEnsemble(ProbabilisticModel):
         torch.manual_seed(seed)
         self._my_temp_dir = tempfile.mkdtemp()
 
+        self.y_dim = None
+
     def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
         """
         Fits the ensemble models to the provided training data.
@@ -176,6 +178,7 @@ class DeepEnsemble(ProbabilisticModel):
         """
         X = self.scaler_x.fit_transform(X)
         y = self.scaler_y.fit_transform(y.reshape(-1, 1))
+        self.y_dim = y.shape[1]
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
         for _ in range(self.n_ensembles):
@@ -253,7 +256,7 @@ class DeepEnsemble(ProbabilisticModel):
 
         samples = samples.reshape(n_samples, -1)
         samples = self.scaler_y.inverse_transform(samples)
-        return samples.reshape(n_samples, -1, self.scaler_y.scale_.shape[0])
+        return samples.reshape(n_samples, -1, self.y_dim)
 
     def log_likelihood(
         self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]
@@ -271,6 +274,9 @@ class DeepEnsemble(ProbabilisticModel):
         """
         X = self.scaler_x.transform(X)
         y = self.scaler_y.transform(y.reshape(-1, 1))
+
+        log_sum_std = np.sum(np.log(self.scaler_y.scale_))
+
         X_tensor = torch.tensor(X, dtype=torch.float)
         y_tensor = torch.tensor(y, dtype=torch.float)
         log_likelihoods = []
@@ -278,10 +284,15 @@ class DeepEnsemble(ProbabilisticModel):
             model.eval()
             mean, var = model(X_tensor)
             dist = torch.distributions.Normal(mean, var.sqrt())
-            log_likelihood = dist.log_prob(y_tensor).mean().detach().numpy()
+            # using jacobian to calculate the log likelihood
+            log_likelihood = (
+                dist.log_prob(y_tensor).mean().detach().numpy()
+                - log_sum_std
+                - np.log(y.shape[0])
+            )
             log_likelihoods.append(log_likelihood)
 
-        return np.mean(log_likelihoods)
+        return np.sum(log_likelihoods)
 
     @staticmethod
     def search_space():
