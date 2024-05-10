@@ -34,7 +34,7 @@ def main(path_raw_dataset_dir: Path):
     # save preprocessed data
     np.save(
         path_raw_dataset_dir.parent / "data.npy",
-        {"x": X.values, "y": y.values, "categorical": categorical},
+        {"x": X.values, "y": y.values.reshape(-1, 1), "categorical": categorical},
     )
 
 
