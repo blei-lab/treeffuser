@@ -4,6 +4,7 @@ This should be the main file corresponding to the project.
 
 import abc
 import warnings
+from typing import List
 from typing import Literal
 from typing import Optional
 from typing import Union
@@ -58,6 +59,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self._score_model = None
         self._is_fitted = False
         self._x_preprocessor = Preprocessor()
+        self._x_cat_idx = None
         self._y_preprocessor = Preprocessor()
         self._y_dim = None
 
@@ -77,15 +79,28 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Should return the class of the score model.
         """
 
-    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+    ):
         """
         Fit the model to the data.
 
-        Returns an instance of the model for chaining.
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+
+        Parameters
+        ----------
+        An instance of the model for chaining.
         """
         _check_arguments(X, y)
 
-        x_transformed = self._x_preprocessor.fit_transform(X)
+        x_transformed = self._x_preprocessor.fit_transform(X, cat_idx=self._x_cat_idx)
         y_transformed = self._y_preprocessor.fit_transform(y)
 
         if self._sde_initialize_with_data:
@@ -96,8 +111,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 self._sde = sde_cls(**self._sde_manual_hyperparams)
             else:
                 self._sde = sde_cls()
-
         self._score_config.update({"sde": self._sde})
+
         self._score_config = FrozenConfigDict(self._score_config)
 
         self._score_model = self._score_model_class(**self.score_config)
@@ -396,6 +411,34 @@ class LightGBMTreeffuser(Treeffuser):
                 "n_jobs": n_jobs,
             }
         )
+
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        cat_idx: Optional[List[int]] = None,
+    ):
+        """
+        Fit the model to the data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+        cat_idx: list
+            List with indices of the columns of X that are categorical.
+
+        Parameters
+        ----------
+        An instance of the model for chaining.
+        """
+        if cat_idx:
+            self._x_cat_idx = cat_idx
+            self._score_config.update({"categorical_features": cat_idx})
+
+        super().fit(X, y)
 
     @property
     def score_config(self):

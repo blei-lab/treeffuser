@@ -4,6 +4,7 @@ should function as a wrapper for different models we might want to use.
 """
 
 import abc
+from typing import List
 from typing import Optional
 
 import lightgbm as lgb
@@ -33,6 +34,7 @@ def _fit_one_lgbm_model(
     min_child_samples: int,
     subsample: float,
     subsample_freq: int,
+    categorical_features: List[int],
     seed: int,
     verbose: int,
     early_stopping_rounds: int,
@@ -56,6 +58,7 @@ def _fit_one_lgbm_model(
         min_child_samples=min_child_samples,
         subsample=subsample,
         subsample_freq=subsample_freq,
+        categorical_features=categorical_features,
         random_state=seed,
         verbose=verbose,
         n_jobs=n_jobs,
@@ -170,6 +173,7 @@ class LightGBMScore(Score):
         min_child_samples: Optional[int] = 20,
         subsample: Optional[float] = 1.0,
         subsample_freq: Optional[int] = 0,
+        categorical_features: Optional[list[int]] = None,
         verbose: Optional[int] = 0,
         seed: Optional[int] = None,
         n_jobs: Optional[int] = -1,
@@ -232,6 +236,7 @@ class LightGBMScore(Score):
             "min_child_samples": min_child_samples,
             "subsample": subsample,
             "subsample_freq": subsample_freq,
+            "categorical_features": categorical_features,
             "seed": seed,
             "verbose": verbose,
             "n_jobs": n_jobs,
