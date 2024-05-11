@@ -1,6 +1,6 @@
 import numpy as np
 from sklearn.metrics import r2_score
-from testbed.models import QuantileRegression
+from testbed.models.quantile_regression import QuantileRegression
 
 
 def test_quantile_regression_works():

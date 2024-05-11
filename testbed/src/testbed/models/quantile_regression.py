@@ -20,11 +20,11 @@ def pinball_loss(
     Returns the gradient and hessian of the pinball loss.
 
     The pinball loss is defined as:
-        loss = q * (y - pred) if y > pred else (1 - q) * (y - pred)
+        loss = q * (y - pred) if y > pred else (1 - q) * (pred - y)
     Hence the gradient is:
-        grad = q if y > pred else (1 - q)
+        grad = - q if y > pred else (1 - q)
     And the hessian is:
-        hess = 0
+        hess = 0 (1 but for lightgbm to work)
     """
     Xq, y = train_data.data, train_data.get_label()
     q = Xq[:, -1]
@@ -62,7 +62,10 @@ class QuantileRegression(ProbabilisticModel):
     Creates a quantile regression model using LightGBM.
 
     The model works by fitting a model f(X, q) that predicts the q-th quantile of
-    the target distribution.
+    the target distribution. This is done by minimizing the loss
+
+    E_q[loss(y, f(X, q))], where loss is the pinball loss and the
+    distribution of q is uniform.
     """
 
     def __init__(
@@ -144,7 +147,7 @@ class QuantileRegression(ProbabilisticModel):
         return mean
 
     def predict_quantiles(
-        self, X: Float[ndarray, "batch x_dim"], quantiles: Float[ndarray, "n_quantiles"]
+        self, X: Float[ndarray, "batch x_dim"], quantiles: Float[ndarray, "batch"]
     ) -> Float[ndarray, "batch y_dim"]:
         Xq = np.concatenate([X, quantiles[:, None]], axis=1)
         return self.model.predict(Xq, num_iteration=self.model.best_iteration)
