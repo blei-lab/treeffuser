@@ -84,6 +84,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Returns an instance of the model for chaining.
         """
         _check_arguments(X, y)
+        X = np.asarray(X, dtype=np.float32)
+        y = np.asarray(y, dtype=np.float32)
 
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
