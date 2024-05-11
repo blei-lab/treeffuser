@@ -188,7 +188,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
     def predict(
         self,
         X: Float[ndarray, "batch x_dim"],
-        ode: bool = True,
+        ode: bool = False,
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
@@ -221,7 +221,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         """
         n_samples = n_samples_increment = 10
 
-        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=1)
+        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
         norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
         max_change = np.inf
 
@@ -230,7 +230,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 X=X,
                 n_samples=n_samples_increment,
                 verbose=verbose,
-            ).sum(axis=1)
+            ).sum(axis=0)
 
             mean = (sum_increment + mean_prev * n_samples) / (n_samples + n_samples_increment)
             norm = np.sqrt((mean**2).sum(axis=1))
