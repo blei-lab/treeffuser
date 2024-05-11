@@ -87,8 +87,6 @@ class Treeffuser(BaseEstimator, abc.ABC):
 
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
-        # x_transformed = X
-        # y_transformed = y
 
         if self._sde_initialize_with_data:
             self._sde = initialize_sde(self._sde_name, y_transformed)
@@ -125,7 +123,6 @@ class Treeffuser(BaseEstimator, abc.ABC):
             raise ValueError("The model has not been fitted yet.")
 
         x_transformed = self._x_preprocessor.transform(X)
-        # x_transformed = X
 
         batch_size_x = x_transformed.shape[0]
         y_dim = self._y_dim
