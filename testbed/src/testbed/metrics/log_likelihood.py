@@ -1,6 +1,5 @@
 from typing import Dict
 from typing import List
-from typing import Optional
 from typing import Union
 
 import numpy as np
@@ -29,6 +28,10 @@ class LogLikelihoodFromSamplesMetric(Metric):
     bandwidth : float, optional
         The bandwidth of the kernel density estimator used to fit the samples.
         If None, the bandwidth is estimated using cross-validation.
+    is_int : bool, optional
+        Whether the samples are meant to be integers. If True, the
+        likelihood is estimated via an a bayesian approximation to the
+        empirical distribution with dirichlet priors. (see code for details)
     verbose : bool, optional
         Whether to print progress information.
     """
@@ -36,11 +39,13 @@ class LogLikelihoodFromSamplesMetric(Metric):
     def __init__(
         self,
         n_samples: int = 50,
-        bandwidth: Optional[Union[str, float]] = "scott",
+        bandwidth: Union[str, float] = "scott",
+        is_int=False,
         verbose=False,
     ) -> None:
 
         self.bandwidth = bandwidth
+        self.is_int = is_int
         self.verbose = verbose
 
     def compute(
@@ -70,8 +75,6 @@ class LogLikelihoodFromSamplesMetric(Metric):
         log_likelihood : dict
             A single scalar which quantifies the log likelihood of the predictive distribution from empirical samples.
         """
-        # use seaborn to plot stuff
-
         if samples is not None:
             y_samples = samples
         else:
@@ -85,7 +88,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
 
         nll = 0
         y_test_rounded = np.round(y_test)
-        is_int = np.mean(np.abs(y_test - y_test_rounded)) < 1e-10
+        is_int = np.max(np.abs(y_test - y_test_rounded)) < 1e-10
         for i in tqdm(range(batch), disable=not self.verbose):
             y_train_xi = y_samples[:, i, :]
             y_test_xi = y_test[i, :]
@@ -104,8 +107,10 @@ def fit_and_evaluate_int_prob(y_train: Float[ndarray, "n_samples y_dim"], y_test
     """
     Used only when y_train is meant to represent integer values.
 
-    We fit an empirical distribution to the training data using simple counting.
-    We leave one count for unseen values.
+    We fit a dirichlet distribution to the empirical distribution of y_train
+    and then evaluate the log likelihood of y_test under this distribution.
+    The dirichlet distribution has a uniform prior over all possible values
+    according to the empirical distribution of y_train and y_test.
     """
     # Currently only works with 1D y_train
     assert y_train.shape[1] == 1
@@ -113,11 +118,19 @@ def fit_and_evaluate_int_prob(y_train: Float[ndarray, "n_samples y_dim"], y_test
     y_test_int = np.round(y_test).flatten()
     y_train_int = np.round(y_train).flatten()
 
+    min_y = np.min([np.min(y_train_int), np.min(y_test_int)])
+    max_y = np.max([np.max(y_train_int), np.max(y_test_int)])
+    n_vals = max_y - min_y + 1
+
     unique, counts = np.unique(y_train_int, return_counts=True)
-    total_counts = np.sum(counts) + 1  # one extra count for unseen values
+
+    epsilon = 1 / n_vals
+    total_counts = np.sum(counts) + 1
 
     counts_dict = dict(zip(unique, counts))
-    probs_test = [counts_dict.get(y, 1) / total_counts for y in y_test_int]
+    probs_test = np.array(
+        [(counts_dict.get(y, 0) + epsilon) / total_counts for y in y_test_int]
+    )
     log_probs_test = np.log(probs_test)
     return np.sum(log_probs_test)
 

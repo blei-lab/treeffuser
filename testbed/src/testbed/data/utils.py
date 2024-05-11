@@ -2,6 +2,7 @@
 
 import json
 import subprocess
+import zipfile
 from pathlib import Path
 from typing import List
 from typing import Union
@@ -70,7 +71,7 @@ def list_data(verbose: bool = False) -> dict:
     # extract all leaves of data folder
     datasets = []
     for d in path_data_dir.glob("**/"):
-        if d.is_dir() and d.name != "raw" and not d.name.startswith((".", "_")):
+        if d.is_dir() and "raw" not in d.parts and not d.name.startswith((".", "_")):
             subdirs = [
                 subdir
                 for subdir in d.iterdir()
@@ -155,3 +156,11 @@ def get_data(
 
     # load and return preprocessed data file
     return _load_data(path_dataset_file, verbose)
+
+
+def _extract_and_delete_zipfile(path_raw_dataset_dir: Path, zipfile_name: str = "temp.zip"):
+    path_raw_data_file = path_raw_dataset_dir / zipfile_name
+    with zipfile.ZipFile(path_raw_data_file, "r") as archive:
+        for file in archive.namelist():
+            archive.extract(file, path_raw_dataset_dir)
+    path_raw_data_file.unlink()

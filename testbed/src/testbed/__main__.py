@@ -1,5 +1,6 @@
 import argparse
 import logging
+import warnings
 from typing import Dict
 from typing import List
 from typing import Tuple
@@ -16,8 +17,8 @@ from testbed.data.utils import list_data
 from testbed.metrics import AccuracyMetric
 from testbed.metrics import LogLikelihoodFromSamplesMetric
 from testbed.metrics import Metric
-from testbed.metrics import QuantileCalibrationErrorMetric
-from testbed.models import make_autoregressive_probabilistic_model
+
+# from testbed.metrics import QuantileCalibrationErrorMetric
 from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.ngboost import NGBoostGaussian
 from testbed.models.ngboost import NGBoostMixtureGaussian
@@ -144,7 +145,7 @@ def parse_args():
     parser.add_argument(
         "--seed",
         type=int,
-        default=42,
+        default=0,
         help=msg,
     )
 
@@ -308,6 +309,12 @@ def run_model_on_dataset(
         metric = METRIC_TO_CLASS[metric]()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         results.update(res)
+
+    if optimize_hyperparameters:
+        results.update(model._model.get_params())
+        results["n_iter_bayes_opt"] = n_iter_bayes_opt
+    else:
+        results.update(model.get_params())
     return results
 
 
@@ -315,9 +322,13 @@ def make_multi_output_dataset(
     X: Float[ndarray, "batch n_features"],
     y: Float[ndarray, "batch n_targets"],
     dim_output: int,
+    seed: int = 0,
 ) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
     """
     Create a multi-output dataset from a single-output dataset by using conditional regression.
+
+    A random subset of Xy is selected as the new features and the rest as the new output.
+    and 0.001 * std(y) is added to the new output to add some noise for the conditional regression.
 
     Args:
         X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
@@ -334,8 +345,11 @@ def make_multi_output_dataset(
     new_n_targets = dim_output
     new_n_features = n_total - new_n_targets
 
+    # seed with get_default_rng to avoid issues with jax
+    rng = np.random.default_rng(seed)
+
     # randomly select the new features
-    new_features = np.random.choice(n_total, new_n_features, replace=False)
+    new_features = rng.choice(n_total, new_n_features, replace=False)
     new_output = np.array([i for i in range(n_total) if i not in new_features])
     Xy = np.concatenate([X, y], axis=1)
 
@@ -374,13 +388,28 @@ def main() -> None:
             data = get_data(dataset_name, verbose=True)
 
             if args.dim_output is not None and args.dim_output > 1:
-                X, y = make_multi_output_dataset(data["x"], data["y"], args.dim_output)
+                X, y = make_multi_output_dataset(
+                    data["x"], data["y"], args.dim_output, args.seed
+                )
+                X_train, X_test, y_train, y_test = train_test_split(
+                    X, y, test_size=0.2, random_state=args.seed
+                )
             else:
-                X, y = data["x"], data["y"]
-
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, y, test_size=0.2, random_state=args.seed
-            )
+                if "test" not in data:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        data["x"], data["y"], test_size=0.2, random_state=args.seed
+                    )
+                else:
+                    warnings.warn(
+                        f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                        stacklevel=2,
+                    )
+                    X_train, X_test, y_train, y_test = (
+                        data["x"],
+                        data["test"]["x"],
+                        data["y"],
+                        data["test"]["y"],
+                    )
 
             results = run_model_on_dataset(
                 X_train=X_train,
@@ -390,6 +419,7 @@ def main() -> None:
                 model_name=model_name,
                 metrics=args.metrics,
                 optimize_hyperparameters=args.optimize_hyperparameters,
+                n_iter_bayes_opt=args.n_iter_bayes_opt,
             )
 
             results["model"] = model_name

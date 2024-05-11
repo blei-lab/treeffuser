@@ -46,7 +46,7 @@ class NGBoostGaussian(ProbabilisticModel):
             early_stopping_rounds=10,
             minibatch_frac=minibatch_frac,
             validation_fraction=validation_fraction,
-            verbose_eval=50,
+            verbose=False,
         )
         self.model.fit(X, y)
         return self
@@ -113,8 +113,9 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
             natural_gradient=False,
             minibatch_frac=minibatch_frac,
             validation_fraction=validation_fraction,
-            verbose_eval=1,
+            verbose=False,
         )
+
         self.model.fit(X, y)
         return self
 

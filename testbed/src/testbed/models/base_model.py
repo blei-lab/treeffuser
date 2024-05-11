@@ -1,7 +1,9 @@
 from abc import ABC
 from abc import abstractmethod
+from typing import Optional
 from typing import Tuple
 from typing import Type
+from typing import Union
 
 import numpy as np
 from jaxtyping import Float
@@ -65,7 +67,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 50,
-        bandwidth: float = 1.0,
+        bandwidth: Optional[Union[str, float]] = "scott",
     ) -> float:
         """
         Return the negative log-likelihood of the model on the data.
