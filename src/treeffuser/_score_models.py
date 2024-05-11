@@ -48,6 +48,10 @@ def _fit_one_lgbm_model(
     if early_stopping_rounds is not None:
         callbacks = [lgb.early_stopping(early_stopping_rounds, verbose=verbose)]
 
+    categorical_features_idx = (
+        [1 + i for i in categorical_features] if categorical_features is not None else None
+    )  # X_train=[y_perturbed, X, t]
+
     model = lgb.LGBMRegressor(
         n_estimators=n_estimators,
         num_leaves=num_leaves,
@@ -58,7 +62,7 @@ def _fit_one_lgbm_model(
         min_child_samples=min_child_samples,
         subsample=subsample,
         subsample_freq=subsample_freq,
-        categorical_features=categorical_features,
+        categorical_features=categorical_features_idx,
         random_state=seed,
         verbose=verbose,
         n_jobs=n_jobs,
@@ -89,10 +93,10 @@ def _make_training_data(
         where z is the noise added to y_perturbed.
 
     Returns:
-    - predictors_train: X_train for lgbm
-    - predictors_val: X_val for lgbm
-    - predicted_train: y_train for lgbm
-    - predicted_val: y_val for lgbm
+    - predictors_train: X_train=[y_perturbed_train, x_train, t_train] for lgbm
+    - predictors_val: X_val=[y_perturbed_val, x_val, t_val] for lgbm
+    - predicted_train: y_train=[-z_train] for lgbm
+    - predicted_val: y_val=[-z_val] for lgbm
     """
     EPS = 1e-5  # smallest step we can sample from
     T = sde.T
