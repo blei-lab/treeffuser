@@ -41,6 +41,8 @@ MODEL_TO_CLASS = {
 }
 AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
 
+SUPPORT_CATEGORICAL = ["treeffuser"]
+
 METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric,
     # "quantile_calibration_error": QuantileCalibrationErrorMetric,
@@ -253,6 +255,7 @@ def run_model_on_dataset(
     X_test: Float[ndarray, "test_size n_features"],
     y_train: Float[ndarray, "train_size 1"],
     y_test: Float[ndarray, "test_size 1"],
+    cat_idx: List[int],
     model_name: str,
     metrics: List[Metric],
     optimize_hyperparameters: bool,
@@ -281,7 +284,10 @@ def run_model_on_dataset(
     else:
         model = model_class()
 
-    model.fit(X_train, y_train)
+    if model_name in SUPPORT_CATEGORICAL:
+        model.fit(X_train, y_train, cat_idx)
+    else:
+        model.fit(X_train, y_train)
 
     results = {}
     for metric in metrics:
@@ -340,6 +346,7 @@ def main() -> None:
                 X_test=X_test,
                 y_train=y_train,
                 y_test=y_test,
+                cat_idx=data.get("categorical", None),
                 model_name=model_name,
                 metrics=args.metrics,
                 optimize_hyperparameters=args.optimize_hyperparameters,
