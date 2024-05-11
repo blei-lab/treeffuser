@@ -14,7 +14,7 @@ from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
 
-from testbed.models._preprocessors import Preproccesor
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
@@ -100,8 +100,8 @@ class QuantileRegression(ProbabilisticModel):
         if y.shape[1] > 1:
             raise ValueError("QuantileRegression only accepts 1 dimensional y values.")
 
-        self._x_scaler = Preproccesor()
-        self._y_scaler = Preproccesor()
+        self._x_scaler = Preprocessor()
+        self._y_scaler = Preprocessor()
 
         X = self._x_scaler.fit_transform(X)
         y = self._y_scaler.fit_transform(y)

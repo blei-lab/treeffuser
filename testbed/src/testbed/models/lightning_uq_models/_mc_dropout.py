@@ -16,7 +16,7 @@ from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
 
-from testbed.models._preprocessors import Preproccesor
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
@@ -26,16 +26,16 @@ class MCDropout(ProbabilisticModel):
 
     def __init__(
         self,
-        n_layers: int = 3,
-        hidden_size: int = 50,
-        max_epochs: int = 300,
+        n_layers: int = 4,
+        hidden_size: int = 100,
+        max_epochs: int = 1000,
         dropout: float = 0.1,
         learning_rate: float = 1e-2,
         batch_size: int = 32,
         enable_progress_bar: bool = False,
         use_gpu: bool = False,
-        burnin_epochs: int = 50,
-        patience: int = 10,
+        burnin_epochs: int = 0,
+        patience: int = 30,
         seed: int = 42,
     ):
         """
@@ -92,8 +92,8 @@ class MCDropout(ProbabilisticModel):
         self._y_dim = y.shape[1]
         self._x_dim = X.shape[1]
 
-        self._x_scaler = Preproccesor()
-        self._y_scaler = Preproccesor()
+        self._x_scaler = Preprocessor()
+        self._y_scaler = Preprocessor()
 
         X = self._x_scaler.fit_transform(X)
         y = self._y_scaler.fit_transform(y)
@@ -173,7 +173,7 @@ class MCDropout(ProbabilisticModel):
             t.distributions.Normal(mean, std).sample((n_samples, 1)).squeeze()
         )  # batch, num_samples
         samples = samples.unsqueeze(-1)
-        samples.cpu().numpy()
+        samples = samples.cpu().numpy()
 
         # Inverse transform the samples
         samples = samples.reshape(-1, self._y_dim)

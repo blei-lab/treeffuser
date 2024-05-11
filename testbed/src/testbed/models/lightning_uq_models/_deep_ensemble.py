@@ -144,7 +144,7 @@ class DeepEnsemble(ProbabilisticModel):
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
-        n_ensembles: int = 5,
+        n_ensembles: int = 3,
         burnin_epochs: int = 10,
         enable_progress_bar: bool = True,
     ):
@@ -257,7 +257,7 @@ class DeepEnsemble(ProbabilisticModel):
         indices = np.random.choice(range(samples.shape[0]), n_samples)
         samples = samples[indices]
 
-        samples = samples.reshape(n_samples, -1)
+        samples = samples.reshape(-1, self.y_dim)
         samples = self.scaler_y.inverse_transform(samples)
         return samples.reshape(n_samples, -1, self.y_dim)
 
