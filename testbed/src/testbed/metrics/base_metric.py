@@ -8,6 +8,9 @@ from testbed.models.base_model import ProbabilisticModel
 
 
 class Metric(abc.ABC):
+    def __init__(self):
+        self.seed = 0
+
     @abc.abstractmethod
     def compute(
         self,

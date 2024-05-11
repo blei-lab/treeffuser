@@ -1,3 +1,5 @@
+import numpy as np
+import torch
 from jaxtyping import Float
 from ngboost import NGBRegressor
 from numpy import ndarray
@@ -18,8 +20,8 @@ class NGBoostGaussian(ProbabilisticModel):
     NGBoost only accepts 1 dimensional y values.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05):
-        super().__init__()
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, seed=0):
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.model = None
@@ -47,6 +49,7 @@ class NGBoostGaussian(ProbabilisticModel):
             minibatch_frac=minibatch_frac,
             validation_fraction=validation_fraction,
             verbose=False,
+            random_state=self.seed,
         )
         self.model.fit(X, y)
         return self
@@ -57,12 +60,24 @@ class NGBoostGaussian(ProbabilisticModel):
         """
         return self.model.predict(X).reshape(-1, 1)
 
+    def predict_distribution(self, X) -> torch.distributions.Distribution:
+        """
+        Predict the distribution for each input.
+        """
+        dist_ngboost = self.model.pred_dist(X)
+        mean = torch.tensor(dist_ngboost.dist.mean().reshape(-1, 1))
+        std = torch.tensor(dist_ngboost.dist.std().reshape(-1, 1))
+        dist = torch.distributions.Normal(mean, std)
+
+        return dist
+
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
+        np.random.seed(seed)
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
     @staticmethod
@@ -81,8 +96,8 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
     A probabilistic model that uses NGBoost with a Gaussian mixture likelihood.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=10):
-        super().__init__()
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, k=3, seed=0):
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.k = k
@@ -114,6 +129,7 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
             minibatch_frac=minibatch_frac,
             validation_fraction=validation_fraction,
             verbose=False,
+            random_state=self.seed,
         )
 
         self.model.fit(X, y)
@@ -126,12 +142,12 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
-        return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
+        return self.model.pred_dist(X).sample(n_samples, seed=seed).reshape(n_samples, -1, 1)
 
     @staticmethod
     def search_space() -> dict:

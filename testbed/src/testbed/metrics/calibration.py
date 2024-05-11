@@ -88,7 +88,7 @@ class QuantileCalibrationErrorMetric(Metric):
             - "rmsce": root mean squared calibration error
             - "mace": mean absolute calibration error
         """
-        y_preds = model.sample(X_test, n_samples=50)
+        y_preds = model.sample(X_test, n_samples=50, seed=self.seed)
         metrics = _compute_quantile_calibration_error(y_preds, y_test)
         return metrics
 

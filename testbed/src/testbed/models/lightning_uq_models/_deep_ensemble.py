@@ -136,7 +136,7 @@ class DeepEnsemble(ProbabilisticModel):
 
     def __init__(
         self,
-        n_layers: int = 3,
+        n_layers: int = 1,
         hidden_size: int = 50,
         max_epochs: int = 300,
         learning_rate: float = 1e-2,
@@ -162,11 +162,11 @@ class DeepEnsemble(ProbabilisticModel):
         self._models: List[MVERegression] = []
         self.scaler_x = StandardScaler()
         self.scaler_y = StandardScaler()
+        self._my_temp_dir = tempfile.mkdtemp()
+        self.y_dim = None
+
         np.random.seed(seed)
         torch.manual_seed(seed)
-        self._my_temp_dir = tempfile.mkdtemp()
-
-        self.y_dim = None
 
     def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
         """
@@ -228,7 +228,10 @@ class DeepEnsemble(ProbabilisticModel):
         return self.scaler_y.inverse_transform(mean_predictions)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int = 10,
+        seed=None,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Samples from the predictive distribution for given inputs using the trained ensemble models.
@@ -293,6 +296,13 @@ class DeepEnsemble(ProbabilisticModel):
             log_likelihoods.append(log_likelihood)
 
         return np.sum(log_likelihoods)
+
+    @torch.no_grad()
+    def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
+        """
+        Predicts the distribution using the DeepEnsemble model.
+        """
+        raise NotImplementedError
 
     @staticmethod
     def search_space():
