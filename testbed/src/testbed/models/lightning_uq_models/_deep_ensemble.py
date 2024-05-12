@@ -146,7 +146,7 @@ class DeepEnsemble(ProbabilisticModel):
         seed: int = 42,
         n_ensembles: int = 5,
         burnin_epochs: int = 10,
-        enable_progress_bar: bool = True,
+        enable_progress_bar: bool = False,
     ):
         self.n_layers = n_layers
         self.hidden_size = hidden_size
@@ -307,11 +307,11 @@ class DeepEnsemble(ProbabilisticModel):
     @staticmethod
     def search_space():
         return {
-            "n_layers": Integer(1, 7),
+            "n_layers": Integer(1, 5),
             "hidden_size": Integer(10, 500),
-            "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
+            "learning_rate": Real(1e-5, 1e-2, prior="log-uniform"),
             "n_ensembles": Integer(2, 10),
-            "patience": Integer(5, 50),
-            "burnin_epochs": Integer(1, 30),
-            "batch_size": Integer(16, 512),
+            # "patience": Integer(5, 50),
+            # "burnin_epochs": Integer(1, 30),
+            # "batch_size": Integer(16, 512),
         }
