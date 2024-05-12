@@ -26,6 +26,7 @@ class Treeffuser(ProbabilisticModel):
         subsample: float = 1.0,
         subsample_freq: int = 0,
         verbose: bool = 0,
+        sde_initialize_with_data: bool = False,
         sde_manual_hyperparams: Optional[Dict[str, float]] = None,
     ):
         super().__init__()
@@ -38,11 +39,13 @@ class Treeffuser(ProbabilisticModel):
         self.subsample_freq = subsample_freq
         self.verbose = verbose
         self.sde_manual_hyperparams = sde_manual_hyperparams
+        self.sde_initialize_with_data = sde_initialize_with_data
 
         self.model = LightGBMTreeffuser(
             n_estimators=n_estimators,
             n_repeats=n_repeats,
             sde_name="vesde",
+            sde_initialize_with_data=sde_initialize_with_data,
             learning_rate=learning_rate,
             early_stopping_rounds=early_stopping_rounds,
             num_leaves=num_leaves,
