@@ -19,14 +19,17 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
+
 current_dir = Path(__file__).resolve().parent
-sys.path.append(str(current_dir / "/../"))
-sys.path.append(str(current_dir / "/../../../src"))
+sys.path.append(str(current_dir / "../"))
+sys.path.append(str(current_dir / "../../../src"))
+print(sys.path)
 
 
 from testbed.data.utils import get_data  # noqa E402
 from testbed.data.utils import list_data  # noqa E402
 from testbed.metrics import AccuracyMetric  # noqa E402
+from testbed.metrics import CRPS  # noqa E402
 from testbed.metrics import LogLikelihoodExactMetric  # noqa E402
 from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
 from testbed.metrics import Metric  # noqa E402
@@ -106,10 +109,11 @@ AVAILABLE_DATASETS = list(list_data().keys())
 AVAILABLE_MODELS = get_model(return_available_models=True)
 
 METRIC_TO_CLASS = {
-    "accuracy": AccuracyMetric,
-    "quantile_calibration_error": QuantileCalibrationErrorMetric,
-    "log_likelihood": LogLikelihoodFromSamplesMetric,
-    "log_likelihood_closed_form": LogLikelihoodExactMetric,
+    "accuracy": AccuracyMetric(),
+    "quantile_calibration_error": QuantileCalibrationErrorMetric(),
+    "log_likelihood_closed_form": LogLikelihoodExactMetric(),
+    "crps100": CRPS(n_samples=100),
+    "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -356,7 +360,7 @@ def run_model_on_dataset(
     results["train_time"] = train_end - train_start
 
     for metric_name in metrics:
-        metric = METRIC_TO_CLASS[metric_name]()
+        metric = METRIC_TO_CLASS[metric_name]
         metric_time_start = time.time()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         metric_time_end = time.time()
