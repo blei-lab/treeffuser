@@ -218,7 +218,7 @@ def parse_args():
     parser.add_argument(
         "--split_idx",
         type=int,
-        default=0,
+        default=-1,
         help=msg,
     )
 
@@ -347,7 +347,10 @@ def run_model_on_dataset(
     model_class = get_model(model_name)
     if evaluation_mode == "bayes_opt":
         model = BayesOptProbabilisticModel(
-            model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
+            model_class=model_class,
+            n_iter_bayes_opt=n_iter_bayes_opt,
+            frac_validation=0.2,
+            n_jobs=1,
         )
     else:
         model = model_class(seed=seed)
@@ -392,7 +395,7 @@ def main() -> None:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
 
-            if args.evaluation_mode == "cross_val":
+            if args.split_idx != -1:
                 X_train = data["x"][data["k_fold_splits"] != args.split_idx]
                 y_train = data["y"][data["k_fold_splits"] != args.split_idx]
                 X_test = data["x"][data["k_fold_splits"] == args.split_idx]
@@ -415,6 +418,7 @@ def main() -> None:
                     )
 
             if args.wandb_project is not None:
+                # setup wandb
                 import wandb
 
                 wandb.init(
@@ -422,6 +426,7 @@ def main() -> None:
                     name=f"{model_name}_{dataset_name}",
                     # config=args,
                 )
+                wandb.log({"model": model_name, "dataset": dataset_name})
 
             results = run_model_on_dataset(
                 X_train=X_train,
