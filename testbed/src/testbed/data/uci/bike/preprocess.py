@@ -14,7 +14,7 @@ def main(path_raw_dataset_dir: Path):
     data = pd.read_csv(path_raw_dataset_dir / "hour.csv")
 
     # remove index and date columns
-    data = data.drop(columns=["instant", "dteday"])
+    data = data.drop(columns=["instant", "dteday", "casual", "registered"])
 
     # extract outcome and covariates
     X = data[[x for x in data.columns if x != "cnt"]]
