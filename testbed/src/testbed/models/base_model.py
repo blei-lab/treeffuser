@@ -2,13 +2,14 @@ from abc import ABC
 from abc import abstractmethod
 from typing import Optional
 from typing import Type
-from typing import Union
 
 import torch.distributions
+import wandb
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
+from skopt.utils import use_named_args
 
 
 class ProbabilisticModel(ABC, BaseEstimator):
@@ -74,25 +75,24 @@ class ProbabilisticModel(ABC, BaseEstimator):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        n_samples: int = 50,
-        bandwidth: Optional[Union[str, float]] = "scott",
+        n_samples: int = 100,
     ) -> float:
         """
-        Return the negative log-likelihood of the model on the data.
+        Return the negative CRPS score for the model.
+        The higher the score, the better the model.
         This function is used for hyperparameter optimization and
         compatibility with scikit-learn.
 
         n_samples: The number of samples to draw from the model's predictive
             distribution to compute an estimate of the log likelihood.
-        bandwidth: The bandwidth of the kernel density estimator used to fit the samples.
         """
         # Avoid circular import
-        import testbed.metrics.log_likelihood as log_likelihood
+        import testbed.metrics.crps as crps
 
-        metric = log_likelihood.LogLikelihoodFromSamplesMetric(
-            n_samples=n_samples, bandwidth=bandwidth
+        metric = crps.CRPS(
+            n_samples=n_samples,
         )
-        return -1.0 * metric.compute(self, X, y)["nll"]
+        return -1.0 * next(iter(metric.compute(self, X, y).values()))
 
 
 class CachedProbabilisticModel(ProbabilisticModel):
@@ -129,10 +129,13 @@ class CachedProbabilisticModel(ProbabilisticModel):
         self._cache = {}
 
 
-class BayesOptProbabilisticModel(ProbabilisticModel):
+class BayesOptCVProbabilisticModel(ProbabilisticModel):
     """
     A probabilistic model that uses Bayesian optimization to find the best hyperparameters.
     It is a wrapper around a probabilistic model that uses the skopt library.
+    It finds the best hyperparameters by cross-validation.
+
+    See also: BayesOptProbabilisticModel
     """
 
     def __init__(
@@ -170,23 +173,38 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
             n_iter=self._n_iter_bayes_opt,
             cv=self._cv,
             n_jobs=self._n_jobs,
-            verbose=2,
+            verbose=3,
             random_state=0,
             optimizer_kwargs={"base_estimator": "GBRT"},
+            error_score=-1000000,
         )
 
-        opt.fit(X, y)
+        callbacks = []
+        # check if wandb is on
+        if wandb.run is not None:
+
+            def wandb_callback(res):
+                wandb.log(
+                    {
+                        "bayes_opt_score": res.fun,
+                        "bayes_opt_params": res.x_iters[-1],
+                    }
+                )
+
+            callbacks.append(wandb_callback)
+        opt.fit(X, y, callback=callbacks)
 
         self._model = opt.best_estimator_
+        self._model.fit(X, y)
         return self
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         return self._model.predict(X)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed: Optional[int] = None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
-        return self._model.sample(X, n_samples)
+        return self._model.sample(X, n_samples, seed=seed)
 
     @staticmethod
     def search_space() -> dict:
@@ -199,4 +217,115 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         res = self._model.get_params(deep=deep)
         res["n_iter_bayes_opt"] = self._n_iter_bayes_opt
         res["cv_bayes_opt"] = self._cv
+        return res
+
+
+class BayesOptProbabilisticModel(ProbabilisticModel):
+    """
+    A probabilistic model that uses Bayesian optimization to find the best hyperparameters.
+    It is a wrapper around a probabilistic model that uses the skopt library.
+    It finds the best hyperparameters on a train-validation split.
+
+    See also: BayesOptCVProbabilisticModel
+    """
+
+    def __init__(
+        self,
+        model_class: Type[ProbabilisticModel],
+        n_iter_bayes_opt: int = 50,
+        n_jobs: int = -1,
+        frac_validation: float = 0.1,
+    ):
+        """
+        model_class: The class of the model to be optimized.
+        n_iter_bayes_opt: The number of iterations for the Bayesian optimization.
+        cv: The number of cross-validation folds.
+        n_jobs: The number of parallel jobs to run. -1 means using all processors.
+        """
+        super().__init__()
+        self._model_class = model_class
+        self._model = None
+        self._model_search_space = None
+        self._n_iter_bayes_opt = n_iter_bayes_opt
+        self._frac_validation = frac_validation
+        self._n_jobs = n_jobs
+
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+    ) -> ProbabilisticModel:
+        # not CV, need to split data
+        from sklearn.model_selection import train_test_split
+
+        X_train, X_val, y_train, y_val = train_test_split(
+            X,
+            y,
+            test_size=self._frac_validation,
+            random_state=0,
+        )
+
+        callbacks = []
+        # check if wandb is on
+        if wandb.run is not None:
+
+            def wandb_callback(res):
+                wandb.log(
+                    {
+                        "bayes_opt_score": res.fun,
+                        **dict(zip(space_args.keys(), res.x_iters[-1])),
+                    }
+                )
+
+            callbacks.append(wandb_callback)
+
+        space_args = self._model_class.search_space()
+        space = []
+        for k, v in space_args.items():
+            v.name = k
+            space.append(v)
+
+        @use_named_args(space)
+        def objective(**params):
+            model = self._model_class(**params)
+            model.fit(X_train, y_train)
+            score = model.score(X_val, y_val)
+            return -score
+
+        from skopt import forest_minimize
+
+        res = forest_minimize(
+            objective,
+            space,
+            n_initial_points=5,
+            n_calls=self._n_iter_bayes_opt,
+            n_jobs=self._n_jobs,
+            verbose=True,
+            random_state=0,
+            callback=callbacks,
+        )
+
+        self._model = self._model_class(**dict(zip(space_args.keys(), res.x)))
+        self._model.fit(X, y)
+        return self
+
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
+        return self._model.predict(X)
+
+    def sample(
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed: Optional[int] = None
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
+        return self._model.sample(X, n_samples, seed=seed)
+
+    @staticmethod
+    def search_space() -> dict:
+        """
+        This has no hyperparameters to optimize.
+        """
+        return {}
+
+    def get_params(self, deep=True):
+        res = self._model.get_params(deep=deep)
+        res["n_iter_bayes_opt"] = self._n_iter_bayes_opt
+        res["frac_validation"] = self._frac_validation
         return res
