@@ -58,7 +58,8 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project testbed-kfoldnll"
+        f" --wandb_project crps-bayesopt-split"
+        f" --n_iter_bayes_opt 25"
     )
     return tmp
 
