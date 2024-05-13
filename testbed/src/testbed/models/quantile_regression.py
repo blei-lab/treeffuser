@@ -24,7 +24,10 @@ def pinball_loss(
     Hence the gradient is:
         grad = - q if y > pred else (1 - q)
     And the hessian is:
-        hess = 0 (1 but for lightgbm to work)
+        hess = 0
+    We set the hessian to 1 tho so that lightgbm works this trick
+    makes the model essentially act like standard gradient boosting
+    and is implemented in the lightgbm source code as well.
     """
     Xq, y = train_data.data, train_data.get_label()
     q = Xq[:, -1]
