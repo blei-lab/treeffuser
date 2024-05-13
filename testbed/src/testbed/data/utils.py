@@ -1,7 +1,6 @@
 """Helper functions to import preprocessed datasets in ./data/."""
 
 import json
-import subprocess
 import zipfile
 from pathlib import Path
 from typing import List
@@ -37,14 +36,15 @@ def _download_raw_data(url: str, path_raw_dataset_dir: Path, verbose: bool = Fal
 def _preprocess_raw_data(path_dataset_dir: Path, verbose: bool = False):
     path_preprocess_script = path_dataset_dir / "preprocess.py"
     path_raw_dataset_dir = path_dataset_dir / "raw"
-    subprocess.run(
-        [  # noqa: S603, S607 (S603 `subprocess` call: check for execution of untrusted input,  S607 Starting a process with a partial executable path)
-            "python3",
-            path_preprocess_script,
-            path_raw_dataset_dir,
-        ],
-        check=True,
-    )
+
+    # import main function from preprocess.py
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("preprocess", path_preprocess_script)
+    preprocess = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(preprocess)
+    preprocess.main(path_raw_dataset_dir)
+
     if verbose:
         print("Preprocessing completed.")
 
@@ -156,6 +156,22 @@ def get_data(
 
     # load and return preprocessed data file
     return _load_data(path_dataset_file, verbose)
+
+
+def _assign_k_splits(n_observations: int, k_splits: int = 10, seed: int = 0) -> np.ndarray:
+    """
+    Assigns a split ID (from 0 to k-1) to each observation for k-fold cross-validation.
+    The assignment ensures that each split has the same number of observations (or -1).
+    """
+    rng = np.random.default_rng(seed)
+    idx = np.arange(n_observations)
+    rng.shuffle(idx)
+    splits = np.array_split(idx, k_splits)
+    split_ids = np.zeros(n_observations, dtype=int)
+    for i, split in enumerate(splits):
+        split_ids[split] = i
+
+    return split_ids
 
 
 def _extract_and_delete_zipfile(path_raw_dataset_dir: Path, zipfile_name: str = "temp.zip"):

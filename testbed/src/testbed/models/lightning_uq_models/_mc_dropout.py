@@ -17,11 +17,12 @@ from skopt.space import Real
 from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
 
 
-class MCDropout(ProbabilisticModel):
+class MCDropout(ProbabilisticModel, SupportsMultioutput):
 
     def __init__(
         self,
@@ -57,6 +58,7 @@ class MCDropout(ProbabilisticModel):
                 loss function.
 
         """
+        super().__init__(seed)
         self._model: nn.Module = None
 
         self._y_dim = None
@@ -74,12 +76,11 @@ class MCDropout(ProbabilisticModel):
         self.hidden_size = hidden_size
         self.n_layers = n_layers
 
-        self.seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
 
     def fit(
         self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
@@ -143,7 +144,10 @@ class MCDropout(ProbabilisticModel):
 
     @torch.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int = 10,
+        seed=None,
     ) -> Float[torch.Tensor, "n_samples batch y_dim"]:
         """
         Samples from the MCDropout model by taking multiple forward passes with dropout enabled.
