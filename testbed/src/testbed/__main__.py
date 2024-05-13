@@ -34,6 +34,7 @@ from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
 from testbed.metrics import Metric  # noqa E402
 from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
 from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
+from testbed.models.base_model import make_autoregressive_probabilistic_model  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
@@ -211,12 +212,12 @@ def parse_args():
         help=msg,
     )
 
-    msg = "Dim-output of the model. If None, the model is not multioutput."
-    msg += "If a number, the model is multioutput by using conditional regression."
+    msg = "Append some columns of x to y to increase the dimension of y. Specify"
+    msg += "the number of columns to append. They will be selected randomly. Default: 0."
     parser.add_argument(
-        "--dim_output",
+        "--append_x_to_y",
         type=int,
-        default=None,
+        default=0,
         help=msg,
     )
 
@@ -278,9 +279,9 @@ def check_args(args):
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
 
-    if args.dim_output is not None:
-        if args.dim_output <= 0:
-            msg = "The dimension of the output must be positive."
+    if args.append_x_to_y is not None:
+        if args.append_x_to_y < 0:
+            msg = "The number of extra dimension to add to y cannot be negative."
             raise ValueError(msg)
 
     # check that split_idx is in [0, 9] if evaluation_mode is cross_val
@@ -357,8 +358,8 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = get_model(model_name)
-    use_autoregressive = model_name != "treeffuser" and y_train.shape[1] > 1
 
+    use_autoregressive = y_train.shape[1] > 1 and not model_class.supports_multioutput()
     if use_autoregressive:
         model_class = make_autoregressive_probabilistic_model(model_class)
 
@@ -391,18 +392,18 @@ def run_model_on_dataset(
 def make_multi_output_dataset(
     X: Float[ndarray, "batch n_features"],
     y: Float[ndarray, "batch n_targets"],
-    dim_output: int,
+    append_x_to_y: int,
     seed: int = 0,
 ) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
     """
-    Create a multi-output dataset from a single-output dataset by using conditional regression.
+    Switch some features to the output to increase the dimension of the output.
 
     A random subset of Xy is selected as the new features and the rest as the new output.
     and 0.001 * std(y) is added to the new output to add some noise for the conditional regression.
 
     Args:
         X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
-        y (Float[ndarray, "n_samples 1"]): Target of the dataset.
+        y (Float[ndarray, "n_samples n_targets"]): Target of the dataset.
         dim_output (int): Dimension of the output.
 
     Returns:
@@ -412,8 +413,13 @@ def make_multi_output_dataset(
     n_targets = y.shape[1]
     n_total = n_features + n_targets
 
-    new_n_targets = dim_output
-    new_n_features = n_total - new_n_targets
+    new_n_features = n_features - append_x_to_y
+
+    if new_n_features < 1:
+        raise ValueError(
+            "The number of remaining features of X must be at least 1, "
+            "make sure that append_x_to_y < n_features."
+        )
 
     # seed with get_default_rng to avoid issues with jax
     rng = np.random.default_rng(seed)
@@ -455,7 +461,7 @@ def main() -> None:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
 
-            if args.dim_output is not None and args.dim_output > 1:
+            if args.append_x_to_y is not None and args.append_x_to_y > 0:
                 data["x"], data["y"] = make_multi_output_dataset(
                     data["x"], data["y"], args.dim_output, args.seed
                 )
