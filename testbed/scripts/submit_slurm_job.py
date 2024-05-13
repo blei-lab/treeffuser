@@ -13,11 +13,14 @@ template = """#!/bin/sh
 ## SBATCH --gres=gpu:1
 #--------------------
 
+#SBATCH --exclude=rizzo,bobo,janice,rowlf
+## SBATCH --exclude=yolanda,janice,waldorf,statler,floyd
+
 #SBATCH --output=out/R-%j.out
 #SBATCH --error=out/R-%j.err
 
-##SBATCH -w MACHINE
-#SBATCH -t 6:00:00
+##SBATCH -w yolanda
+#SBATCH -t 24:00:00
 
 #eval "$(conda shell.bash hook)"
 
@@ -30,18 +33,35 @@ parent_path = path.parent
 main_script_path = parent_path / "src" / "testbed" / "__main__.py"
 
 seeds = [0]
-evaluation_mode = "cross_val"
+evaluation_mode = "cross_validation"
 split_idx = list(range(10))
 model_names = [
-    "deep_ensemble",
     "ngboost",
+    "ibug",
     "treeffuser",
-    # "mc_dropout",
-    # "quantile_regression",
-    # "ibug",
-    # "card",
+    "deep_ensemble",
+    "mc_dropout",
+    "quantile_regression",
+    "card",
 ]
-datasets = ["naval", "protein", "wine", "yacht"]
+
+
+datasets = [
+    "bike",
+    # "communities", # contains NaN
+    # "energy", # y is 2d
+    # "facebook",
+    # "msd",
+    "naval",
+    "news",
+    "power",
+    # "protein",
+    "superconductor",
+    # "wave", # very big
+    "wine",
+    "yacht",
+    # "movies",
+]
 
 
 def get_cmd(
@@ -58,7 +78,8 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project testbed-kfoldnll"
+        f" --wandb_project crps-bayesopt-split"
+        f" --n_iter_bayes_opt 25"
     )
     return tmp
 

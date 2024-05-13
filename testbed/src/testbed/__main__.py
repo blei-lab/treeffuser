@@ -3,6 +3,7 @@ import lightgbm as lgb  # noqa F401
 
 import argparse
 import logging
+import os
 import warnings
 from pathlib import Path
 import time
@@ -12,29 +13,38 @@ from typing import Literal
 from typing import Optional
 from typing import Type
 import sys
+from typing import Tuple
 
 import namesgenerator
+import numpy as np
 import pandas as pd
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
+
 current_dir = Path(__file__).resolve().parent
-sys.path.append(str(current_dir / "/../"))
-sys.path.append(str(current_dir / "/../../../src"))
+sys.path.append(str(current_dir / "../"))
+sys.path.append(str(current_dir / "../../../src"))
+print(sys.path)
 
 
 from testbed.data.utils import get_data  # noqa E402
 from testbed.data.utils import list_data  # noqa E402
 from testbed.metrics import AccuracyMetric  # noqa E402
+from testbed.metrics import CRPS  # noqa E402
 from testbed.metrics import LogLikelihoodExactMetric  # noqa E402
 from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
 from testbed.metrics import Metric  # noqa E402
 from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
 from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
+from testbed.models.base_model import make_autoregressive_probabilistic_model  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
+
+# Disable wandb console logs (might limit the log size and avoid out of memory errors; but hurts debugging)
+os.environ["WANDB_CONSOLE"] = "off"
 
 
 def get_model(
@@ -106,10 +116,11 @@ AVAILABLE_DATASETS = list(list_data().keys())
 AVAILABLE_MODELS = get_model(return_available_models=True)
 
 METRIC_TO_CLASS = {
-    "accuracy": AccuracyMetric,
-    "quantile_calibration_error": QuantileCalibrationErrorMetric,
-    "log_likelihood": LogLikelihoodFromSamplesMetric,
-    "log_likelihood_closed_form": LogLikelihoodExactMetric,
+    "accuracy": AccuracyMetric(),
+    "quantile_calibration_error": QuantileCalibrationErrorMetric(),
+    "log_likelihood_closed_form": LogLikelihoodExactMetric(),
+    "crps100": CRPS(n_samples=100),
+    "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -209,12 +220,21 @@ def parse_args():
         help=msg,
     )
 
+    msg = "Append some columns of x to y to increase the dimension of y. Specify"
+    msg += "the number of columns to append. They will be selected randomly. Default: 0."
+    parser.add_argument(
+        "--append_x_to_y",
+        type=int,
+        default=0,
+        help=msg,
+    )
+
     msg = "Which split to evaluate the model on. Default: 0. To use"
     msg += " this option, set --evaluation_mode cross_val."
     parser.add_argument(
         "--split_idx",
         type=int,
-        default=0,
+        default=-1,
         help=msg,
     )
 
@@ -267,6 +287,11 @@ def check_args(args):
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
 
+    if args.append_x_to_y is not None:
+        if args.append_x_to_y < 0:
+            msg = "The number of extra dimension to add to y cannot be negative."
+            raise ValueError(msg)
+
     # check that split_idx is in [0, 9] if evaluation_mode is cross_val
     if args.evaluation_mode == "cross_val":
         if args.split_idx < 0 or args.split_idx > 9:
@@ -317,8 +342,8 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 def run_model_on_dataset(
     X_train: Float[ndarray, "train_size n_features"],
     X_test: Float[ndarray, "test_size n_features"],
-    y_train: Float[ndarray, "train_size 1"],
-    y_test: Float[ndarray, "test_size 1"],
+    y_train: Float[ndarray, "train_size n_targets"],
+    y_test: Float[ndarray, "test_size n_targets"],
     model_name: str,
     metrics: List[Metric],
     evaluation_mode: Literal["bayes_opt", "cross_val"] = "cross_val",
@@ -341,9 +366,17 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = get_model(model_name)
+
+    use_autoregressive = y_train.shape[1] > 1 and not model_class.supports_multioutput()
+    if use_autoregressive:
+        model_class = make_autoregressive_probabilistic_model(model_class)
+
     if evaluation_mode == "bayes_opt":
         model = BayesOptProbabilisticModel(
-            model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
+            model_class=model_class,
+            n_iter_bayes_opt=n_iter_bayes_opt,
+            frac_validation=0.2,
+            n_jobs=1,
         )
     else:
         model = model_class(seed=seed)
@@ -356,7 +389,7 @@ def run_model_on_dataset(
     results["train_time"] = train_end - train_start
 
     for metric_name in metrics:
-        metric = METRIC_TO_CLASS[metric_name]()
+        metric = METRIC_TO_CLASS[metric_name]
         metric_time_start = time.time()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         metric_time_end = time.time()
@@ -365,6 +398,57 @@ def run_model_on_dataset(
 
     results.update(model.get_params())
     return results
+
+
+def make_multi_output_dataset(
+    X: Float[ndarray, "batch n_features"],
+    y: Float[ndarray, "batch n_targets"],
+    append_x_to_y: int,
+    seed: int = 0,
+) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
+    """
+    Switch some features to the output to increase the dimension of the output.
+
+    A random subset of Xy is selected as the new features and the rest as the new output.
+    and 0.001 * std(y) is added to the new output to add some noise for the conditional regression.
+
+    Args:
+        X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
+        y (Float[ndarray, "n_samples n_targets"]): Target of the dataset.
+        dim_output (int): Dimension of the output.
+
+    Returns:
+        Tuple[Float[ndarray, "n_samples n_features"], Float[ndarray, "n_samples n_targets"]]: Multi-output dataset.
+    """
+    _, n_features = X.shape
+    n_targets = y.shape[1]
+    n_total = n_features + n_targets
+
+    new_n_features = n_features - append_x_to_y
+
+    if new_n_features < 1:
+        raise ValueError(
+            "The number of remaining features of X must be at least 1, "
+            "make sure that append_x_to_y < n_features."
+        )
+
+    # seed with get_default_rng to avoid issues with jax
+    rng = np.random.default_rng(seed)
+
+    # randomly select the new features
+    new_features = rng.choice(n_total, new_n_features, replace=False)
+    new_output = np.array([i for i in range(n_total) if i not in new_features])
+    Xy = np.concatenate([X, y], axis=1)
+
+    # create the new dataset
+    new_X = Xy[:, new_features]
+    new_y = Xy[:, new_output]
+
+    # We add a bit of noise to new_y
+    noise = np.random.normal(0, 0.001, new_y.shape) * np.std(new_y)
+    new_y += noise
+
+    return new_X, new_y
 
 
 ###########################################################
@@ -382,13 +466,16 @@ def main() -> None:
     header = format_header(args, run_name)
     logger.info(header)
 
-    # setup wandb
-
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
 
-            if args.evaluation_mode == "cross_val":
+            if args.append_x_to_y is not None and args.append_x_to_y > 0:
+                data["x"], data["y"] = make_multi_output_dataset(
+                    data["x"], data["y"], args.dim_output, args.seed
+                )
+
+            if args.split_idx != -1:
                 X_train = data["x"][data["k_fold_splits"] != args.split_idx]
                 y_train = data["y"][data["k_fold_splits"] != args.split_idx]
                 X_test = data["x"][data["k_fold_splits"] == args.split_idx]
@@ -411,6 +498,7 @@ def main() -> None:
                     )
 
             if args.wandb_project is not None:
+                # setup wandb
                 import wandb
 
                 wandb.init(
@@ -418,6 +506,7 @@ def main() -> None:
                     name=f"{model_name}_{dataset_name}",
                     # config=args,
                 )
+                wandb.log({"model": model_name, "dataset": dataset_name})
 
             results = run_model_on_dataset(
                 X_train=X_train,

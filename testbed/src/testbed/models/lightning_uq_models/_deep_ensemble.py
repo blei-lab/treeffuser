@@ -19,6 +19,7 @@ from torch import nn
 from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 
 
@@ -115,7 +116,7 @@ class MVERegression(L.LightningModule):
         return self.optimizer_func(self.parameters())
 
 
-class DeepEnsemble(ProbabilisticModel):
+class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
     """
     Implements a deep ensemble for regression tasks, where each model in the ensemble outputs both mean and variance.
     This approach is designed to provide predictions with associated uncertainty estimates.
@@ -146,7 +147,7 @@ class DeepEnsemble(ProbabilisticModel):
         seed: int = 42,
         n_ensembles: int = 5,
         burnin_epochs: int = 10,
-        enable_progress_bar: bool = True,
+        enable_progress_bar: bool = False,
     ):
         self.n_layers = n_layers
         self.hidden_size = hidden_size
@@ -302,16 +303,42 @@ class DeepEnsemble(ProbabilisticModel):
         """
         Predicts the distribution using the DeepEnsemble model.
         """
-        raise NotImplementedError
+        X = self.scaler_x.transform(X)
+
+        X_tensor = torch.tensor(X, dtype=torch.float)
+        parameters = []
+        for model in self._models:
+            model.eval()
+            mean, var = model(X_tensor)
+            std = torch.sqrt(var)
+            mean = mean * self.scaler_y.scale_ + self.scaler_y.mean_
+            std = std * self.scaler_y.scale_
+            parameters.append((mean, std))
+
+        mix = torch.distributions.Categorical(
+            torch.ones(
+                self.n_ensembles,
+            )
+        )
+        batched_means = torch.stack([mean for mean, _ in parameters])
+        batched_means = batched_means.permute(1, 0, 2)
+        batched_stds = torch.stack([std for _, std in parameters])
+        batched_stds = batched_stds.permute(1, 0, 2)
+        comp = torch.distributions.Independent(
+            torch.distributions.Normal(batched_means, batched_stds),
+            1,
+        )
+        dist = torch.distributions.MixtureSameFamily(mix, comp)
+        return dist
 
     @staticmethod
     def search_space():
         return {
-            "n_layers": Integer(1, 7),
+            "n_layers": Integer(1, 5),
             "hidden_size": Integer(10, 500),
-            "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
+            "learning_rate": Real(1e-5, 1e-2, prior="log-uniform"),
             "n_ensembles": Integer(2, 10),
-            "patience": Integer(5, 50),
-            "burnin_epochs": Integer(1, 30),
-            "batch_size": Integer(16, 512),
+            # "patience": Integer(5, 50),
+            # "burnin_epochs": Integer(1, 30),
+            # "batch_size": Integer(16, 512),
         }

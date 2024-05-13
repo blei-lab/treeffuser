@@ -117,7 +117,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         n_parallel: int = 100,
         n_steps: int = 100,
         seed=None,
-        verbose: int = 1,
+        verbose: int = 0,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
