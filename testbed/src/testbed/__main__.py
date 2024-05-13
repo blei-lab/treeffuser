@@ -39,6 +39,8 @@ from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
+
+# Disable wandb console logs (might limit the log size and avoid out of memory errors; but hurts debugging)
 os.environ["WANDB_CONSOLE"] = "off"
 
 
