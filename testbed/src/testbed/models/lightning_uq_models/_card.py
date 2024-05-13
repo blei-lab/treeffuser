@@ -36,18 +36,18 @@ class Card(ProbabilisticModel, SupportsMultioutput):
     def __init__(
         self,
         n_layers: int = 3,
-        hidden_size: int = 50,
+        hidden_size: int = 128,
         max_epochs: int = 10000,
         dropout: float = 0.1,
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
-        batch_size: int = 32,
+        batch_size: int = 64,
         enable_progress_bar: bool = False,
         use_gpu: bool = False,
         beta_start: float = 0.0001,
         beta_end: float = 0.02,
         beta_schedule: str = "linear",
-        patience: int = 10,
+        patience: int = 50,
         seed: int = 42,
     ):
         """
@@ -300,8 +300,8 @@ class Card(ProbabilisticModel, SupportsMultioutput):
     def search_space() -> dict:
 
         return {
-            "n_layers": Integer(1, 7),
-            "hidden_size": Integer(10, 500),
+            "n_layers": Integer(2, 3),
+            "hidden_size": Integer(16, 128),
             "dropout": Real(0.0, 0.5),
             "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
         }

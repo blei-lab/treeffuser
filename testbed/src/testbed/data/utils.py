@@ -53,6 +53,9 @@ def _load_data(path_dataset_file: Path, verbose: bool = False) -> np.ndarray:
     data = np.load(path_dataset_file, allow_pickle=True).item()
     if verbose:
         n_obs, n_cov = data["x"].shape
+        if len(data["y"].shape) == 1:
+            data["y"] = data["y"].reshape((-1, 1))
+
         y_dim = data["y"].shape[1]
         print(
             f"# of observations: {n_obs}, # of covariates: {n_cov}, dimension of outcome: {y_dim}"

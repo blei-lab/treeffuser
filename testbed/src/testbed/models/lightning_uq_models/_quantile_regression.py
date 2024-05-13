@@ -175,7 +175,7 @@ class QuantileRegression(ProbabilisticModel):
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_layers": Integer(1, 7),
+            "n_layers": Integer(1, 5),
             "hidden_size": Integer(10, 500),
             "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
         }

@@ -35,7 +35,7 @@ class Treeffuser(ProbabilisticModel, SupportsMultioutput):
         self.n_estimators = n_estimators
         self.n_repeats = n_repeats
         self.learning_rate = learning_rate
-        self.early_stopping_rounds = early_stopping_rounds
+        self.early_stopping_rounds = int(early_stopping_rounds)
         self.num_leaves = num_leaves
         self.subsample = subsample
         self.subsample_freq = subsample_freq
@@ -43,26 +43,28 @@ class Treeffuser(ProbabilisticModel, SupportsMultioutput):
         self.sde_manual_hyperparams = sde_manual_hyperparams
         self.sde_initialize_with_data = sde_initialize_with_data
 
-        self.model = LightGBMTreeffuser(
-            n_estimators=n_estimators,
-            n_repeats=n_repeats,
-            sde_name="vesde",
-            sde_initialize_with_data=sde_initialize_with_data,
-            learning_rate=learning_rate,
-            early_stopping_rounds=early_stopping_rounds,
-            num_leaves=num_leaves,
-            seed=self.seed,
-            subsample=subsample,
-            subsample_freq=subsample_freq,
-            verbose=verbose,
-            sde_manual_hyperparams=sde_manual_hyperparams,
-        )
+        self.model = None
 
     def fit(
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
     ) -> "ProbabilisticModel":
+        self.model = LightGBMTreeffuser(
+            n_estimators=self.n_estimators,
+            n_repeats=self.n_repeats,
+            sde_name="vesde",
+            sde_initialize_with_data=self.sde_initialize_with_data,
+            learning_rate=self.learning_rate,
+            early_stopping_rounds=self.early_stopping_rounds,
+            num_leaves=self.num_leaves,
+            seed=self.seed,
+            subsample=self.subsample,
+            subsample_freq=self.subsample_freq,
+            verbose=self.verbose,
+            sde_manual_hyperparams=self.sde_manual_hyperparams,
+        )
+
         self.model.fit(X, y)
         return self
 
@@ -73,14 +75,14 @@ class Treeffuser(ProbabilisticModel, SupportsMultioutput):
     def sample(
         self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
-        return self.model.sample(X, n_samples, n_parallel=5, n_steps=50, seed=seed)
+        return self.model.sample(X, n_samples, n_parallel=10, n_steps=50, seed=seed)
 
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_estimators": Integer(100, 5000, "log-uniform"),
-            "n_repeats": Integer(10, 100),
-            "learning_rate": Real(0.01, 1),
-            "early_stopping_rounds": Integer(1, 100),
-            "num_leaves": Integer(2, 100),
+            "n_estimators": Integer(100, 3000, "log-uniform"),
+            "n_repeats": Integer(10, 50),
+            "learning_rate": Real(0.01, 1, "log-uniform"),
+            "early_stopping_rounds": Integer(10, 100),
+            "num_leaves": Integer(10, 50),
         }

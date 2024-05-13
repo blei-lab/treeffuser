@@ -3,6 +3,7 @@ import lightgbm as lgb  # noqa F401
 
 import argparse
 import logging
+import os
 import warnings
 from pathlib import Path
 import time
@@ -21,14 +22,17 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
+
 current_dir = Path(__file__).resolve().parent
-sys.path.append(str(current_dir / "/../"))
-sys.path.append(str(current_dir / "/../../../src"))
+sys.path.append(str(current_dir / "../"))
+sys.path.append(str(current_dir / "../../../src"))
+print(sys.path)
 
 
 from testbed.data.utils import get_data  # noqa E402
 from testbed.data.utils import list_data  # noqa E402
 from testbed.metrics import AccuracyMetric  # noqa E402
+from testbed.metrics import CRPS  # noqa E402
 from testbed.metrics import LogLikelihoodExactMetric  # noqa E402
 from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
 from testbed.metrics import Metric  # noqa E402
@@ -38,6 +42,9 @@ from testbed.models.base_model import make_autoregressive_probabilistic_model  #
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
+
+# Disable wandb console logs (might limit the log size and avoid out of memory errors; but hurts debugging)
+os.environ["WANDB_CONSOLE"] = "off"
 
 
 def get_model(
@@ -109,10 +116,11 @@ AVAILABLE_DATASETS = list(list_data().keys())
 AVAILABLE_MODELS = get_model(return_available_models=True)
 
 METRIC_TO_CLASS = {
-    "accuracy": AccuracyMetric,
-    "quantile_calibration_error": QuantileCalibrationErrorMetric,
-    "log_likelihood": LogLikelihoodFromSamplesMetric,
-    "log_likelihood_closed_form": LogLikelihoodExactMetric,
+    "accuracy": AccuracyMetric(),
+    "quantile_calibration_error": QuantileCalibrationErrorMetric(),
+    "log_likelihood_closed_form": LogLikelihoodExactMetric(),
+    "crps100": CRPS(n_samples=100),
+    "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -226,7 +234,7 @@ def parse_args():
     parser.add_argument(
         "--split_idx",
         type=int,
-        default=0,
+        default=-1,
         help=msg,
     )
 
@@ -365,7 +373,10 @@ def run_model_on_dataset(
 
     if evaluation_mode == "bayes_opt":
         model = BayesOptProbabilisticModel(
-            model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
+            model_class=model_class,
+            n_iter_bayes_opt=n_iter_bayes_opt,
+            frac_validation=0.2,
+            n_jobs=1,
         )
     else:
         model = model_class(seed=seed)
@@ -378,7 +389,7 @@ def run_model_on_dataset(
     results["train_time"] = train_end - train_start
 
     for metric_name in metrics:
-        metric = METRIC_TO_CLASS[metric_name]()
+        metric = METRIC_TO_CLASS[metric_name]
         metric_time_start = time.time()
         res = metric.compute(model=model, X_test=X_test, y_test=y_test)
         metric_time_end = time.time()
@@ -455,8 +466,6 @@ def main() -> None:
     header = format_header(args, run_name)
     logger.info(header)
 
-    # setup wandb
-
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
@@ -466,7 +475,7 @@ def main() -> None:
                     data["x"], data["y"], args.dim_output, args.seed
                 )
 
-            if args.evaluation_mode == "cross_val":
+            if args.split_idx != -1:
                 X_train = data["x"][data["k_fold_splits"] != args.split_idx]
                 y_train = data["y"][data["k_fold_splits"] != args.split_idx]
                 X_test = data["x"][data["k_fold_splits"] == args.split_idx]
@@ -489,6 +498,7 @@ def main() -> None:
                     )
 
             if args.wandb_project is not None:
+                # setup wandb
                 import wandb
 
                 wandb.init(
@@ -496,6 +506,7 @@ def main() -> None:
                     name=f"{model_name}_{dataset_name}",
                     # config=args,
                 )
+                wandb.log({"model": model_name, "dataset": dataset_name})
 
             results = run_model_on_dataset(
                 X_train=X_train,
