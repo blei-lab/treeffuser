@@ -13,6 +13,12 @@ from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
 
 
+class SupportsMultioutput:
+    """
+    A mixin class for models that support multioutput data.
+    """
+
+
 class ProbabilisticModel(ABC, BaseEstimator):
     """
     A base class for all probabilistic models. Which produces a probability distribution
@@ -22,6 +28,14 @@ class ProbabilisticModel(ABC, BaseEstimator):
     def __init__(self, seed: Optional[int] = None):
         super().__init__()
         self.seed = seed
+
+    @classmethod
+    def supports_multioutput(cls) -> bool:
+        """
+        Whether the model supports multioutput data.
+        Determined by whether the class is a subclass of SupportsMultioutput.
+        """
+        return issubclass(cls, SupportsMultioutput)
 
     @abstractmethod
     def fit(
@@ -220,7 +234,7 @@ def make_autoregressive_probabilistic_model(
     args = [f"{param}=None" for param in params]
     args_string = ", ".join(args)
 
-    class AutoRegressiveProbabilisticModel(ProbabilisticModel):
+    class AutoRegressiveProbabilisticModel(ProbabilisticModel, SupportsMultioutput):
         # A probabilistic model that models multi-output data by using an autoregressive model.
         # In particular if p(y_1|x) is a ProbabilisticModel, then: we model p(y_i|x, y_{i-1}, ..., y_1)
         # and then we sample sequentially to get the output.

@@ -26,11 +26,12 @@ from torch.optim import Adam
 from tqdm import tqdm
 
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
 
 
-class Card(ProbabilisticModel):
+class Card(ProbabilisticModel, SupportsMultioutput):
 
     def __init__(
         self,

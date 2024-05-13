@@ -19,6 +19,7 @@ from torch import nn
 from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 
 
@@ -115,7 +116,7 @@ class MVERegression(L.LightningModule):
         return self.optimizer_func(self.parameters())
 
 
-class DeepEnsemble(ProbabilisticModel):
+class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
     """
     Implements a deep ensemble for regression tasks, where each model in the ensemble outputs both mean and variance.
     This approach is designed to provide predictions with associated uncertainty estimates.
