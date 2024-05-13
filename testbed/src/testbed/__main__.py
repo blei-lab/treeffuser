@@ -3,6 +3,7 @@ import lightgbm as lgb  # noqa F401
 
 import argparse
 import logging
+import os
 import warnings
 from pathlib import Path
 import time
@@ -38,6 +39,7 @@ from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
+os.environ["WANDB_CONSOLE"] = "off"
 
 
 def get_model(
@@ -388,8 +390,6 @@ def main() -> None:
 
     header = format_header(args, run_name)
     logger.info(header)
-
-    # setup wandb
 
     for model_name in args.models:
         for dataset_name in args.datasets:

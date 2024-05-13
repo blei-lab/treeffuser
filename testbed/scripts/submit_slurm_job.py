@@ -13,11 +13,13 @@ template = """#!/bin/sh
 ## SBATCH --gres=gpu:1
 #--------------------
 
+#SBATCH --exclude=rizzo,bobo,janice,rowlf
+## SBATCH --exclude=yolanda,janice,waldorf,statler,floyd
+
 #SBATCH --output=out/R-%j.out
 #SBATCH --error=out/R-%j.err
 
-##SBATCH -w MACHINE
-#SBATCH -t 6:00:00
+##SBATCH -w yolanda
 #SBATCH -t 24:00:00
 
 #eval "$(conda shell.bash hook)"
