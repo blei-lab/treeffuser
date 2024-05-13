@@ -53,6 +53,7 @@ class QuantileRegression(ProbabilisticModel):
             quantiles: The quantiles to predict.
 
         """
+        super().__init__(seed)
         self._model: nn.Module = None
 
         self._y_dim = None
@@ -76,12 +77,11 @@ class QuantileRegression(ProbabilisticModel):
         self.quantiles = np.array([*list(self.quantiles), 0.5])
         self.quantiles = np.sort(self.quantiles)
 
-        self.seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
 
     def fit(
         self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
@@ -145,7 +145,10 @@ class QuantileRegression(ProbabilisticModel):
 
     @torch.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int = 10,
+        seed=None,
     ) -> Float[torch.Tensor, "n_samples batch y_dim"]:
         """
         Samples from the QuantileRegression model by linearly interpolating between predicted quantiles.
@@ -155,7 +158,7 @@ class QuantileRegression(ProbabilisticModel):
         X = _to_tensor(X)
 
         quantiles = self._model(X)  # shape: (batch, n_quantiles)
-        samples = np.random.uniform(
+        samples = np.random.default_rng(seed).uniform(
             0, 1, size=(X.shape[0], n_samples)
         )  # shape: (batch, n_samples)
         samples_lst = []

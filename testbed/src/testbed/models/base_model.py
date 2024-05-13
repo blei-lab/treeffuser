@@ -6,6 +6,7 @@ from typing import Type
 from typing import Union
 
 import numpy as np
+import torch.distributions
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
@@ -18,8 +19,9 @@ class ProbabilisticModel(ABC, BaseEstimator):
     rather than a single output for each input. Subclasses BaseEstimator.
     """
 
-    def __init__(self):
+    def __init__(self, seed: Optional[int] = None):
         super().__init__()
+        self.seed = seed
 
     @abstractmethod
     def fit(
@@ -37,9 +39,17 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Predict the mean for each input.
         """
 
+    def predict_distribution(
+        self, X: Float[ndarray, "batch x_dim"]
+    ) -> torch.distributions.Distribution:
+        """
+        Predict the distribution for each input.
+        """
+        raise NotImplementedError
+
     @abstractmethod
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed: Optional[int] = None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
@@ -186,6 +196,12 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         This has no hyperparameters to optimize.
         """
         return {}
+
+    def get_params(self, deep=True):
+        res = self._model.get_params(deep=deep)
+        res["n_iter_bayes_opt"] = self._n_iter_bayes_opt
+        res["cv_bayes_opt"] = self._cv
+        return res
 
 
 def make_autoregressive_probabilistic_model(
