@@ -9,9 +9,10 @@ from skopt.space import Real
 from treeffuser.treeffuser import LightGBMTreeffuser
 
 from .base_model import ProbabilisticModel
+from .base_model import SupportsMultioutput
 
 
-class Treeffuser(ProbabilisticModel):
+class Treeffuser(ProbabilisticModel, SupportsMultioutput):
     """
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """
@@ -27,6 +28,7 @@ class Treeffuser(ProbabilisticModel):
         subsample: float = 1.0,
         subsample_freq: int = 0,
         verbose: bool = 0,
+        sde_initialize_with_data: bool = False,
         sde_manual_hyperparams: Optional[Dict[str, float]] = None,
     ):
         super().__init__(seed)
@@ -39,6 +41,7 @@ class Treeffuser(ProbabilisticModel):
         self.subsample_freq = subsample_freq
         self.verbose = verbose
         self.sde_manual_hyperparams = sde_manual_hyperparams
+        self.sde_initialize_with_data = sde_initialize_with_data
 
         self.model = None
 
@@ -51,6 +54,7 @@ class Treeffuser(ProbabilisticModel):
             n_estimators=self.n_estimators,
             n_repeats=self.n_repeats,
             sde_name="vesde",
+            sde_initialize_with_data=self.sde_initialize_with_data,
             learning_rate=self.learning_rate,
             early_stopping_rounds=self.early_stopping_rounds,
             num_leaves=self.num_leaves,

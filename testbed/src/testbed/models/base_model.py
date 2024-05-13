@@ -1,8 +1,10 @@
 from abc import ABC
 from abc import abstractmethod
 from typing import Optional
+from typing import Tuple
 from typing import Type
 
+import numpy as np
 import torch.distributions
 import wandb
 from jaxtyping import Float
@@ -10,6 +12,12 @@ from numpy import ndarray
 from sklearn.base import BaseEstimator
 from skopt import BayesSearchCV
 from skopt.utils import use_named_args
+
+
+class SupportsMultioutput:
+    """
+    A mixin class for models that support multioutput data.
+    """
 
 
 class ProbabilisticModel(ABC, BaseEstimator):
@@ -21,6 +29,14 @@ class ProbabilisticModel(ABC, BaseEstimator):
     def __init__(self, seed: Optional[int] = None):
         super().__init__()
         self.seed = seed
+
+    @classmethod
+    def supports_multioutput(cls) -> bool:
+        """
+        Whether the model supports multioutput data.
+        Determined by whether the class is a subclass of SupportsMultioutput.
+        """
+        return issubclass(cls, SupportsMultioutput)
 
     @abstractmethod
     def fit(
@@ -329,3 +345,88 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         res["n_iter_bayes_opt"] = self._n_iter_bayes_opt
         res["frac_validation"] = self._frac_validation
         return res
+
+
+def make_autoregressive_probabilistic_model(
+    model_class: Type[ProbabilisticModel],
+) -> Type[ProbabilisticModel]:
+    """
+    A somewhat hacky and complicated way to create an autoregressive model from
+    a given model class.
+
+    It returns a class that is a subclass of ProbabilisticModel
+    and has as a name "AutoRegressive" + model_class.__name__.
+    """
+
+    # Strings to make the kwargs of the init method
+    params = model_class.search_space().keys()
+    args = [f"{param}=None" for param in params]
+    args_string = ", ".join(args)
+
+    class AutoRegressiveProbabilisticModel(ProbabilisticModel, SupportsMultioutput):
+        # A probabilistic model that models multi-output data by using an autoregressive model.
+        # In particular if p(y_1|x) is a ProbabilisticModel, then: we model p(y_i|x, y_{i-1}, ..., y_1)
+        # and then we sample sequentially to get the output.
+
+        def _make_input_for_ith_model(
+            self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"], i: int
+        ) -> Tuple[Float[ndarray, "batch x_dim+i"], Float[ndarray, "batch 1"]]:
+
+            X_i = np.concatenate([X, y[:, :i]], axis=1)
+            y_i = y[:, i].reshape(-1, 1)
+            return X_i, y_i
+
+        def fit(
+            self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]
+        ) -> ProbabilisticModel:
+            for i in range(y.shape[1]):
+                X_i, y_i = self._make_input_for_ith_model(X, y, i)
+                model = model_class(**self.hyperparameters)
+                model.fit(X_i, y_i)
+                self.models.append(model)
+            return self
+
+        def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
+            y = np.zeros((X.shape[0], len(self.models)))
+            for i, model in enumerate(self.models):
+                X_i, _ = self._make_input_for_ith_model(X, y, i)
+                y[:, i] = model.predict(X_i).flatten()
+            return y
+
+        def sample(
+            self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
+        ) -> Float[ndarray, "n_samples batch y_dim"]:
+            samples_rep = np.zeros((n_samples * X.shape[0], len(self.models)))
+            X_rep = np.repeat(X, n_samples, axis=0)
+            for i, model in enumerate(self.models):
+                X_i, _ = self._make_input_for_ith_model(X_rep, samples_rep, i)
+                y_i_samples = model.sample(X_i, n_samples=1).squeeze()
+                samples_rep[:, i] = y_i_samples.flatten()
+
+            samples = samples_rep.reshape(n_samples, X.shape[0], len(self.models))
+            return samples
+
+        @staticmethod
+        def search_space() -> dict:
+            """
+            This has no hyperparameters to optimize.
+            """
+            return model_class.search_space()
+
+    # We need to set the __init__ method of the class to have the
+    # correct signature which is important for BayesOptProbabilisticModel
+    # There probably is a better way to do this, but I don't know it.
+    init_func_string = f"""
+def __init__(self, {args_string}, **kwargs):
+    self.models = []
+    self.hyperparameters = kwargs
+"""
+    for param in params:
+        init_func_string += f"\n    self.{param} = {param}"
+
+    exec(init_func_string)  # noqa
+
+    AutoRegressiveProbabilisticModel.__init__ = locals()["__init__"]
+    AutoRegressiveProbabilisticModel.__name__ = "AutoRegressive" + model_class.__name__
+
+    return AutoRegressiveProbabilisticModel

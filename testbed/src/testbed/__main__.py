@@ -13,8 +13,10 @@ from typing import Literal
 from typing import Optional
 from typing import Type
 import sys
+from typing import Tuple
 
 import namesgenerator
+import numpy as np
 import pandas as pd
 from jaxtyping import Float
 from numpy import ndarray
@@ -36,6 +38,7 @@ from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
 from testbed.metrics import Metric  # noqa E402
 from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
 from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
+from testbed.models.base_model import make_autoregressive_probabilistic_model  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
@@ -217,6 +220,15 @@ def parse_args():
         help=msg,
     )
 
+    msg = "Append some columns of x to y to increase the dimension of y. Specify"
+    msg += "the number of columns to append. They will be selected randomly. Default: 0."
+    parser.add_argument(
+        "--append_x_to_y",
+        type=int,
+        default=0,
+        help=msg,
+    )
+
     msg = "Which split to evaluate the model on. Default: 0. To use"
     msg += " this option, set --evaluation_mode cross_val."
     parser.add_argument(
@@ -275,6 +287,11 @@ def check_args(args):
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
 
+    if args.append_x_to_y is not None:
+        if args.append_x_to_y < 0:
+            msg = "The number of extra dimension to add to y cannot be negative."
+            raise ValueError(msg)
+
     # check that split_idx is in [0, 9] if evaluation_mode is cross_val
     if args.evaluation_mode == "cross_val":
         if args.split_idx < 0 or args.split_idx > 9:
@@ -325,8 +342,8 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 def run_model_on_dataset(
     X_train: Float[ndarray, "train_size n_features"],
     X_test: Float[ndarray, "test_size n_features"],
-    y_train: Float[ndarray, "train_size 1"],
-    y_test: Float[ndarray, "test_size 1"],
+    y_train: Float[ndarray, "train_size n_targets"],
+    y_test: Float[ndarray, "test_size n_targets"],
     model_name: str,
     metrics: List[Metric],
     evaluation_mode: Literal["bayes_opt", "cross_val"] = "cross_val",
@@ -349,6 +366,11 @@ def run_model_on_dataset(
         Dict[str, float]: Results of the model on the dataset.
     """
     model_class = get_model(model_name)
+
+    use_autoregressive = y_train.shape[1] > 1 and not model_class.supports_multioutput()
+    if use_autoregressive:
+        model_class = make_autoregressive_probabilistic_model(model_class)
+
     if evaluation_mode == "bayes_opt":
         model = BayesOptProbabilisticModel(
             model_class=model_class,
@@ -378,6 +400,57 @@ def run_model_on_dataset(
     return results
 
 
+def make_multi_output_dataset(
+    X: Float[ndarray, "batch n_features"],
+    y: Float[ndarray, "batch n_targets"],
+    append_x_to_y: int,
+    seed: int = 0,
+) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
+    """
+    Switch some features to the output to increase the dimension of the output.
+
+    A random subset of Xy is selected as the new features and the rest as the new output.
+    and 0.001 * std(y) is added to the new output to add some noise for the conditional regression.
+
+    Args:
+        X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
+        y (Float[ndarray, "n_samples n_targets"]): Target of the dataset.
+        dim_output (int): Dimension of the output.
+
+    Returns:
+        Tuple[Float[ndarray, "n_samples n_features"], Float[ndarray, "n_samples n_targets"]]: Multi-output dataset.
+    """
+    _, n_features = X.shape
+    n_targets = y.shape[1]
+    n_total = n_features + n_targets
+
+    new_n_features = n_features - append_x_to_y
+
+    if new_n_features < 1:
+        raise ValueError(
+            "The number of remaining features of X must be at least 1, "
+            "make sure that append_x_to_y < n_features."
+        )
+
+    # seed with get_default_rng to avoid issues with jax
+    rng = np.random.default_rng(seed)
+
+    # randomly select the new features
+    new_features = rng.choice(n_total, new_n_features, replace=False)
+    new_output = np.array([i for i in range(n_total) if i not in new_features])
+    Xy = np.concatenate([X, y], axis=1)
+
+    # create the new dataset
+    new_X = Xy[:, new_features]
+    new_y = Xy[:, new_output]
+
+    # We add a bit of noise to new_y
+    noise = np.random.normal(0, 0.001, new_y.shape) * np.std(new_y)
+    new_y += noise
+
+    return new_X, new_y
+
+
 ###########################################################
 #               MAIN FUNCTION                            #
 ###########################################################
@@ -396,6 +469,11 @@ def main() -> None:
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
+
+            if args.append_x_to_y is not None and args.append_x_to_y > 0:
+                data["x"], data["y"] = make_multi_output_dataset(
+                    data["x"], data["y"], args.dim_output, args.seed
+                )
 
             if args.split_idx != -1:
                 X_train = data["x"][data["k_fold_splits"] != args.split_idx]
