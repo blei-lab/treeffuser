@@ -9,9 +9,10 @@ from skopt.space import Real
 from treeffuser.treeffuser import LightGBMTreeffuser
 
 from .base_model import ProbabilisticModel
+from .base_model import SupportsMultioutput
 
 
-class Treeffuser(ProbabilisticModel):
+class Treeffuser(ProbabilisticModel, SupportsMultioutput):
     """
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """
