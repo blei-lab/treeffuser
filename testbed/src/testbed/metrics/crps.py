@@ -29,7 +29,8 @@ class CRPS(Metric):
         samples: Float[ndarray, "n_samples batch y_dim"] = None,
     ) -> Dict[str, float]:
         """
-        Compute the log likelihood of the predictive distribution.
+        Compute the continuous ranked probability score (CRPS) of the predictive distribution
+        from empirical samples.
 
         Parameters
         ----------
