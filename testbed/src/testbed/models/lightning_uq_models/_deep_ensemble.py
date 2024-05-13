@@ -180,7 +180,7 @@ class DeepEnsemble(ProbabilisticModel):
         self.scaler_y = Preprocessor()
 
         X = self.scaler_x.fit_transform(X)
-        y = self.scaler_y.fit_transform(y.reshape(-1, 1))
+        y = self.scaler_y.fit_transform(y)
         self.y_dim = y.shape[1]
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
@@ -276,7 +276,7 @@ class DeepEnsemble(ProbabilisticModel):
             float: The average log likelihood across all ensemble models.
         """
         X = self.scaler_x.transform(X)
-        y = self.scaler_y.transform(y.reshape(-1, 1))
+        y = self.scaler_y.transform(y)
 
         log_sum_std = np.sum(np.log(self.scaler_y.scale_))
 
