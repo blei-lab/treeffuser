@@ -14,6 +14,7 @@ from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
 
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
@@ -76,6 +77,9 @@ class QuantileRegression(ProbabilisticModel):
         self.quantiles = np.array([*list(self.quantiles), 0.5])
         self.quantiles = np.sort(self.quantiles)
 
+        self._x_scaler = None
+        self._y_scaler = None
+
         self.seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
 
@@ -95,6 +99,12 @@ class QuantileRegression(ProbabilisticModel):
         # if y is not 1D, raise an error
         if y.shape[1] > 1:
             raise ValueError("QuantileRegression only accepts 1 dimensional y values.")
+
+        self._x_scaler = Preprocessor()
+        self._y_scaler = Preprocessor()
+
+        X = self._x_scaler.fit_transform(X)
+        y = self._y_scaler.fit_transform(y)
 
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
         network = MLP(
@@ -135,12 +145,15 @@ class QuantileRegression(ProbabilisticModel):
         """
         if self._model is None:
             raise ValueError("The model must be trained before calling predict.")
+
+        X = self._x_scaler.transform(X)
         X = _to_tensor(X)
         self._model.eval()
 
         preds = self._model.predict_step(X)
         y = preds["pred"]
         y_np = y.cpu().numpy()
+        y = self._y_scaler.inverse_transform(y_np)
         return y_np
 
     @torch.no_grad()
@@ -166,6 +179,10 @@ class QuantileRegression(ProbabilisticModel):
 
         samples = np.array(samples_lst).T
         samples = samples[:, :, np.newaxis]
+
+        samples = samples.reshape(-1, self._y_dim)
+        samples = self._y_scaler.inverse_transform(samples)
+        samples = samples.reshape(n_samples, -1, self._y_dim)
 
         return samples
 
