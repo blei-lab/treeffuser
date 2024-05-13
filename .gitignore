@@ -79,7 +79,7 @@ docs/_build
 **/data.npy
 
 # Debug files
-**/debug*.*
+*debug*
 
 # Latex
 *.aux
