@@ -75,8 +75,7 @@ class MCDropout(ProbabilisticModel, SupportsMultioutput):
         self.burnin_epochs = burnin_epochs
         self.patience = patience
         self.hidden_size = hidden_size
-        self.n_layers = n_layers
-
+        self.n_layers = n_layer
 
         self._x_scaler = None
         self._y_scaler = None
