@@ -88,8 +88,14 @@ def get_model(
 
         return MCDropout
 
-    available_models.append("quantile_regression")
-    if model_name == "quantile_regression":
+    available_models.append("quantile_regression_tree")
+    if model_name == "quantile_regression_tree":
+        from testbed.models.quantile_regression import QuantileRegressionTree
+
+        return QuantileRegressionTree
+
+    available_models.append("quantile_regression_nn")
+    if model_name == "quantile_regression_nn":
         from testbed.models.lightning_uq_models import QuantileRegression
 
         return QuantileRegression
@@ -120,7 +126,7 @@ METRIC_TO_CLASS = {
     "quantile_calibration_error": QuantileCalibrationErrorMetric(),
     "log_likelihood_closed_form": LogLikelihoodExactMetric(),
     "crps100": CRPS(n_samples=100),
-    "crps500": CRPS(n_samples=500),
+    # "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
