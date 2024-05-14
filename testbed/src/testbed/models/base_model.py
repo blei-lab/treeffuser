@@ -10,14 +10,9 @@ import wandb
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
+from sklearn.base import MultiOutputMixin
 from skopt import BayesSearchCV
 from skopt.utils import use_named_args
-
-
-class SupportsMultioutput:
-    """
-    A mixin class for models that support multioutput data.
-    """
 
 
 class ProbabilisticModel(ABC, BaseEstimator):
@@ -36,7 +31,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Whether the model supports multioutput data.
         Determined by whether the class is a subclass of SupportsMultioutput.
         """
-        return issubclass(cls, SupportsMultioutput)
+        return issubclass(cls, MultiOutputMixin)
 
     @abstractmethod
     def fit(
@@ -394,13 +389,16 @@ def make_autoregressive_probabilistic_model(
             return y
 
         def sample(
-            self, X: Float[ndarray, "batch x_dim"], n_samples: int = 10
+            self,
+            X: Float[ndarray, "batch x_dim"],
+            n_samples: int = 10,
+            seed: Optional[int] = None,
         ) -> Float[ndarray, "n_samples batch y_dim"]:
             samples_rep = np.zeros((n_samples * X.shape[0], len(self.models)))
             X_rep = np.repeat(X, n_samples, axis=0)
             for i, model in enumerate(self.models):
                 X_i, _ = self._make_input_for_ith_model(X_rep, samples_rep, i)
-                y_i_samples = model.sample(X_i, n_samples=1).squeeze()
+                y_i_samples = model.sample(X_i, n_samples=1, seed=seed).squeeze()
                 samples_rep[:, i] = y_i_samples.flatten()
 
             samples = samples_rep.reshape(n_samples, X.shape[0], len(self.models))

@@ -3,16 +3,16 @@ from typing import Optional
 
 from jaxtyping import Float
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
 from treeffuser.treeffuser import LightGBMTreeffuser
 
 from .base_model import ProbabilisticModel
-from .base_model import SupportsMultioutput
 
 
-class Treeffuser(ProbabilisticModel, SupportsMultioutput):
+class Treeffuser(ProbabilisticModel, MultiOutputMixin):
     """
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """

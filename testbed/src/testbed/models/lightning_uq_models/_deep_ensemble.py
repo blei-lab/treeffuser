@@ -11,6 +11,7 @@ from jaxtyping import Float
 from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from sklearn.preprocessing import StandardScaler
 from skopt.space import Integer
 from skopt.space import Real
@@ -19,7 +20,6 @@ from torch import nn
 from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
-from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 
 
@@ -78,7 +78,7 @@ class MVERegression(L.LightningModule):
         y_dim = preds.shape[1] // 2
         mean = preds[:, :y_dim]
         log_varish = preds[:, y_dim:]
-        var = nn.functional.softplus(log_varish)
+        var = nn.functional.softplus(log_varish) + 1e-6
         return mean, var
 
     def training_step(self, batch: dict, batch_idx: int) -> Tensor:
@@ -116,7 +116,7 @@ class MVERegression(L.LightningModule):
         return self.optimizer_func(self.parameters())
 
 
-class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
+class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
     """
     Implements a deep ensemble for regression tasks, where each model in the ensemble outputs both mean and variance.
     This approach is designed to provide predictions with associated uncertainty estimates.
@@ -178,7 +178,9 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
             y (np.ndarray): The target outputs for training.
         """
         X = self.scaler_x.fit_transform(X)
-        y = self.scaler_y.fit_transform(y.reshape(-1, 1))
+        if len(y.shape) == 1:
+            y = y.reshape(-1, 1)
+        y = self.scaler_y.fit_transform(y)
         self.y_dim = y.shape[1]
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
@@ -258,9 +260,10 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
         indices = np.random.choice(range(samples.shape[0]), n_samples)
         samples = samples[indices]
 
-        samples = samples.reshape(n_samples, -1)
+        samples = samples.reshape(-1, self.y_dim)
         samples = self.scaler_y.inverse_transform(samples)
-        return samples.reshape(n_samples, -1, self.y_dim)
+        samples = samples.reshape(n_samples, -1, self.y_dim)
+        return samples
 
     def log_likelihood(
         self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]

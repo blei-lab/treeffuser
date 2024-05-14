@@ -2,8 +2,10 @@ import numpy as np
 import torch
 from jaxtyping import Float
 from ngboost import NGBRegressor
+from ngboost.distns import MultivariateNormal
 from ngboost.distns import Poisson
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
@@ -14,7 +16,7 @@ MAX_MINIBATCH_SIZE = 50_000
 MAX_VALIDATION_SIZE = 20_000
 
 
-class NGBoostGaussian(ProbabilisticModel):
+class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
     """
     A probabilistic model that uses NGBoost with a Gaussian likelihood.
 
@@ -26,6 +28,7 @@ class NGBoostGaussian(ProbabilisticModel):
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.model = None
+        self.dim_y = None
 
     def fit(
         self,
@@ -36,22 +39,35 @@ class NGBoostGaussian(ProbabilisticModel):
         Fit the model to the data.
         """
 
-        if y.shape[1] > 1:
-            raise ValueError("NGBoost only accepts 1 dimensional y values.")
+        self.dim_y = y.shape[1]
 
-        y = y[:, 0]
         minibatch_frac = min(MAX_MINIBATCH_SIZE, X.shape[0]) / X.shape[0]
         validation_fraction = min(int(0.1 * X.shape[0]), MAX_VALIDATION_SIZE) / X.shape[0]
 
-        self.model = NGBRegressor(
-            n_estimators=self.n_estimators,
-            learning_rate=self.learning_rate,
-            early_stopping_rounds=10,
-            minibatch_frac=minibatch_frac,
-            validation_fraction=validation_fraction,
-            verbose=False,
-            random_state=self.seed,
-        )
+        if self.dim_y == 1:
+            # train a NGBoost model with Gaussian likelihood
+            y = y[:, 0]
+            self.model = NGBRegressor(
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                early_stopping_rounds=10,
+                minibatch_frac=minibatch_frac,
+                validation_fraction=validation_fraction,
+                verbose=False,
+                random_state=self.seed,
+            )
+        else:
+            # train a NGBoost model with Multivariate Gaussian likelihood
+            self.model = NGBRegressor(
+                n_estimators=self.n_estimators,
+                learning_rate=self.learning_rate,
+                Dist=MultivariateNormal(self.dim_y),
+                early_stopping_rounds=10,
+                minibatch_frac=minibatch_frac,
+                validation_fraction=validation_fraction,
+                verbose=False,
+                random_state=self.seed,
+            )
         self.model.fit(X, y)
         return self
 
@@ -59,16 +75,24 @@ class NGBoostGaussian(ProbabilisticModel):
         """
         Predict the mean for each input.
         """
-        return self.model.predict(X).reshape(-1, 1)
+        predictions = self.model.predict(X)
+        if self.dim_y == 1:
+            predictions = predictions.reshape(-1, 1)
+        return predictions
 
     def predict_distribution(self, X) -> torch.distributions.Distribution:
         """
         Predict the distribution for each input.
         """
         dist_ngboost = self.model.pred_dist(X)
-        mean = torch.tensor(dist_ngboost.dist.mean().reshape(-1, 1))
-        std = torch.tensor(dist_ngboost.dist.std().reshape(-1, 1))
-        dist = torch.distributions.Normal(mean, std)
+        if self.dim_y == 1:
+            mean = torch.tensor(dist_ngboost.dist.mean().reshape(-1, 1))
+            std = torch.tensor(dist_ngboost.dist.std().reshape(-1, 1))
+            dist = torch.distributions.Normal(mean, std)
+        else:
+            mean = torch.tensor(dist_ngboost.loc)
+            cov = torch.tensor(dist_ngboost.cov)
+            dist = torch.distributions.MultivariateNormal(mean, cov)
 
         return dist
 
@@ -79,7 +103,8 @@ class NGBoostGaussian(ProbabilisticModel):
         Sample from the probability distribution for each input.
         """
         np.random.seed(seed)
-        return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
+        samples = np.array(self.model.pred_dist(X).sample(n_samples))
+        return samples
 
     @staticmethod
     def search_space() -> dict:
