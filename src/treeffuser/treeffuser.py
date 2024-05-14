@@ -84,6 +84,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Returns an instance of the model for chaining.
         """
         _check_arguments(X, y)
+        X = np.asarray(X, dtype=np.float32)
+        y = np.asarray(y, dtype=np.float32)
 
         x_transformed = self._x_preprocessor.fit_transform(X)
         y_transformed = self._y_preprocessor.fit_transform(y)
@@ -114,7 +116,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         n_parallel: int = 100,
         n_steps: int = 100,
         seed=None,
-        verbose: int = 1,
+        verbose: int = 0,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
@@ -135,7 +137,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         while n_samples_sampled < n_samples:
             batch_size_samples = min(n_parallel, n_samples - n_samples_sampled)
             y_batch = self._sde.sample_from_theoretical_prior(
-                (batch_size_samples * batch_size_x, y_dim)
+                (batch_size_samples * batch_size_x, y_dim),
+                seed=seed,
             )
             if x_batched is None or x_batched.shape[0] != batch_size_samples:
                 # Reuse the same batch of x as much as possible

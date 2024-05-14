@@ -9,9 +9,10 @@ from skopt.space import Real
 from treeffuser.treeffuser import LightGBMTreeffuser
 
 from .base_model import ProbabilisticModel
+from .base_model import SupportsMultioutput
 
 
-class Treeffuser(ProbabilisticModel):
+class Treeffuser(ProbabilisticModel, SupportsMultioutput):
     """
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """
@@ -23,58 +24,65 @@ class Treeffuser(ProbabilisticModel):
         learning_rate: float = 0.5,
         early_stopping_rounds: int = 50,
         num_leaves: int = 31,
+        seed: int = 0,
         subsample: float = 1.0,
         subsample_freq: int = 0,
         verbose: bool = 0,
+        sde_initialize_with_data: bool = False,
         sde_manual_hyperparams: Optional[Dict[str, float]] = None,
     ):
-        super().__init__()
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.n_repeats = n_repeats
         self.learning_rate = learning_rate
-        self.early_stopping_rounds = early_stopping_rounds
+        self.early_stopping_rounds = int(early_stopping_rounds)
         self.num_leaves = num_leaves
         self.subsample = subsample
         self.subsample_freq = subsample_freq
         self.verbose = verbose
         self.sde_manual_hyperparams = sde_manual_hyperparams
+        self.sde_initialize_with_data = sde_initialize_with_data
 
-        self.model = LightGBMTreeffuser(
-            n_estimators=n_estimators,
-            n_repeats=n_repeats,
-            sde_name="vesde",
-            learning_rate=learning_rate,
-            early_stopping_rounds=early_stopping_rounds,
-            num_leaves=num_leaves,
-            subsample=subsample,
-            subsample_freq=subsample_freq,
-            verbose=verbose,
-            sde_manual_hyperparams=sde_manual_hyperparams,
-        )
+        self.model = None
 
     def fit(
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
     ) -> "ProbabilisticModel":
+        self.model = LightGBMTreeffuser(
+            n_estimators=self.n_estimators,
+            n_repeats=self.n_repeats,
+            sde_name="vesde",
+            sde_initialize_with_data=self.sde_initialize_with_data,
+            learning_rate=self.learning_rate,
+            early_stopping_rounds=self.early_stopping_rounds,
+            num_leaves=self.num_leaves,
+            seed=self.seed,
+            subsample=self.subsample,
+            subsample_freq=self.subsample_freq,
+            verbose=self.verbose,
+            sde_manual_hyperparams=self.sde_manual_hyperparams,
+        )
+
         self.model.fit(X, y)
         return self
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
-        y_samples = self.sample(X, n_samples=50)
+        y_samples = self.sample(X, n_samples=50, seed=0)
         return y_samples.mean(axis=0)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
-        return self.model.sample(X, n_samples, n_parallel=5, n_steps=50)
+        return self.model.sample(X, n_samples, n_parallel=10, n_steps=50, seed=seed)
 
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_estimators": Integer(100, 5000, "log-uniform"),
-            "n_repeats": Integer(10, 100),
-            "learning_rate": Real(0.01, 1),
-            "early_stopping_rounds": Integer(1, 100),
-            "num_leaves": Integer(2, 100),
+            "n_estimators": Integer(100, 3000, "log-uniform"),
+            "n_repeats": Integer(10, 50),
+            "learning_rate": Real(0.01, 1, "log-uniform"),
+            "early_stopping_rounds": Integer(10, 100),
+            "num_leaves": Integer(10, 50),
         }

@@ -27,11 +27,12 @@ from tqdm import tqdm
 
 from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
 
 
-class Card(ProbabilisticModel):
+class Card(ProbabilisticModel, SupportsMultioutput):
 
     def __init__(
         self,
@@ -41,13 +42,13 @@ class Card(ProbabilisticModel):
         dropout: float = 0.01,
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
-        batch_size: int = 32,
+        batch_size: int = 64,
         enable_progress_bar: bool = False,
         use_gpu: bool = False,
         beta_start: float = 0.0001,
         beta_end: float = 0.02,
         beta_schedule: str = "linear",
-        patience: int = 10,
+        patience: int = 50,
         seed: int = 42,
     ):
         """
@@ -79,33 +80,35 @@ class Card(ProbabilisticModel):
                 does not improve.
 
         """
+        super().__init__()
         self._cond_model: nn.Module = None
         self._diff_model: nn.Module = None
 
         self._y_dim = None
         self._x_dim = None
 
+        self.n_layers = n_layers
+        self.hidden_size = hidden_size
         self._layers = [hidden_size] * n_layers
-        self._dropout = dropout
-        self._learning_rate = learning_rate
-        self._n_steps = n_steps
-        self._batch_size = batch_size
-        self._beta_start = beta_start
-        self._beta_end = beta_end
-        self._beta_schedule = beta_schedule
-        self._max_epochs = max_epochs
-        self._enable_progress_bar = enable_progress_bar
-        self._patience = patience
-        self._use_gpu = use_gpu
+        self.dropout = dropout
+        self.learning_rate = learning_rate
+        self.n_steps = n_steps
+        self.batch_size = batch_size
+        self.beta_start = beta_start
+        self.beta_end = beta_end
+        self.beta_schedule = beta_schedule
+        self.max_epochs = max_epochs
+        self.enable_progress_bar = enable_progress_bar
+        self.patience = patience
+        self.use_gpu = use_gpu
 
-        self._seed = seed
         self._my_temp_dir = tempfile.mkdtemp()
         self._x_scaler = None
         self._y_scaler = None
 
-        if seed is not None:
-            np.random.seed(seed)
-            torch.manual_seed(seed)
+        if self.seed is not None:
+            np.random.seed(self.seed)
+            torch.manual_seed(self.seed)
 
     def fit(
         self,
@@ -134,26 +137,26 @@ class Card(ProbabilisticModel):
         Fits the conditional mean model that is used later
         as part of the diffusion model in CARD.
         """
-        dm = GenericDataModule(X, y, batch_size=self._batch_size)
+        dm = GenericDataModule(X, y, batch_size=self.batch_size)
         network = MLP(
             n_inputs=X.shape[1],
             n_hidden=self._layers,
             n_outputs=y.shape[1],
-            dropout_p=self._dropout,
+            dropout_p=self.dropout,
         )
 
         early_stop_callback = EarlyStopping(
             monitor="val_loss",
             min_delta=0.00,
-            patience=self._patience,
+            patience=self.patience,
             verbose=False,
             mode="max",
         )
         _cond_trainer = Trainer(
-            max_epochs=self._max_epochs,
-            accelerator="gpu" if self._use_gpu else "cpu",
+            max_epochs=self.max_epochs,
+            accelerator="gpu" if self.use_gpu else "cpu",
             enable_checkpointing=False,
-            enable_progress_bar=self._enable_progress_bar,
+            enable_progress_bar=self.enable_progress_bar,
             check_val_every_n_epoch=1,
             default_root_dir=self._my_temp_dir,
             callbacks=[early_stop_callback],
@@ -162,7 +165,7 @@ class Card(ProbabilisticModel):
         self._cond_model = DeterministicRegression(
             model=network,
             loss_fn=nn.MSELoss(),
-            optimizer=partial(Adam, lr=self._learning_rate),
+            optimizer=partial(Adam, lr=self.learning_rate),
         )
         _cond_trainer.fit(self._cond_model, dm)
 
@@ -180,16 +183,16 @@ class Card(ProbabilisticModel):
                 "The conditional model must be trained before the diffusion model."
             )
 
-        dm = GenericDataModule(X, y, batch_size=self._batch_size)
+        dm = GenericDataModule(X, y, batch_size=self.batch_size)
         early_stop_callback = EarlyStopping(
             monitor="val_loss",
             min_delta=0.00,
-            patience=self._patience,
+            patience=self.patience,
             verbose=False,
             mode="max",
         )
         guidance_model = ConditionalGuidedLinearModel(
-            n_steps=self._n_steps,
+            n_steps=self.n_steps,
             x_dim=X.shape[1],
             y_dim=y.shape[1],
             n_hidden=self._layers,
@@ -199,19 +202,19 @@ class Card(ProbabilisticModel):
         self._diff_model = CARDRegression(
             cond_mean_model=self._cond_model.model,
             guidance_model=guidance_model,
-            guidance_optim=partial(Adam, lr=self._learning_rate),
-            beta_start=self._beta_start,
-            beta_end=self._beta_end,
-            beta_schedule=self._beta_schedule,
-            n_steps=self._n_steps,
+            guidance_optim=partial(Adam, lr=self.learning_rate),
+            beta_start=self.beta_start,
+            beta_end=self.beta_end,
+            beta_schedule=self.beta_schedule,
+            n_steps=self.n_steps,
             n_z_samples=1,
         )
 
         _diff_trainer = Trainer(
-            max_epochs=self._max_epochs,
-            accelerator="gpu" if self._use_gpu else "cpu",
+            max_epochs=self.max_epochs,
+            accelerator="gpu" if self.use_gpu else "cpu",
             enable_checkpointing=False,
-            enable_progress_bar=self._enable_progress_bar,
+            enable_progress_bar=self.enable_progress_bar,
             check_val_every_n_epoch=1,
             default_root_dir=self._my_temp_dir,
             callbacks=[early_stop_callback],
@@ -240,7 +243,11 @@ class Card(ProbabilisticModel):
 
     @t.no_grad()
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples: int, batch_size: int = 64
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int,
+        batch_size: int = 64,
+        seed=None,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Geneters n_samples of p(y|x) for each input x in X using the diffusion model.
@@ -254,6 +261,7 @@ class Card(ProbabilisticModel):
                 a time, therefore the diffusion model will be run 25 times. This
                 is useful for managing memory usage.
         """
+        # TODO: check if seed is used
         self._diff_model.eval()
         self._cond_model.eval()
 
@@ -267,7 +275,7 @@ class Card(ProbabilisticModel):
 
         # Iterate until all datapoints are sampled
 
-        pbar = tqdm(total=repeated_X.shape[0], disable=not self._enable_progress_bar)
+        pbar = tqdm(total=repeated_X.shape[0], disable=not self.enable_progress_bar)
         while datapoints_sampled < repeated_X.shape[0]:
             # Get the current batch of datapoints
             batch_start = datapoints_sampled
@@ -305,8 +313,8 @@ class Card(ProbabilisticModel):
     def search_space() -> dict:
 
         return {
-            "n_layers": Integer(1, 7),
-            "hidden_size": Integer(10, 500),
+            "n_layers": Integer(2, 3),
+            "hidden_size": Integer(16, 128),
             "dropout": Real(0.0, 0.5),
             "learning_rate": Real(1e-5, 1e-1, prior="log-uniform"),
         }
