@@ -83,9 +83,7 @@ class QuantileRegression(ProbabilisticModel):
             np.random.seed(self.seed)
             torch.manual_seed(self.seed)
 
-    def fit(
-        self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
-    ) -> None:
+    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]) -> None:
         """
         Fits the QuantileRegression model using provided training data.
         """
@@ -96,7 +94,7 @@ class QuantileRegression(ProbabilisticModel):
         if y.shape[1] > 1:
             raise ValueError("QuantileRegression only accepts 1 dimensional y values.")
 
-        dm = GenericDataModule(X, y, batch_size=self.batch_size)
+        dm = GenericDataModule(X.astype(float), y, batch_size=self.batch_size)
         network = MLP(
             n_inputs=self._x_dim,
             n_hidden=self.layers,
@@ -129,7 +127,7 @@ class QuantileRegression(ProbabilisticModel):
         trainer.fit(self._model, dm)
 
     @torch.no_grad()
-    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[torch.Tensor, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """
         Predicts using the QuantileRegression model by outputting the median quantile.
         """
