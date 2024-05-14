@@ -1,0 +1,39 @@
+import argparse
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+from testbed.data.utils import _assign_k_splits
+
+path_raw_dataset_dir = Path("./raw")
+data = pd.read_csv(path_raw_dataset_dir / "usa_00001.csv", header=None)
+
+
+def main(path_raw_dataset_dir: Path):
+    # import data
+    data = pd.read_csv(path_raw_dataset_dir / "usa_00001.csv", header=None)
+
+    # extract outcome and covariates
+    X = data.iloc[:, :-1]
+    y = data.iloc[:, -1]
+    categorical = [3]
+
+    k_fold_splits = _assign_k_splits(X.values.shape[0], 10, 0)
+
+    # save preprocessed data
+    np.save(
+        path_raw_dataset_dir.parent / "data.npy",
+        {
+            "x": X.values,
+            "y": y.values,
+            "categorical": categorical,
+            "k_fold_splits": k_fold_splits,
+        },
+    )
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=Path)
+    args = parser.parse_args()
+    main(args.path)
