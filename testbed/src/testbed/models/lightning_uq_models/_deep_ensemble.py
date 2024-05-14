@@ -11,13 +11,13 @@ from jaxtyping import Float
 from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from numpy import ndarray
-from sklearn.preprocessing import StandardScaler
 from skopt.space import Integer
 from skopt.space import Real
 from torch import Tensor
 from torch import nn
 from torch.optim import Adam
 
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
@@ -145,7 +145,7 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
-        n_ensembles: int = 5,
+        n_ensembles: int = 3,
         burnin_epochs: int = 10,
         enable_progress_bar: bool = False,
     ):
@@ -161,8 +161,11 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
         self.burnin_epochs = burnin_epochs
         self.enable_progress_bar = enable_progress_bar
         self._models: List[MVERegression] = []
-        self.scaler_x = StandardScaler()
-        self.scaler_y = StandardScaler()
+        self.scaler_x = None
+        self.scaler_y = None
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
         self._my_temp_dir = tempfile.mkdtemp()
         self.y_dim = None
 
@@ -177,8 +180,11 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
             X (np.ndarray): The input features for training.
             y (np.ndarray): The target outputs for training.
         """
+        self.scaler_x = Preprocessor()
+        self.scaler_y = Preprocessor()
+
         X = self.scaler_x.fit_transform(X)
-        y = self.scaler_y.fit_transform(y.reshape(-1, 1))
+        y = self.scaler_y.fit_transform(y)
         self.y_dim = y.shape[1]
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
 
@@ -258,7 +264,7 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
         indices = np.random.choice(range(samples.shape[0]), n_samples)
         samples = samples[indices]
 
-        samples = samples.reshape(n_samples, -1)
+        samples = samples.reshape(-1, self.y_dim)
         samples = self.scaler_y.inverse_transform(samples)
         return samples.reshape(n_samples, -1, self.y_dim)
 
@@ -277,7 +283,7 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
             float: The average log likelihood across all ensemble models.
         """
         X = self.scaler_x.transform(X)
-        y = self.scaler_y.transform(y.reshape(-1, 1))
+        y = self.scaler_y.transform(y)
 
         log_sum_std = np.sum(np.log(self.scaler_y.scale_))
 
