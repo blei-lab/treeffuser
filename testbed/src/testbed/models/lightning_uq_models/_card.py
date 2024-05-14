@@ -26,6 +26,7 @@ from skopt.space import Real
 from torch.optim import Adam
 from tqdm import tqdm
 
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
@@ -36,9 +37,9 @@ class Card(ProbabilisticModel, MultiOutputMixin):
     def __init__(
         self,
         n_layers: int = 3,
-        hidden_size: int = 128,
+        hidden_size: int = 100,
         max_epochs: int = 10000,
-        dropout: float = 0.1,
+        dropout: float = 0.01,
         learning_rate: float = 1e-3,
         n_steps: int = 1000,
         batch_size: int = 64,
@@ -102,6 +103,8 @@ class Card(ProbabilisticModel, MultiOutputMixin):
         self.use_gpu = use_gpu
 
         self._my_temp_dir = tempfile.mkdtemp()
+        self._x_scaler = None
+        self._y_scaler = None
 
         if self.seed is not None:
             np.random.seed(self.seed)
@@ -115,6 +118,12 @@ class Card(ProbabilisticModel, MultiOutputMixin):
 
         self._y_dim = y.shape[1]
         self._x_dim = X.shape[1]
+
+        self._x_scaler = Preprocessor()
+        self._y_scaler = Preprocessor()
+
+        X = self._x_scaler.fit_transform(X)
+        y = self._y_scaler.fit_transform(y)
 
         self._fit_conditional_model(X, y)
         self._fit_diffusion_model(X, y)
@@ -222,11 +231,14 @@ class Card(ProbabilisticModel, MultiOutputMixin):
         """
         if self._cond_model is None:
             raise ValueError("The conditional model must be trained before calling predict.")
+
+        X = self._x_scaler.transform(X)
         X = _to_tensor(X)
 
         self._cond_model.eval()
         y_tensor = self._cond_model.predict_step(X)["pred"]
         y_np = y_tensor.detach().numpy()
+        y_np = self._y_scaler.inverse_transform(y_np)
         return y_np
 
     @t.no_grad()
@@ -253,6 +265,7 @@ class Card(ProbabilisticModel, MultiOutputMixin):
         self._diff_model.eval()
         self._cond_model.eval()
 
+        X = self._x_scaler.transform(X)
         X = _to_tensor(X)
         repeated_X = X.repeat(n_samples, 1)
         samples = torch.zeros(repeated_X.shape[0], self._y_dim)
@@ -286,9 +299,9 @@ class Card(ProbabilisticModel, MultiOutputMixin):
             pbar.update(samples_to_use)
 
         # Reshape the samples tensor to (n_samples, batch, y_dim)
-        samples = samples.reshape(X.shape[0], n_samples, self._y_dim)
-        samples = samples.permute(1, 0, 2)
         samples = samples.detach().numpy()
+        samples = self._y_scaler.inverse_transform(samples)
+        samples = samples.reshape(n_samples, X.shape[0], self._y_dim)
         return samples
 
     def log_likelihood(

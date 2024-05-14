@@ -12,13 +12,13 @@ from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from numpy import ndarray
 from sklearn.base import MultiOutputMixin
-from sklearn.preprocessing import StandardScaler
 from skopt.space import Integer
 from skopt.space import Real
 from torch import Tensor
 from torch import nn
 from torch.optim import Adam
 
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 
@@ -161,8 +161,11 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
         self.burnin_epochs = burnin_epochs
         self.enable_progress_bar = enable_progress_bar
         self._models: List[MVERegression] = []
-        self.scaler_x = StandardScaler()
-        self.scaler_y = StandardScaler()
+        self.scaler_x = None
+        self.scaler_y = None
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+
         self._my_temp_dir = tempfile.mkdtemp()
         self.y_dim = None
 
@@ -177,9 +180,13 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
             X (np.ndarray): The input features for training.
             y (np.ndarray): The target outputs for training.
         """
-        X = self.scaler_x.fit_transform(X)
         if len(y.shape) == 1:
             y = y.reshape(-1, 1)
+
+        self.scaler_x = Preprocessor()
+        self.scaler_y = Preprocessor()
+
+        X = self.scaler_x.fit_transform(X)
         y = self.scaler_y.fit_transform(y)
         self.y_dim = y.shape[1]
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
@@ -280,7 +287,7 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
             float: The average log likelihood across all ensemble models.
         """
         X = self.scaler_x.transform(X)
-        y = self.scaler_y.transform(y.reshape(-1, 1))
+        y = self.scaler_y.transform(y)
 
         log_sum_std = np.sum(np.log(self.scaler_y.scale_))
 
