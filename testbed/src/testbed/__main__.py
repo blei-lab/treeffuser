@@ -1,52 +1,128 @@
+# noinspection PyUnresolvedReferences
+import lightgbm as lgb  # noqa F401
+
 import argparse
 import logging
+import os
 import warnings
+from pathlib import Path
+import time
 from typing import Dict
 from typing import List
+from typing import Literal
+from typing import Optional
+from typing import Type
+import sys
+from typing import Tuple
 
 import namesgenerator
+import numpy as np
 import pandas as pd
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 
-from testbed.data.utils import get_data
-from testbed.data.utils import list_data
-from testbed.metrics import AccuracyMetric
-from testbed.metrics import LogLikelihoodFromSamplesMetric
-from testbed.metrics import Metric
 
-# from testbed.metrics import QuantileCalibrationErrorMetric
-from testbed.models.base_model import BayesOptProbabilisticModel
-from testbed.models.ngboost import NGBoostGaussian
-from testbed.models.ngboost import NGBoostMixtureGaussian
+current_dir = Path(__file__).resolve().parent
+sys.path.append(str(current_dir / "../"))
+sys.path.append(str(current_dir / "../../../src"))
+print(sys.path)
+
+
+from testbed.data.utils import get_data  # noqa E402
+from testbed.data.utils import list_data  # noqa E402
+from testbed.metrics import AccuracyMetric  # noqa E402
+from testbed.metrics import CRPS  # noqa E402
+from testbed.metrics import LogLikelihoodExactMetric  # noqa E402
+from testbed.metrics import LogLikelihoodFromSamplesMetric  # noqa E402
+from testbed.metrics import Metric  # noqa E402
+from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
+from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
+from testbed.models.base_model import make_autoregressive_probabilistic_model  # noqa E402
+from testbed.models.base_model import ProbabilisticModel  # noqa E402
 
 logger = logging.getLogger(__name__)
+
+# Disable wandb console logs (might limit the log size and avoid out of memory errors; but hurts debugging)
+os.environ["WANDB_CONSOLE"] = "off"
+
+
+def get_model(
+    model_name: Optional[str] = None, return_available_models: bool = False
+) -> List[str] | Type[ProbabilisticModel]:
+    # noinspection PyListCreation
+    available_models = []
+
+    available_models.append("ngboost")
+    if model_name == "ngboost":
+        from testbed.models.ngboost import NGBoostGaussian
+
+        return NGBoostGaussian
+
+    available_models.append("ngboost_mixture_gaussian")
+    if model_name == "ngboost_mixture_gaussian":
+        from testbed.models.ngboost import NGBoostMixtureGaussian
+
+        return NGBoostMixtureGaussian
+
+    available_models.append("treeffuser")
+    if model_name == "treeffuser":
+        from testbed.models.treeffuser import Treeffuser
+
+        return Treeffuser
+
+    available_models.append("card")
+    if model_name == "card":
+        from testbed.models.lightning_uq_models import Card
+
+        return Card
+    available_models.append("deep_ensemble")
+    if model_name == "deep_ensemble":
+        from testbed.models.lightning_uq_models import DeepEnsemble
+
+        return DeepEnsemble
+
+    available_models.append("mc_dropout")
+    if model_name == "mc_dropout":
+        from testbed.models.lightning_uq_models import MCDropout
+
+        return MCDropout
+
+    available_models.append("quantile_regression")
+    if model_name == "quantile_regression":
+        from testbed.models.lightning_uq_models import QuantileRegression
+
+        return QuantileRegression
+
+    available_models.append("ibug")
+    if model_name == "ibug":
+        from testbed.models.ibug_ import IBugXGBoost
+
+        return IBugXGBoost
+
+    if return_available_models:
+        return available_models
+
+    raise ValueError(
+        f"Model {model_name} is not available. Available models: {available_models}"
+    )
+
 
 ###########################################################
 #                 CONSTANTS                               #
 ###########################################################
 
 AVAILABLE_DATASETS = list(list_data().keys())
-
-
-# Treeffuser is not imported by default as it causes a segmentation fault
-# of Card model. If adequate it gets added to this dictionary.
-# by the proc_model_names function.
-MODEL_TO_CLASS = {
-    "ngboost_gaussian": NGBoostGaussian,
-    "ngboost_mixture_gaussian": NGBoostMixtureGaussian,
-    "card": None,
-    "treeffuser": None,
-}
-AVAILABLE_MODELS = list(MODEL_TO_CLASS.keys())
+AVAILABLE_MODELS = get_model(return_available_models=True)
 
 SUPPORT_CATEGORICAL = ["treeffuser"]
 
 METRIC_TO_CLASS = {
-    "accuracy": AccuracyMetric,
-    # "quantile_calibration_error": QuantileCalibrationErrorMetric,
-    "log_likelihood": LogLikelihoodFromSamplesMetric,
+    "accuracy": AccuracyMetric(),
+    "quantile_calibration_error": QuantileCalibrationErrorMetric(),
+    "log_likelihood_closed_form": LogLikelihoodExactMetric(),
+    "crps100": CRPS(n_samples=100),
+    "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
@@ -73,38 +149,6 @@ def lst_to_new_line(lst: list) -> str:
     for item in lst:
         string += f"- {item}\n"
     return string
-
-
-def update_metric_to_class(models: List[str]):
-    """
-    Adds Treeffuser to MODEL_TO_CLASS if it is in the list of models.
-    Changes global variable MODEL_TO_CLASS.
-
-    There is an odd bug such that if Treeffuser is imported then Card
-    doesn't run and we get a segmentation fault. We solve this by
-    a conditional import statement (unfortunately).
-
-    This function verifies that we are not asked to run both Treeffuser
-    and Card models together and imports Treeffuser if needed.
-
-    This is extremely hacky and should be fixed in the future.
-
-    Args:
-        models (List[str]): List of models to run.
-    """
-
-    if "treeffuser" in models and "card" in models:
-        msg = "Treeffuser and Card models can't be run together. Segmentation fault occurs."
-        raise ValueError(msg)
-
-    if "treeffuser" in models:
-        from testbed.models.treeffuser import Treeffuser
-
-        MODEL_TO_CLASS["treeffuser"] = Treeffuser
-    if "card" in models:
-        from testbed.models.card import Card
-
-        MODEL_TO_CLASS["card"] = Card
 
 
 def parse_args():
@@ -158,20 +202,50 @@ def parse_args():
         help=msg,
     )
 
-    msg = "Whether to optimize the hyperparameters of the models."
+    msg = "Mode of model evaluation."
+    msg += "cross_val: evaluate the split in --split_idx with the default parameters"
+    msg += " or bayes_opt: optimize the hyperparameters with bayesian optimization on a single split."
+    msg += " Default: cross_val."
     parser.add_argument(
-        "--optimize_hyperparameters",
-        action="store_true",
+        "--evaluation_mode",
+        type=str,
         help=msg,
+        default="cross_val",
     )
 
     msg = "Number of iterations for the Bayesian optimization. To use"
-    msg += " this option, the --optimize_hyperparameters flag must be set."
+    msg += " this option, set --evaluation_mode bayes_opt."
     parser.add_argument(
         "--n_iter_bayes_opt",
         type=int,
         default=20,
         help=msg,
+    )
+
+    msg = "Append some columns of x to y to increase the dimension of y. Specify"
+    msg += "the number of columns to append. They will be selected randomly. Default: 0."
+    parser.add_argument(
+        "--append_x_to_y",
+        type=int,
+        default=0,
+        help=msg,
+    )
+
+    msg = "Which split to evaluate the model on. Default: 0. To use"
+    msg += " this option, set --evaluation_mode cross_val."
+    parser.add_argument(
+        "--split_idx",
+        type=int,
+        default=-1,
+        help=msg,
+    )
+
+    msg = "Wandb project name. Disable wandb logging if not provided."
+    parser.add_argument(
+        "--wandb_project",
+        type=str,
+        help=msg,
+        default=None,
     )
 
     return parser.parse_args()
@@ -189,6 +263,12 @@ def check_args(args):
         if model_name not in AVAILABLE_MODELS:
             msg = f"Model {model_name} is not available."
             msg += f" Available models: {lst_to_new_line(AVAILABLE_MODELS)}"
+
+    # There is an odd bug such that Card gets a segmentation fault if Treeffuser was imported.
+    # Hence, we cannot use both of them in the same run.
+    if "card" in args.models and "treeffuser" in args.models:
+        msg = "Card and Treeffuser cannot be run in the same script."
+        raise ValueError(msg)
 
     # check dataset name is valid
     for dataset_name in args.datasets:
@@ -208,6 +288,17 @@ def check_args(args):
     if args.n_iter_bayes_opt <= 0:
         msg = "The number of iterations for the Bayesian optimization must be positive."
         raise ValueError(msg)
+
+    if args.append_x_to_y is not None:
+        if args.append_x_to_y < 0:
+            msg = "The number of extra dimension to add to y cannot be negative."
+            raise ValueError(msg)
+
+    # check that split_idx is in [0, 9] if evaluation_mode is cross_val
+    if args.evaluation_mode == "cross_val":
+        if args.split_idx < 0 or args.split_idx > 9:
+            msg = "The split index must be in [0, 9] if evaluation_mode is cross_val."
+            raise ValueError(msg)
 
 
 def format_results(model_name: str, dataset_name: str, results: Dict[str, float]) -> str:
@@ -253,13 +344,14 @@ def format_header(args: argparse.Namespace, run_name: str) -> str:
 def run_model_on_dataset(
     X_train: Float[ndarray, "train_size n_features"],
     X_test: Float[ndarray, "test_size n_features"],
-    y_train: Float[ndarray, "train_size 1"],
-    y_test: Float[ndarray, "test_size 1"],
+    y_train: Float[ndarray, "train_size n_targets"],
+    y_test: Float[ndarray, "test_size n_targets"],
     cat_idx: List[int],
     model_name: str,
     metrics: List[Metric],
-    optimize_hyperparameters: bool,
+    evaluation_mode: Literal["bayes_opt", "cross_val"] = "cross_val",
     n_iter_bayes_opt: int = 20,
+    seed: int = 0,
 ) -> Dict[str, float]:
     """
     Run a model on a dataset and compute the metrics specified.
@@ -276,31 +368,93 @@ def run_model_on_dataset(
     Returns:
         Dict[str, float]: Results of the model on the dataset.
     """
-    model_class = MODEL_TO_CLASS[model_name]
-    if optimize_hyperparameters:
+    model_class = get_model(model_name)
+
+    use_autoregressive = y_train.shape[1] > 1 and not model_class.supports_multioutput()
+    if use_autoregressive:
+        model_class = make_autoregressive_probabilistic_model(model_class)
+
+    if evaluation_mode == "bayes_opt":
         model = BayesOptProbabilisticModel(
-            model_class=model_class, n_iter_bayes_opt=n_iter_bayes_opt, cv=4, n_jobs=1
+            model_class=model_class,
+            n_iter_bayes_opt=n_iter_bayes_opt,
+            frac_validation=0.2,
+            n_jobs=1,
         )
     else:
-        model = model_class()
+        model = model_class(seed=seed)
 
+    train_start = time.time()
     if model_name in SUPPORT_CATEGORICAL:
         model.fit(X_train, y_train, cat_idx)
     else:
         model.fit(X_train, y_train)
+    train_end = time.time()
 
     results = {}
-    for metric in metrics:
-        metric = METRIC_TO_CLASS[metric]()
-        res = metric.compute(model=model, X_test=X_test, y_test=y_test)
-        results.update(res)
+    results["train_time"] = train_end - train_start
 
-    if optimize_hyperparameters:
-        results.update(model._model.get_params())
-        results["n_iter_bayes_opt"] = n_iter_bayes_opt
-    else:
-        results.update(model.get_params())
+    for metric_name in metrics:
+        metric = METRIC_TO_CLASS[metric_name]
+        metric_time_start = time.time()
+        res = metric.compute(model=model, X_test=X_test, y_test=y_test)
+        metric_time_end = time.time()
+        results.update(res)
+        results[f"{metric_name}_time"] = metric_time_end - metric_time_start
+
+    results.update(model.get_params())
     return results
+
+
+def make_multi_output_dataset(
+    X: Float[ndarray, "batch n_features"],
+    y: Float[ndarray, "batch n_targets"],
+    append_x_to_y: int,
+    seed: int = 0,
+) -> Tuple[Float[ndarray, "batch n_features"], Float[ndarray, "batch n_targets"]]:
+    """
+    Switch some features to the output to increase the dimension of the output.
+
+    A random subset of Xy is selected as the new features and the rest as the new output.
+    and 0.001 * std(y) is added to the new output to add some noise for the conditional regression.
+
+    Args:
+        X (Float[ndarray, "n_samples n_features"]): Features of the dataset.
+        y (Float[ndarray, "n_samples n_targets"]): Target of the dataset.
+        dim_output (int): Dimension of the output.
+
+    Returns:
+        Tuple[Float[ndarray, "n_samples n_features"], Float[ndarray, "n_samples n_targets"]]: Multi-output dataset.
+    """
+    _, n_features = X.shape
+    n_targets = y.shape[1]
+    n_total = n_features + n_targets
+
+    new_n_features = n_features - append_x_to_y
+
+    if new_n_features < 1:
+        raise ValueError(
+            "The number of remaining features of X must be at least 1, "
+            "make sure that append_x_to_y < n_features."
+        )
+
+    # seed with get_default_rng to avoid issues with jax
+    rng = np.random.default_rng(seed)
+
+    # randomly select the new features
+    new_features = rng.choice(n_total, new_n_features, replace=False)
+    new_output = np.array([i for i in range(n_total) if i not in new_features])
+    Xy = np.concatenate([X, y], axis=1)
+
+    # create the new dataset
+    new_X = Xy[:, new_features]
+    new_y = Xy[:, new_output]
+
+    # We add a bit of noise to new_y
+    noise = np.random.normal(0, 0.001, new_y.shape) * np.std(new_y)
+    new_y += noise
+
+    return new_X, new_y
 
 
 ###########################################################
@@ -312,10 +466,6 @@ def main() -> None:
     args = parse_args()
     check_args(args)
 
-    # This line should be added before everything else
-    # see the docstring of the function for more information.
-    update_metric_to_class(args.models)
-
     run_name = namesgenerator.get_random_name()
     full_results = []
 
@@ -325,21 +475,44 @@ def main() -> None:
     for model_name in args.models:
         for dataset_name in args.datasets:
             data = get_data(dataset_name, verbose=True)
-            if "test" not in data:
-                X_train, X_test, y_train, y_test = train_test_split(
-                    data["x"], data["y"], test_size=0.2, random_state=args.seed
+
+            if args.append_x_to_y is not None and args.append_x_to_y > 0:
+                data["x"], data["y"] = make_multi_output_dataset(
+                    data["x"], data["y"], args.dim_output, args.seed
                 )
+
+            if args.split_idx != -1:
+                X_train = data["x"][data["k_fold_splits"] != args.split_idx]
+                y_train = data["y"][data["k_fold_splits"] != args.split_idx]
+                X_test = data["x"][data["k_fold_splits"] == args.split_idx]
+                y_test = data["y"][data["k_fold_splits"] == args.split_idx]
             else:
-                warnings.warn(
-                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
-                    stacklevel=2,
+                if "test" not in data:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        data["x"], data["y"], test_size=0.2, random_state=args.seed
+                    )
+                else:
+                    warnings.warn(
+                        f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                        stacklevel=2,
+                    )
+                    X_train, X_test, y_train, y_test = (
+                        data["x"],
+                        data["test"]["x"],
+                        data["y"],
+                        data["test"]["y"],
+                    )
+
+            if args.wandb_project is not None:
+                # setup wandb
+                import wandb
+
+                wandb.init(
+                    project=args.wandb_project,
+                    name=f"{model_name}_{dataset_name}",
+                    # config=args,
                 )
-                X_train, X_test, y_train, y_test = (
-                    data["x"],
-                    data["test"]["x"],
-                    data["y"],
-                    data["test"]["y"],
-                )
+                wandb.log({"model": model_name, "dataset": dataset_name})
 
             results = run_model_on_dataset(
                 X_train=X_train,
@@ -349,13 +522,24 @@ def main() -> None:
                 cat_idx=data.get("categorical", None),
                 model_name=model_name,
                 metrics=args.metrics,
-                optimize_hyperparameters=args.optimize_hyperparameters,
+                evaluation_mode=args.evaluation_mode,
                 n_iter_bayes_opt=args.n_iter_bayes_opt,
+                seed=args.seed,
             )
             results["model"] = model_name
             results["dataset"] = dataset_name
-            full_results.append(results)
+            results["evaluation_mode"] = args.evaluation_mode
+            results["seed"] = args.seed
+            if args.evaluation_mode == "cross_val":
+                results["split_idx"] = args.split_idx
+            if args.evaluation_mode == "bayes_opt":
+                results["n_iter_bayes_opt"] = args.n_iter_bayes_opt
 
+            if args.wandb_project is not None:
+                wandb.log(results)
+                wandb.finish()
+
+            full_results.append(results)
             results_string = format_results(model_name, dataset_name, results)
             logger.info(results_string)
 

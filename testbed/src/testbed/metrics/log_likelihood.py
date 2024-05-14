@@ -3,6 +3,7 @@ from typing import List
 from typing import Union
 
 import numpy as np
+import torch
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import GridSearchCV
@@ -44,7 +45,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
         is_int=False,
         verbose=False,
     ) -> None:
-
+        super().__init__()
         self.n_samples = n_samples
         self.bandwidth = bandwidth
         self.is_int = is_int
@@ -78,7 +79,7 @@ class LogLikelihoodFromSamplesMetric(Metric):
             y_samples = samples
         else:
             y_samples: Float[ndarray, "n_samples batch y_dim"] = model.sample(
-                X=X_test, n_samples=self.n_samples
+                X=X_test, n_samples=self.n_samples, seed=self.seed
             )
         _, batch, y_dim = y_samples.shape
 
@@ -97,8 +98,10 @@ class LogLikelihoodFromSamplesMetric(Metric):
             else:
                 nll -= fit_and_evaluate_kde(y_train_xi, [y_test_xi], bandwidth=None)
 
+        nll /= batch
+
         return {
-            "nll": nll,
+            "nll_samples": nll,
         }
 
 
@@ -155,3 +158,53 @@ def fit_and_evaluate_kde(y_train: Float[ndarray, "n_samples y_dim"], y_test, ban
 
     score = kde.score_samples(y_test)[0]
     return score
+
+
+class LogLikelihoodExactMetric(Metric):
+    """
+    Computes the log likelihood of a model's predictive distribution if the closed-form likelihood is available.
+
+    """
+
+    def __init__(self) -> None:
+        super().__init__()
+
+    def compute(
+        self,
+        model: ProbabilisticModel,
+        X_test: Float[ndarray, "batch n_features"],
+        y_test: Float[ndarray, "batch y_dim"],
+    ) -> Dict[str, float]:
+        """
+        Compute the log likelihood of the predictive distribution.
+
+        Parameters
+        ----------
+        model : ProbabilisticModel
+            The model to evaluate.
+        X_test : ndarray of shape (batch, n_features)
+            The input data.
+        y_test : ndarray of shape (batch, y_dim)
+            The true output values.
+
+        Returns
+        -------
+        log_likelihood : dict
+            A single scalar which quantifies the log likelihood of the predictive distribution from empirical samples.
+        """
+
+        try:
+            y_distribution = model.predict_distribution(X_test)
+        except NotImplementedError:
+            return {
+                "nll_true": np.nan,
+            }
+
+        nll = -y_distribution.log_prob(torch.tensor(y_test)).mean()
+
+        if isinstance(nll, torch.Tensor):
+            nll = nll.item()
+
+        return {
+            "nll_true": nll,
+        }

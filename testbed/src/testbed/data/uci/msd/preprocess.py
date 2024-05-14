@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from testbed.data.utils import _assign_k_splits
 from testbed.data.utils import _extract_and_delete_zipfile
 
 
@@ -23,6 +24,8 @@ def main(path_raw_dataset_dir: Path):
     y = data.iloc[:-i_test, 0]
     categorical = []
 
+    k_fold_splits = _assign_k_splits(X.values.shape[0], 10, 0)
+
     # save preprocessed data
     np.save(
         path_raw_dataset_dir.parent / "data.npy",
@@ -31,6 +34,7 @@ def main(path_raw_dataset_dir: Path):
             "y": y.values.reshape(-1, 1),
             "categorical": categorical,
             "test": {"x": X_test.values, "y": y_test.values},
+            "k_fold_splits": k_fold_splits,
         },
     )
 

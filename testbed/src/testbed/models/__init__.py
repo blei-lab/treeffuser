@@ -5,8 +5,13 @@ Only load wrappers and base class for type hinting.
 
 from testbed.models.base_model import BayesOptProbabilisticModel
 from testbed.models.base_model import ProbabilisticModel
+from testbed.models.base_model import make_autoregressive_probabilistic_model
 
-__all__ = ["ProbabilisticModel", "BayesOptProbabilisticModel"]
+__all__ = [
+    "ProbabilisticModel",
+    "BayesOptProbabilisticModel",
+    "make_autoregressive_probabilistic_model",
+]
 
 # import warnings
 #
