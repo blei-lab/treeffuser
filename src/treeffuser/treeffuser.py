@@ -100,7 +100,10 @@ class Treeffuser(BaseEstimator, abc.ABC):
         """
         _check_arguments(X, y)
 
-        x_transformed = self._x_preprocessor.fit_transform(X, cat_idx=self._x_cat_idx)
+        x_transformed = self._x_preprocessor.fit_transform(
+            X,
+            cat_idx=self._x_cat_idx,  # _x_cat_idx: temporary fix that leads to non-local behavior
+        )
         y_transformed = self._y_preprocessor.fit_transform(y)
 
         if self._sde_initialize_with_data:
