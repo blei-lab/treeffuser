@@ -2,21 +2,62 @@ import argparse
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 from testbed.data.utils import _assign_k_splits
-
-path_raw_dataset_dir = Path("./raw")
-data = pd.read_csv(path_raw_dataset_dir / "usa_00001.csv", header=None)
 
 
 def main(path_raw_dataset_dir: Path):
+    # extract dat file
+    # from ipumspy import readers, ddi
+    # path_to_cookbook = path_raw_dataset_dir / "usa_00004.xml"
+    # path_to_datafile = path_raw_dataset_dir / "usa_00004.dat"
+    # ddi_codebook = readers.read_ipums_ddi(path_to_cookbook)
+    # data = readers.read_microdata(ddi_codebook, path_to_datafile)
+    # np.save(path_raw_dataset_dir / "usa_00004.npy", data)
+
     # import data
-    data = pd.read_csv(path_raw_dataset_dir / "usa_00001.csv", header=None)
+    data = np.load(
+        path_raw_dataset_dir / "usa_00004.npy", allow_pickle=True
+    )  # to access metadata for a given column, visit https://usa.ipums.org/usa-action/variables/COLUMN_NAME#description_section
+
+    # drop year, sample
+    drop_cols = [
+        "YEAR",
+        "SAMPLE",
+        "SERIAL",
+        "CBSERIAL",
+        "HHWT",
+        "CLUSTER",
+        "STRATA",
+        "PERNUM",
+        "PERWT",
+        "RACED",
+        "HISPAND",
+        "DEGFIELDD",
+    ]
+    data = data.drop(drop_cols, axis=1)
+
+    # convert to float
+    convert_to_float_cols = ["INCTOT", "INCWELFR", "INCRETIR", "MIGRATE1"]
+    data[convert_to_float_cols] = data[convert_to_float_cols].astype("float64")
 
     # extract outcome and covariates
-    X = data.iloc[:, :-1]
-    y = data.iloc[:, -1]
-    categorical = [3]
+    y_cols = ["INCTOT"]  # or wage income?
+    X = data.loc[:, [col for col in data.columns if col not in y_cols]]
+    y = data.iloc[:, y_cols]
+
+    # categorical columns
+    categorical_cols = [
+        "GQ",
+        "RACE",
+        "HISPAN",
+        "MIGRATE1",
+        "MIGRATE1D",
+        "HCOVANY",
+        "SCHOOL",
+        "SCHLTYPE",
+        "DEGFIELD",
+    ]
+    categorical = [data.columns.get_loc(col) for col in categorical_cols]
 
     k_fold_splits = _assign_k_splits(X.values.shape[0], 10, 0)
 
@@ -28,6 +69,7 @@ def main(path_raw_dataset_dir: Path):
             "y": y.values,
             "categorical": categorical,
             "k_fold_splits": k_fold_splits,
+            "x_names": [col for col in data.columns if col not in y_cols],
         },
     )
 
