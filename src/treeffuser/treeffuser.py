@@ -59,6 +59,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self._score_model = None
         self._is_fitted = False
         self._x_preprocessor = Preprocessor()
+        self._x_cat_idx = None
         self._y_preprocessor = Preprocessor()
         self._y_dim = None
 
@@ -78,17 +79,33 @@ class Treeffuser(BaseEstimator, abc.ABC):
         Should return the class of the score model.
         """
 
-    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]):
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+    ):
         """
         Fit the model to the data.
 
-        Returns an instance of the model for chaining.
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+
+        Parameters
+        ----------
+        An instance of the model for chaining.
         """
         _check_arguments(X, y)
         X = np.asarray(X, dtype=np.float32)
         y = np.asarray(y, dtype=np.float32)
 
-        x_transformed = self._x_preprocessor.fit_transform(X)
+        x_transformed = self._x_preprocessor.fit_transform(
+            X,
+            cat_idx=self._x_cat_idx,  # _x_cat_idx: temporary fix that leads to non-local behavior
+        )
         y_transformed = self._y_preprocessor.fit_transform(y)
 
         if self._sde_initialize_with_data:
@@ -99,8 +116,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 self._sde = sde_cls(**self._sde_manual_hyperparams)
             else:
                 self._sde = sde_cls()
-
         self._score_config.update({"sde": self._sde})
+
         self._score_config = FrozenConfigDict(self._score_config)
 
         self._score_model = self._score_model_class(**self.score_config)
@@ -210,7 +227,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
         """
         n_samples = n_samples_increment = 10
 
-        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=1)
+        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
         norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
         max_change = np.inf
 
@@ -219,7 +236,7 @@ class Treeffuser(BaseEstimator, abc.ABC):
                 X=X,
                 n_samples=n_samples_increment,
                 verbose=verbose,
-            ).sum(axis=1)
+            ).sum(axis=0)
 
             mean = (sum_increment + mean_prev * n_samples) / (n_samples + n_samples_increment)
             norm = np.sqrt((mean**2).sum(axis=1))
@@ -423,6 +440,34 @@ class LightGBMTreeffuser(Treeffuser):
                 "n_jobs": n_jobs,
             }
         )
+
+    def fit(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
+        cat_idx: Optional[List[int]] = None,
+    ):
+        """
+        Fit the model to the data.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        y : np.ndarray
+            Target data with shape (batch, y_dim).
+        cat_idx: list
+            List with indices of the columns of X that are categorical.
+
+        Parameters
+        ----------
+        An instance of the model for chaining.
+        """
+        if cat_idx:
+            self._x_cat_idx = cat_idx
+            self._score_config.update({"categorical_features": cat_idx})
+
+        super().fit(X, y)
 
     @property
     def score_config(self):

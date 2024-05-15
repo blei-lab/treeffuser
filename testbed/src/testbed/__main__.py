@@ -115,6 +115,8 @@ def get_model(
 AVAILABLE_DATASETS = list(list_data().keys())
 AVAILABLE_MODELS = get_model(return_available_models=True)
 
+SUPPORT_CATEGORICAL = ["treeffuser"]
+
 METRIC_TO_CLASS = {
     "accuracy": AccuracyMetric(),
     "quantile_calibration_error": QuantileCalibrationErrorMetric(),
@@ -344,6 +346,7 @@ def run_model_on_dataset(
     X_test: Float[ndarray, "test_size n_features"],
     y_train: Float[ndarray, "train_size n_targets"],
     y_test: Float[ndarray, "test_size n_targets"],
+    cat_idx: List[int],
     model_name: str,
     metrics: List[Metric],
     evaluation_mode: Literal["bayes_opt", "cross_val"] = "cross_val",
@@ -382,7 +385,10 @@ def run_model_on_dataset(
         model = model_class(seed=seed)
 
     train_start = time.time()
-    model.fit(X_train, y_train)
+    if model_name in SUPPORT_CATEGORICAL:
+        model.fit(X_train, y_train, cat_idx)
+    else:
+        model.fit(X_train, y_train)
     train_end = time.time()
 
     results = {}
@@ -513,6 +519,7 @@ def main() -> None:
                 X_test=X_test,
                 y_train=y_train,
                 y_test=y_test,
+                cat_idx=data.get("categorical", None),
                 model_name=model_name,
                 metrics=args.metrics,
                 evaluation_mode=args.evaluation_mode,
