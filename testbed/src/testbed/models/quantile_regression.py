@@ -86,7 +86,7 @@ class QuantileRegressionTree(ProbabilisticModel):
         self.n_estimators = n_estimators
         self.n_repeats = n_repeats
         self.learning_rate = learning_rate
-        self.early_stopping_rounds = early_stopping_rounds
+        self.early_stopping_rounds = int(early_stopping_rounds)
         self.num_leaves = num_leaves
         self.seed = seed
         self.validation_fraction = validation_fraction
