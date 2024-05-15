@@ -22,7 +22,7 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
         n_estimators: int = 3000,
         n_repeats: int = 30,
         learning_rate: float = 0.1,
-        early_stopping_rounds: int = 75,
+        early_stopping_rounds: int = 50,
         num_leaves: int = 31,
         seed: int = 0,
         subsample: float = 1.0,
