@@ -104,6 +104,8 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         """
         np.random.seed(seed)
         samples = np.array(self.model.pred_dist(X).sample(n_samples))
+        if self.dim_y == 1:
+            samples = samples.reshape(n_samples, -1, 1)
         return samples
 
     @staticmethod
