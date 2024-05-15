@@ -106,6 +106,11 @@ def get_model(
 
         return IBugXGBoost
 
+    if model_name == "drf":
+        from testbed.models.drf_ import DistributionalRandomForest
+
+        return DistributionalRandomForest
+
     if return_available_models:
         return available_models
 
