@@ -29,7 +29,7 @@ def main(path_raw_dataset_dir: Path):
         path_raw_dataset_dir.parent / "data.npy",
         {
             "x": X.values,
-            "y": y.values,
+            "y": y.values.reshape(-1, 1),
             "categorical": categorical,
             "k_fold_splits": k_fold_splits,
         },

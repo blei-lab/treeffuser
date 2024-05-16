@@ -1,4 +1,5 @@
 from typing import Dict
+from typing import List
 from typing import Optional
 
 from jaxtyping import Float
@@ -49,6 +50,7 @@ class Treeffuser(ProbabilisticModel, SupportsMultioutput):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
+        cat_idx: Optional[List[int]] = None,
     ) -> "ProbabilisticModel":
         self.model = LightGBMTreeffuser(
             n_estimators=self.n_estimators,
@@ -65,7 +67,7 @@ class Treeffuser(ProbabilisticModel, SupportsMultioutput):
             sde_manual_hyperparams=self.sde_manual_hyperparams,
         )
 
-        self.model.fit(X, y)
+        self.model.fit(X, y, cat_idx)
         return self
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:

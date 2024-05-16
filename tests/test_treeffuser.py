@@ -92,3 +92,22 @@ def test_sample_based_nll_gaussian_mixture():
 
     relative_error = np.abs(nll_treeffuser / nll_true - 1)
     assert relative_error < 0.05, f"relative error: {relative_error}"
+
+
+def test_categorical():
+    """Basic test for categorical variable support."""
+    n = 10**3
+    rng = np.random.default_rng(seed=0)
+
+    X_noncat = rng.uniform(low=1, high=2, size=(n, 1))
+    X_cat = rng.choice(1, size=(n, 1))
+    X = np.concatenate([X_noncat, X_cat], axis=1)
+
+    y = rng.normal(loc=X_noncat + 2 * X_cat, scale=1, size=(n, 1))
+
+    for cat_idx in [None, [1]]:
+        model = LightGBMTreeffuser()
+        model.fit(X=X, y=y, cat_idx=cat_idx)
+
+
+test_categorical()
