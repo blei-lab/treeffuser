@@ -78,7 +78,8 @@ docs/_build
 **/raw/**
 **/data.npy
 
-# Debug folders and files
+# Debug files
+
 *debug*
 
 # Latex
