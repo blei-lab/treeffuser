@@ -26,9 +26,7 @@ from torch import nn
 from torch.optim import Adam
 
 from testbed.models._preprocessors import Preprocessor
-from testbed.models.lightning_uq_models._data_module import (
-    GenericDataModule,  # TODO: Find a way of making this shared
-)
+from testbed.models.nnfuser._data_module import GenericDataModule
 from treeffuser.sde import DiffusionSDE
 
 ###################################################
@@ -212,8 +210,8 @@ class NNScore(Score):
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
-        n_ensembles: int = 3,
         burnin_epochs: int = 10,
+        eval_percent: float = 0.1,
         enable_progress_bar: bool = False,
     ) -> None:
         """
@@ -258,9 +256,9 @@ class NNScore(Score):
         self.use_gpu = use_gpu
         self.patience = patience
         self.seed = seed
-        self.n_ensembles = n_ensembles
         self.burnin_epochs = burnin_epochs
         self.enable_progress_bar = enable_progress_bar
+        self.eval_percent = eval_percent
 
         # Other stuff part of internal state
         self.model = None  # Convention inputs are (y, x, t)
@@ -290,7 +288,8 @@ class NNScore(Score):
 
         predictors = self._x_scaler.transform(predictors)
         predictors = torch.from_numpy(predictors).float()
-        score_p = self.model(predictors).detach().numpy()
+        score_p_not_norm = self.model(predictors).detach().numpy()
+        score_p = self._y_scaler.inverse_transform(score_p_not_norm)
         scores = score_p / std
 
         return scores
@@ -317,8 +316,8 @@ class NNScore(Score):
             y=y,
             sde=self._sde,
             n_repeats=self._n_repeats,
-            eval_percent=self._eval_percent,
-            seed=self._nn_args["seed"],
+            eval_percent=self.eval_percent,
+            seed=self.seed,
         )
 
         self._x_scaler = Preprocessor()
