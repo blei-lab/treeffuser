@@ -134,6 +134,8 @@ METRIC_TO_CLASS = {
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
 
+EVALUATION_MODES = ["cross_val", "bayes_opt", "train_test"]
+
 
 BARS = "-" * 50 + "\n"
 TITLE = "\n" + BARS + "TESTBED".center(50) + "\n" + BARS
@@ -155,11 +157,26 @@ def get_data(
     is_linear: bool,
     is_heteroscedastic: bool,
     n_samples: int,
+    dim_input: int,
     seed: int,
 ) -> Dict[str, ndarray]:
 
     cls = AVAILABLE_DATASETS[dataset_name]
-    dataset = cls(is_linear=is_linear, is_heteroscedastic=is_heteroscedastic)
+    if dataset_name == "student_t":
+        dataset = cls(
+            df=DF_STUDENT_T,
+            is_linear=is_linear,
+            is_heteroscedastic=is_heteroscedastic,
+            x_dim=dim_input,
+            seed=seed,
+        )
+    else:
+        dataset = cls(
+            is_linear=is_linear,
+            is_heteroscedastic=is_heteroscedastic,
+            x_dim=dim_input,
+            seed=seed,
+        )
 
     X, y = dataset.sample_dataset(n_samples=n_samples, seed=seed)
     data = {"x": X, "y": y}
@@ -235,6 +252,7 @@ def parse_args():
     msg = "Mode of model evaluation."
     msg += "cross_val: evaluate the split in --split_idx with the default parameters"
     msg += " or bayes_opt: optimize the hyperparameters with bayesian optimization on a single split."
+    msg += " train_test: train on the training set and evaluate on the test set with no bayesian optimization."
     msg += " Default: cross_val."
     parser.add_argument(
         "--evaluation_mode",
@@ -286,7 +304,7 @@ def parse_args():
         help=msg,
     )
 
-    msg = "Linear relationship between X and y"
+    msg = "Should there be a linear relationship between X and y"
     parser.add_argument(
         "--is_linear",
         type=bool,
@@ -294,7 +312,7 @@ def parse_args():
         help=msg,
     )
 
-    msg = "Heteroscedastic noise"
+    msg = "Should the noise be heteroscedastic"
     parser.add_argument(
         "--is_heteroscedastic",
         type=bool,
@@ -320,6 +338,11 @@ def check_args(args):
     Args:
         args (argparse.Namespace): Arguments passed to the script.
     """
+    if args.evaluation_mode not in EVALUATION_MODES:
+        msg = f"Evaluation mode {args.evaluation_mode} is not available."
+        msg += f" Available modes: {lst_to_new_line(EVALUATION_MODES)}"
+        raise ValueError(msg)
+
     # check model name is valid
     for model_name in args.models:
         if model_name not in AVAILABLE_MODELS:
@@ -542,6 +565,7 @@ def main() -> None:
                 is_linear=args.is_linear,
                 is_heteroscedastic=args.is_heteroscedastic,
                 n_samples=args.dataset_size,
+                dim_input=args.dim_input,
                 seed=args.seed,
             )
 
