@@ -198,7 +198,7 @@ class NNffuser(ProbabilisticModel, SupportsMultioutput):
         return {
             "n_layers": Integer(1, 7),
             "hidden_size": Integer(10, 1000),
-            "max_epochs": Integer(10, 1000),
+            "max_epochs": Integer(100, 10000),
             "learning_rate": Real(1e-3, 1),
             "patience": Integer(1, 100),
             "burnin_epochs": Integer(1, 20),
