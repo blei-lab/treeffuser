@@ -64,6 +64,7 @@ class ContinuousDataset:
         scale = np.repeat(scale, n_samples, axis=0)
 
         noise = self._get_noise(scale)
+
         y = mean + noise * scale
         return y
 
