@@ -69,6 +69,12 @@ def get_model(
 
         return NGBoostMixtureGaussian
 
+    available_models.append("ngboost_student_t")
+    if model_name == "ngboost_student_t":
+        from testbed.models.ngboost._ngboost import NGBoostStudentT
+
+        return NGBoostStudentT
+
     available_models.append("treeffuser")
     if model_name == "treeffuser":
         from testbed.models.treeffuser import Treeffuser
@@ -605,7 +611,16 @@ def main() -> None:
                     name=f"{model_name}_{dataset_name}",
                     # config=args,
                 )
-                wandb.log({"model": model_name, "dataset": dataset_name})
+                wandb.log(
+                    {
+                        "model": model_name,
+                        "dataset": dataset_name,
+                        "is_linear": args.is_linear,
+                        "is_heteroscedastic": args.is_heteroscedastic,
+                        "dim_input": args.dim_input,
+                        "dataset_size": args.dataset_size,
+                    }
+                )
 
             results = run_model_on_dataset(
                 X_train=X_train,

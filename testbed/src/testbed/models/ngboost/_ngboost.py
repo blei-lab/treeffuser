@@ -2,7 +2,7 @@ import numpy as np
 import torch
 from jaxtyping import Float
 from ngboost import NGBRegressor
-from ngboost.distns import Poisson
+from ngboost.distns import TFixedDf
 from numpy import ndarray
 from skopt.space import Integer
 from skopt.space import Real
@@ -162,17 +162,18 @@ class NGBoostMixtureGaussian(ProbabilisticModel):
         }
 
 
-class NGBoostPoisson(ProbabilisticModel):
+class NGBoostStudentT(ProbabilisticModel):
     """
     A probabilistic model that uses NGBoost with a Gaussian likelihood.
 
     NGBoost only accepts 1 dimensional y values.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05):
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, seed=0):
         super().__init__()
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
+        self.seed = seed
         self.model = None
 
     def fit(
@@ -192,7 +193,7 @@ class NGBoostPoisson(ProbabilisticModel):
         validation_fraction = min(int(0.1 * X.shape[0]), MAX_VALIDATION_SIZE) / X.shape[0]
 
         self.model = NGBRegressor(
-            Dist=Poisson,
+            Dist=TFixedDf,
             n_estimators=self.n_estimators,
             learning_rate=self.learning_rate,
             early_stopping_rounds=10,
@@ -210,11 +211,12 @@ class NGBoostPoisson(ProbabilisticModel):
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
+
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
     @staticmethod
