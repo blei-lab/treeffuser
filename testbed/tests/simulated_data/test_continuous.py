@@ -49,7 +49,7 @@ def test_normal_linear():
 
 
 @pytest.mark.parametrize(
-    "cls, is_linear, is_heteroscedastic",
+    "cls, is_linear, is_heteroscedastic",  # noqa
     [
         (NormalDataset, True, True),
         (NormalDataset, True, False),
