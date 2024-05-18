@@ -20,6 +20,7 @@ from lightning_uq_box.models import ConditionalGuidedLinearModel
 from lightning_uq_box.uq_methods import CARDRegression
 from lightning_uq_box.uq_methods import DeterministicRegression
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
@@ -27,12 +28,11 @@ from tqdm import tqdm
 
 from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
-from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
 
 
-class Card(ProbabilisticModel, SupportsMultioutput):
+class Card(ProbabilisticModel, MultiOutputMixin):
 
     def __init__(
         self,

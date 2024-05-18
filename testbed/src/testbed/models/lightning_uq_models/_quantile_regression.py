@@ -89,9 +89,7 @@ class QuantileRegression(ProbabilisticModel):
             np.random.seed(self.seed)
             torch.manual_seed(self.seed)
 
-    def fit(
-        self, X: Float[torch.Tensor, "batch x_dim"], y: Float[torch.Tensor, "batch y_dim"]
-    ) -> None:
+    def fit(self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]) -> None:
         """
         Fits the QuantileRegression model using provided training data.
         """
@@ -105,7 +103,7 @@ class QuantileRegression(ProbabilisticModel):
         self._x_scaler = Preprocessor()
         self._y_scaler = Preprocessor()
 
-        X = self._x_scaler.fit_transform(X)
+        X = self._x_scaler.fit_transform(X.astype(float))
         y = self._y_scaler.fit_transform(y)
 
         dm = GenericDataModule(X, y, batch_size=self.batch_size)
@@ -141,7 +139,7 @@ class QuantileRegression(ProbabilisticModel):
         trainer.fit(self._model, dm)
 
     @torch.no_grad()
-    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[torch.Tensor, "batch y_dim"]:
+    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
         """
         Predicts using the QuantileRegression model by outputting the median quantile.
         """
