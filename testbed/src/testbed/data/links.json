@@ -14,5 +14,6 @@
     "power": "https://archive.ics.uci.edu/static/public/294/combined+cycle+power+plant.zip",
     "superconductor": "https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip",
     "wave": "https://archive.ics.uci.edu/static/public/494/wave+energy+converters.zip",
-    "census": null
+    "boston": "https://archive.ics.uci.edu/ml/machine-learning-databases/housing/housing.data",
+    "kin8nm": "https://www.openml.org/data/download/3626/dataset_2175_kin8nm.arff"
 }
