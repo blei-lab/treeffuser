@@ -106,6 +106,12 @@ def get_model(
 
         return IBugXGBoost
 
+    available_models.append("nnffuser")
+    if model_name == "nnffuser":
+        from testbed.models.nnffuser import NNffuser
+
+        return NNffuser
+
     if return_available_models:
         return available_models
 
