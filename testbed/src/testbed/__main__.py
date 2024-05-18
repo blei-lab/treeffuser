@@ -117,7 +117,6 @@ def get_model(
 
         return NNffuser
 
-
     if return_available_models:
         return available_models
 
