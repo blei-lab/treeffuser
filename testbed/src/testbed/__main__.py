@@ -106,6 +106,11 @@ def get_model(
 
         return IBugXGBoost
 
+    if model_name == "drf":
+        from testbed.models.drf_ import DistributionalRandomForest
+
+        return DistributionalRandomForest
+
     available_models.append("nnffuser")
     if model_name == "nnffuser":
         from testbed.models.nnffuser import NNffuser
@@ -524,7 +529,9 @@ def main() -> None:
                     name=f"{model_name}_{dataset_name}",
                     # config=args,
                 )
-                wandb.log({"model": model_name, "dataset": dataset_name})
+                wandb.log(
+                    {"model": model_name, "dataset": dataset_name, "split_idx": args.split_idx}
+                )
 
             results = run_model_on_dataset(
                 X_train=X_train,
