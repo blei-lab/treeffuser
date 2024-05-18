@@ -94,8 +94,8 @@ class QuantileCalibrationErrorMetric(Metric):
 
 
 def _compute_quantile_calibration_error(
-    y_preds: Float[ndarray, "n_samples batch"],
-    y_true: Float[ndarray, "batch"],
+    y_preds: Float[ndarray, "n_samples batch y_dim"],
+    y_true: Float[ndarray, "batch y_dim"],
 ) -> Dict[str, float]:
     """
     Compute quantile calibration metrics based on samples from the predictive distribution.
@@ -105,9 +105,9 @@ def _compute_quantile_calibration_error(
 
     Parameters
     ----------
-    y_preds : ndarray of shape (n_samples, batch)
+    y_preds : ndarray of shape (n_samples, batch, y_dim)
         ndarray of `n_samples` of `y` from the predictive distribution, for a batch of data.
-    y_true : ndarray of shape (batch,)
+    y_true : ndarray of shape (batch, y_dim)
         True `y` values for the batch of data.
 
     Returns
@@ -121,8 +121,8 @@ def _compute_quantile_calibration_error(
     """
 
     empirical_quantiles = np.mean(y_true <= y_preds, axis=0)
-    empirical_quantiles = np.sort(empirical_quantiles)
-    expected_quantiles = np.linspace(0, 1, y_true.shape[0])
+    empirical_quantiles = np.sort(empirical_quantiles, axis=0)
+    expected_quantiles = np.linspace(0, 1, y_true.shape[0])[:, np.newaxis]
     rmsce = np.sqrt(np.mean((empirical_quantiles - expected_quantiles) ** 2))
     mace = np.mean(np.abs(empirical_quantiles - expected_quantiles))
 

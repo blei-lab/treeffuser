@@ -3,6 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from testbed.data.utils import _assign_k_splits
 
 final_X_cols = [
     "genre",  # cat
@@ -48,10 +49,17 @@ def main(path_raw_dataset_dir: Path):
     X = X[~has_nan]
     y = y[~has_nan]
 
+    k_fold_splits = _assign_k_splits(X.values.shape[0], 10, 0)
+
     # Save the preprocessed data
     np.save(
         path_raw_dataset_dir.parent / "data.npy",
-        {"x": X.values, "y": y.values, "categorical": categorical},
+        {
+            "x": X.values,
+            "y": y.values,
+            "categorical": categorical,
+            "k_fold_splits": k_fold_splits,
+        },
     )
 
 

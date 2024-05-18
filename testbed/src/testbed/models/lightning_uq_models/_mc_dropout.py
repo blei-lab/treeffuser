@@ -12,18 +12,18 @@ from lightning_uq_box.models import MLP
 from lightning_uq_box.uq_methods import NLL
 from lightning_uq_box.uq_methods import MCDropoutRegression
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
 
 from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
-from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
 
 
-class MCDropout(ProbabilisticModel, SupportsMultioutput):
+class MCDropout(ProbabilisticModel, MultiOutputMixin):
 
     def __init__(
         self,
@@ -75,7 +75,7 @@ class MCDropout(ProbabilisticModel, SupportsMultioutput):
         self.burnin_epochs = burnin_epochs
         self.patience = patience
         self.hidden_size = hidden_size
-        self.n_layers = n_layer
+        self.n_layers = n_layers
 
         self._x_scaler = None
         self._y_scaler = None
