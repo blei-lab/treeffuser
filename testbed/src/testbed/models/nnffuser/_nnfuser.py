@@ -9,12 +9,12 @@ from typing import Optional
 from jaxtyping import Float
 from ml_collections import ConfigDict
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
-import testbed.models.nnfuser._score as _score
+import testbed.models.nnffuser._score as _score
 from testbed.models.base_model import ProbabilisticModel
-from testbed.models.base_model import SupportsMultioutput
 from treeffuser.treeffuser import Treeffuser
 
 
@@ -120,7 +120,7 @@ class _NNffuser(Treeffuser):
         return _score.NNScore
 
 
-class NNffuser(ProbabilisticModel, SupportsMultioutput):
+class NNffuser(ProbabilisticModel, MultiOutputMixin):
     """
     Wrapping the LightGBMTreeffuser model as a ProbabilisticModel.
     """
@@ -130,10 +130,10 @@ class NNffuser(ProbabilisticModel, SupportsMultioutput):
         n_layers: int = 3,
         hidden_size: int = 10,
         max_epochs: int = 3000,
-        learning_rate: float = 1e-2,
+        learning_rate: float = 1e-3,
         batch_size: int = 32,
         use_gpu: bool = False,
-        patience: int = 4,
+        patience: int = 10,
         seed: int = 42,
         burnin_epochs: int = 1,
         n_repeats: int = 10,
@@ -150,7 +150,7 @@ class NNffuser(ProbabilisticModel, SupportsMultioutput):
         self.use_gpu = use_gpu
         self.patience = patience
         self.seed = seed
-        self.n_repeat = n_repeats
+        self.n_repeats = n_repeats
         self.burnin_epochs = burnin_epochs
         self.enable_progress_bar = enable_progress_bar
         self.sde_initialize_with_data = sde_initialize_with_data
@@ -174,7 +174,7 @@ class NNffuser(ProbabilisticModel, SupportsMultioutput):
             use_gpu=self.use_gpu,
             patience=self.patience,
             seed=self.seed,
-            n_repeats=self.n_repeat,
+            n_repeats=self.n_repeats,
             burnin_epochs=self.burnin_epochs,
             enable_progress_bar=self.enable_progress_bar,
             sde_initialize_with_data=self.sde_initialize_with_data,
