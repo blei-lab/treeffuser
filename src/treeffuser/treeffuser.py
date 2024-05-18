@@ -254,11 +254,34 @@ class Treeffuser(BaseEstimator, abc.ABC):
 
         return mean_prev
 
+    def predict_distribution(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int = 100,
+        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        verbose: bool = False,
+    ) -> List[KernelDensity]:
+        if not self._is_fitted:
+            raise ValueError("The model has not been fitted yet.")
+
+        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+
+        n_samples, batch, _ = y_samples.shape
+
+        kdes = []
+        for i in range(batch):
+            y_i = y_samples[:, i, :]
+            kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
+            kde.fit(y_i)
+            kdes.append(kde)
+
+        return kdes
+
     def compute_nll(
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        ode: bool = True,
+        ode: bool = False,
         n_samples: int = 10,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -307,8 +330,8 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        n_samples: Optional[int] = 10,
-        bandwidth: Optional[float] = 1.0,
+        n_samples: int = 10,
+        bandwidth: float = 1.0,
         verbose: bool = False,
     ) -> float:
         y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
