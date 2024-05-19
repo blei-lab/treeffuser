@@ -1,6 +1,8 @@
+import lightgbm as lgb  # noqa
+
 from typing import Tuple
 
-import lightgbm as lgb
+
 import numpy as np
 from jaxtyping import Float
 from numpy import ndarray
@@ -106,14 +108,12 @@ class QuantileRegressionTree(ProbabilisticModel):
 
         train_examples = self.n_repeats * X_train.shape[0]
         q_train = np.random.uniform(0, 1, size=train_examples)
-        # q_train = np.ones(train_examples) * 0.9
         X_train = np.tile(X_train, (self.n_repeats, 1))
         Xq_train = np.concatenate([X_train, q_train[:, None]], axis=1)
         y_train = np.tile(y_train, (self.n_repeats, 1))
 
         validation_examples = self.n_repeats * X_val.shape[0]
         q_val = np.random.uniform(0, 1, size=validation_examples)
-        # q_val = np.ones(validation_examples) * 0.95
         X_val = np.tile(X_val, (self.n_repeats, 1))
         Xq_val = np.concatenate([X_val, q_val[:, None]], axis=1)
         y_val = np.tile(y_val, (self.n_repeats, 1))
@@ -130,7 +130,11 @@ class QuantileRegressionTree(ProbabilisticModel):
             "verbose": self.verbose,
         }
 
-        callbacks = [lgb.early_stopping(self.early_stopping_rounds, verbose=self.verbose)]
+        callbacks = [
+            lgb.early_stopping(
+                stopping_rounds=int(self.early_stopping_rounds), verbose=self.verbose
+            )
+        ]
 
         self.model = lgb.train(
             params,
@@ -179,6 +183,8 @@ class QuantileRegressionTree(ProbabilisticModel):
         q: Float[ndarray, "n_quantiles+1 batch 1"] = self._predict_quantile_function(
             X, n_quantiles + 1
         )
+        if seed is not None:
+            np.random.seed(seed)
 
         # we will sample (and construct the index of the quantile)
         rng = np.random.default_rng(seed)

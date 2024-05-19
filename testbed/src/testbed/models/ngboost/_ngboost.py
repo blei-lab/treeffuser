@@ -237,11 +237,14 @@ class NGBoostPoisson(ProbabilisticModel):
         return self.model.predict(X).reshape(-1, 1)
 
     def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
+        self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the probability distribution for each input.
         """
+        if seed is not None:
+            np.random.seed(seed)
+
         return self.model.pred_dist(X).sample(n_samples).reshape(n_samples, -1, 1)
 
     @staticmethod
