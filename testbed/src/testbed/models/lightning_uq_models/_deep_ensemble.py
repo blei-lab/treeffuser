@@ -11,6 +11,7 @@ from jaxtyping import Float
 from lightning import Trainer
 from lightning.pytorch.callbacks.early_stopping import EarlyStopping
 from numpy import ndarray
+from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 from torch import Tensor
@@ -19,7 +20,6 @@ from torch.optim import Adam
 
 from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
-from testbed.models.base_model import SupportsMultioutput
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 
 
@@ -78,7 +78,7 @@ class MVERegression(L.LightningModule):
         y_dim = preds.shape[1] // 2
         mean = preds[:, :y_dim]
         log_varish = preds[:, y_dim:]
-        var = nn.functional.softplus(log_varish)
+        var = nn.functional.softplus(log_varish) + 1e-6
         return mean, var
 
     def training_step(self, batch: dict, batch_idx: int) -> Tensor:
@@ -116,7 +116,7 @@ class MVERegression(L.LightningModule):
         return self.optimizer_func(self.parameters())
 
 
-class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
+class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
     """
     Implements a deep ensemble for regression tasks, where each model in the ensemble outputs both mean and variance.
     This approach is designed to provide predictions with associated uncertainty estimates.
@@ -145,7 +145,7 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
         use_gpu: bool = False,
         patience: int = 10,
         seed: int = 42,
-        n_ensembles: int = 3,
+        n_ensembles: int = 5,
         burnin_epochs: int = 10,
         enable_progress_bar: bool = False,
     ):
@@ -180,6 +180,9 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
             X (np.ndarray): The input features for training.
             y (np.ndarray): The target outputs for training.
         """
+        if len(y.shape) == 1:
+            y = y.reshape(-1, 1)
+
         self.scaler_x = Preprocessor()
         self.scaler_y = Preprocessor()
 
@@ -266,7 +269,8 @@ class DeepEnsemble(ProbabilisticModel, SupportsMultioutput):
 
         samples = samples.reshape(-1, self.y_dim)
         samples = self.scaler_y.inverse_transform(samples)
-        return samples.reshape(n_samples, -1, self.y_dim)
+        samples = samples.reshape(n_samples, -1, self.y_dim)
+        return samples
 
     def log_likelihood(
         self, X: Float[ndarray, "batch x_dim"], y: Float[ndarray, "batch y_dim"]

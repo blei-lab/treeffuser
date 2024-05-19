@@ -1,3 +1,8 @@
+"""
+This is essentially a copy of __main__.py
+but designed to run on simulated datasets.
+"""
+
 # noinspection PyUnresolvedReferences
 import lightgbm as lgb  # noqa F401
 
@@ -28,8 +33,6 @@ sys.path.append(str(current_dir / "../"))
 sys.path.append(str(current_dir / "../../../src"))
 print(sys.path)
 
-
-from testbed.data.utils import get_data  # noqa E402
 from testbed.data.utils import list_data  # noqa E402
 from testbed.metrics import AccuracyMetric  # noqa E402
 from testbed.metrics import CRPS  # noqa E402
@@ -40,6 +43,7 @@ from testbed.metrics import QuantileCalibrationErrorMetric  # noqa E402
 from testbed.models.base_model import BayesOptProbabilisticModel  # noqa E402
 from testbed.models.base_model import make_autoregressive_probabilistic_model  # noqa E402
 from testbed.models.base_model import ProbabilisticModel  # noqa E402
+from testbed.simulated_data.continuous import NormalDataset, StudentTDataset  # noqa E402
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +69,12 @@ def get_model(
 
         return NGBoostMixtureGaussian
 
+    available_models.append("ngboost_student_t")
+    if model_name == "ngboost_student_t":
+        from testbed.models.ngboost._ngboost import NGBoostStudentT
+
+        return NGBoostStudentT
+
     available_models.append("treeffuser")
     if model_name == "treeffuser":
         from testbed.models.treeffuser import Treeffuser
@@ -88,14 +98,8 @@ def get_model(
 
         return MCDropout
 
-    available_models.append("quantile_regression_tree")
-    if model_name == "quantile_regression_tree":
-        from testbed.models.quantile_regression import QuantileRegressionTree
-
-        return QuantileRegressionTree
-
-    available_models.append("quantile_regression_nn")
-    if model_name == "quantile_regression_nn":
+    available_models.append("quantile_regression")
+    if model_name == "quantile_regression":
         from testbed.models.lightning_uq_models import QuantileRegression
 
         return QuantileRegression
@@ -105,17 +109,6 @@ def get_model(
         from testbed.models.ibug_ import IBugXGBoost
 
         return IBugXGBoost
-
-    if model_name == "drf":
-        from testbed.models.drf_ import DistributionalRandomForest
-
-        return DistributionalRandomForest
-
-    available_models.append("nnffuser")
-    if model_name == "nnffuser":
-        from testbed.models.nnffuser import NNffuser
-
-        return NNffuser
 
     if return_available_models:
         return available_models
@@ -129,7 +122,11 @@ def get_model(
 #                 CONSTANTS                               #
 ###########################################################
 
-AVAILABLE_DATASETS = list(list_data().keys())
+AVAILABLE_DATASETS = {
+    "normal": NormalDataset,
+    "student_t": StudentTDataset,
+}
+
 AVAILABLE_MODELS = get_model(return_available_models=True)
 
 SUPPORT_CATEGORICAL = ["treeffuser"]
@@ -139,9 +136,11 @@ METRIC_TO_CLASS = {
     "quantile_calibration_error": QuantileCalibrationErrorMetric(),
     "log_likelihood_closed_form": LogLikelihoodExactMetric(),
     "crps100": CRPS(n_samples=100),
-    # "crps500": CRPS(n_samples=500),
+    "crps500": CRPS(n_samples=500),
 }
 AVAILABLE_METRICS = list(METRIC_TO_CLASS.keys())
+
+EVALUATION_MODES = ["cross_val", "bayes_opt", "train_test"]
 
 
 BARS = "-" * 50 + "\n"
@@ -149,8 +148,45 @@ TITLE = "\n" + BARS + "TESTBED".center(50) + "\n" + BARS
 
 
 ###########################################################
+#               DATASET CONSTANTS                         #
+###########################################################
+
+DF_STUDENT_T = 1
+
+###########################################################
 #               HELPER FUNCTIONS                          #
 ###########################################################
+
+
+def get_data(
+    dataset_name: str,
+    is_linear: bool,
+    is_heteroscedastic: bool,
+    n_samples: int,
+    dim_input: int,
+    seed: int,
+) -> Dict[str, ndarray]:
+
+    cls = AVAILABLE_DATASETS[dataset_name]
+    if dataset_name == "student_t":
+        dataset = cls(
+            df=DF_STUDENT_T,
+            is_linear=is_linear,
+            is_heteroscedastic=is_heteroscedastic,
+            x_dim=dim_input,
+            seed=seed,
+        )
+    else:
+        dataset = cls(
+            is_linear=is_linear,
+            is_heteroscedastic=is_heteroscedastic,
+            x_dim=dim_input,
+            seed=seed,
+        )
+
+    X, y = dataset.sample_dataset(n_samples=n_samples, seed=seed)
+    data = {"x": X, "y": y}
+    return data
 
 
 def lst_to_new_line(lst: list) -> str:
@@ -222,6 +258,7 @@ def parse_args():
     msg = "Mode of model evaluation."
     msg += "cross_val: evaluate the split in --split_idx with the default parameters"
     msg += " or bayes_opt: optimize the hyperparameters with bayesian optimization on a single split."
+    msg += " train_test: train on the training set and evaluate on the test set with no bayesian optimization."
     msg += " Default: cross_val."
     parser.add_argument(
         "--evaluation_mode",
@@ -257,6 +294,38 @@ def parse_args():
         help=msg,
     )
 
+    msg = "Number of dimensions of the input"
+    parser.add_argument(
+        "--dim_input",
+        type=int,
+        default=10,
+        help=msg,
+    )
+
+    msg = "Size of the dataset"
+    parser.add_argument(
+        "--dataset_size",
+        type=int,
+        default=1000,
+        help=msg,
+    )
+
+    msg = "Should there be a linear relationship between X and y"
+    parser.add_argument(
+        "--is_linear",
+        type=bool,
+        default=True,
+        help=msg,
+    )
+
+    msg = "Should the noise be heteroscedastic"
+    parser.add_argument(
+        "--is_heteroscedastic",
+        type=bool,
+        default=True,
+        help=msg,
+    )
+
     msg = "Wandb project name. Disable wandb logging if not provided."
     parser.add_argument(
         "--wandb_project",
@@ -275,6 +344,11 @@ def check_args(args):
     Args:
         args (argparse.Namespace): Arguments passed to the script.
     """
+    if args.evaluation_mode not in EVALUATION_MODES:
+        msg = f"Evaluation mode {args.evaluation_mode} is not available."
+        msg += f" Available modes: {lst_to_new_line(EVALUATION_MODES)}"
+        raise ValueError(msg)
+
     # check model name is valid
     for model_name in args.models:
         if model_name not in AVAILABLE_MODELS:
@@ -491,7 +565,15 @@ def main() -> None:
 
     for model_name in args.models:
         for dataset_name in args.datasets:
-            data = get_data(dataset_name, verbose=True)
+
+            data = get_data(
+                dataset_name,
+                is_linear=args.is_linear,
+                is_heteroscedastic=args.is_heteroscedastic,
+                n_samples=args.dataset_size,
+                dim_input=args.dim_input,
+                seed=args.seed,
+            )
 
             if args.append_x_to_y is not None and args.append_x_to_y > 0:
                 data["x"], data["y"] = make_multi_output_dataset(
@@ -530,7 +612,14 @@ def main() -> None:
                     # config=args,
                 )
                 wandb.log(
-                    {"model": model_name, "dataset": dataset_name, "split_idx": args.split_idx}
+                    {
+                        "model": model_name,
+                        "dataset": dataset_name,
+                        "is_linear": args.is_linear,
+                        "is_heteroscedastic": args.is_heteroscedastic,
+                        "dim_input": args.dim_input,
+                        "dataset_size": args.dataset_size,
+                    }
                 )
 
             results = run_model_on_dataset(

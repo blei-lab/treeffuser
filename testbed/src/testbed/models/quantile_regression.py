@@ -62,7 +62,7 @@ def pinball_eval(preds, train_data: lgb.Dataset) -> Tuple[str, float, bool]:
     return "pinball", np.mean(loss), False
 
 
-class QuantileRegression(ProbabilisticModel):
+class QuantileRegressionTree(ProbabilisticModel):
     """
     Creates a quantile regression model using LightGBM.
 
@@ -88,7 +88,7 @@ class QuantileRegression(ProbabilisticModel):
         self.n_estimators = n_estimators
         self.n_repeats = n_repeats
         self.learning_rate = learning_rate
-        self.early_stopping_rounds = early_stopping_rounds
+        self.early_stopping_rounds = int(early_stopping_rounds)
         self.num_leaves = num_leaves
         self.seed = seed
         self.validation_fraction = validation_fraction
@@ -187,7 +187,8 @@ class QuantileRegression(ProbabilisticModel):
             np.random.seed(seed)
 
         # we will sample (and construct the index of the quantile)
-        q_index = np.random.choice(n_quantiles, size=(n_samples, X.shape[0]))
+        rng = np.random.default_rng(seed)
+        q_index = rng.choice(n_quantiles, size=(n_samples, X.shape[0]))
         batch_index = np.arange(X.shape[0])
         batch_index = np.tile(batch_index, (n_samples, 1))
 
@@ -195,7 +196,7 @@ class QuantileRegression(ProbabilisticModel):
         q_upper_bound = q[q_index + 1, batch_index]
 
         # sample from the uniform distribution
-        u = np.random.uniform(size=(n_samples, X.shape[0], 1))
+        u = rng.uniform(size=(n_samples, X.shape[0], 1))
 
         # sample from the quantile
         y = q_lower_bound + u * (q_upper_bound - q_lower_bound)
@@ -204,9 +205,9 @@ class QuantileRegression(ProbabilisticModel):
     @staticmethod
     def search_space() -> dict:
         return {
-            "n_estimators": Integer(100, 2000, "log-uniform"),
+            "n_estimators": Integer(100, 3000, "log-uniform"),
             "n_repeats": Integer(10, 100),
             "learning_rate": Real(0.01, 1),
-            "early_stopping_rounds": Integer(1, 100),
-            "num_leaves": Integer(2, 1000),
+            "early_stopping_rounds": Integer(10, 100),
+            "num_leaves": Integer(10, 100),
         }

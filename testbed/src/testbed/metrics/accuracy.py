@@ -53,7 +53,9 @@ class AccuracyMetric(Metric):
 
         # Check shapes
         if y_pred.shape != y_test.shape:
-            raise ValueError("Mismatch in shape between predicted and true values.")
+            raise ValueError(
+                f"Mismatch in shape between predicted and true values: {y_pred.shape} != {y_test.shape}"
+            )
 
         # Compute metrics
         mae = mean_absolute_error(y_test, y_pred)
