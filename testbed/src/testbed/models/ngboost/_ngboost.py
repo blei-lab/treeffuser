@@ -254,5 +254,5 @@ class NGBoostPoisson(ProbabilisticModel):
         """
         return {
             "n_estimators": Integer(100, 10000),
-            "learning_rate": Real(0.01, 1),
+            "learning_rate": Real(0.005, 0.2),
         }
