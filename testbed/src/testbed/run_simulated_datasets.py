@@ -98,11 +98,11 @@ def get_model(
 
         return MCDropout
 
-    available_models.append("quantile_regression")
-    if model_name == "quantile_regression":
-        from testbed.models.lightning_uq_models import QuantileRegression
+    available_models.append("quantile_regression_tree")
+    if model_name == "quantile_regression_tree":
+        from testbed.models.quantile_regression import QuantileRegressionTree
 
-        return QuantileRegression
+        return QuantileRegressionTree
 
     available_models.append("ibug")
     if model_name == "ibug":
@@ -185,7 +185,7 @@ def get_data(
         )
 
     X, y = dataset.sample_dataset(n_samples=n_samples, seed=seed)
-    data = {"x": X, "y": y}
+    data = {"x": X, "y": y, "categorical": [], "k_fold_splits": np.arange(0, len(X)) % 10}
     return data
 
 
@@ -476,10 +476,10 @@ def run_model_on_dataset(
         model = model_class(seed=seed)
 
     train_start = time.time()
-    if model_name in SUPPORT_CATEGORICAL:
-        model.fit(X_train, y_train, cat_idx)
-    else:
-        model.fit(X_train, y_train)
+    # if model_name in SUPPORT_CATEGORICAL:
+    #     model.fit(X_train, y_train, cat_idx)
+    # else:
+    model.fit(X_train, y_train)
     train_end = time.time()
 
     results = {}
@@ -492,6 +492,9 @@ def run_model_on_dataset(
         metric_time_end = time.time()
         results.update(res)
         results[f"{metric_name}_time"] = metric_time_end - metric_time_start
+
+    if results["crps_100"] > 1000:
+        print("CRPS_100 is too high")
 
     results.update(model.get_params())
     return results
@@ -563,45 +566,55 @@ def main() -> None:
     header = format_header(args, run_name)
     logger.info(header)
 
-    for model_name in args.models:
-        for dataset_name in args.datasets:
+    for dataset_name in args.datasets:
 
-            data = get_data(
-                dataset_name,
-                is_linear=args.is_linear,
-                is_heteroscedastic=args.is_heteroscedastic,
-                n_samples=args.dataset_size,
-                dim_input=args.dim_input,
-                seed=args.seed,
+        data = get_data(
+            dataset_name,
+            is_linear=args.is_linear,
+            is_heteroscedastic=args.is_heteroscedastic,
+            n_samples=args.dataset_size,
+            dim_input=args.dim_input,
+            seed=args.seed,
+        )
+
+        if args.append_x_to_y is not None and args.append_x_to_y > 0:
+            data["x"], data["y"] = make_multi_output_dataset(
+                data["x"], data["y"], args.dim_output, args.seed
             )
 
-            if args.append_x_to_y is not None and args.append_x_to_y > 0:
-                data["x"], data["y"] = make_multi_output_dataset(
-                    data["x"], data["y"], args.dim_output, args.seed
+        if args.split_idx != -1:
+            X_train = data["x"][data["k_fold_splits"] != args.split_idx]
+            y_train = data["y"][data["k_fold_splits"] != args.split_idx]
+            X_test = data["x"][data["k_fold_splits"] == args.split_idx]
+            y_test = data["y"][data["k_fold_splits"] == args.split_idx]
+        else:
+            if "test" not in data:
+                X_train, X_test, y_train, y_test = train_test_split(
+                    data["x"], data["y"], test_size=0.2, random_state=args.seed
                 )
-
-            if args.split_idx != -1:
-                X_train = data["x"][data["k_fold_splits"] != args.split_idx]
-                y_train = data["y"][data["k_fold_splits"] != args.split_idx]
-                X_test = data["x"][data["k_fold_splits"] == args.split_idx]
-                y_test = data["y"][data["k_fold_splits"] == args.split_idx]
             else:
-                if "test" not in data:
-                    X_train, X_test, y_train, y_test = train_test_split(
-                        data["x"], data["y"], test_size=0.2, random_state=args.seed
-                    )
-                else:
-                    warnings.warn(
-                        f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
-                        stacklevel=2,
-                    )
-                    X_train, X_test, y_train, y_test = (
-                        data["x"],
-                        data["test"]["x"],
-                        data["y"],
-                        data["test"]["y"],
-                    )
+                warnings.warn(
+                    f"Warning: The dataset '{dataset_name}' includes a prescribed test set. The 'seed' argument will be ignored.",
+                    stacklevel=2,
+                )
+                X_train, X_test, y_train, y_test = (
+                    data["x"],
+                    data["test"]["x"],
+                    data["y"],
+                    data["test"]["y"],
+                )
+        # standardize the data using the training set
+        X_train_mean = X_train.mean(axis=0)
+        X_train_std = X_train.std(axis=0)
+        X_train = (X_train - X_train_mean) / X_train_std
+        X_test = (X_test - X_train_mean) / X_train_std
 
+        y_train_mean = y_train.mean(axis=0)
+        y_train_std = y_train.std(axis=0)
+        y_train = (y_train - y_train_mean) / y_train_std
+        y_test = (y_test - y_train_mean) / y_train_std
+
+        for model_name in args.models:
             if args.wandb_project is not None:
                 # setup wandb
                 import wandb
@@ -622,26 +635,35 @@ def main() -> None:
                     }
                 )
 
-            results = run_model_on_dataset(
-                X_train=X_train,
-                X_test=X_test,
-                y_train=y_train,
-                y_test=y_test,
-                cat_idx=data.get("categorical", None),
-                model_name=model_name,
-                metrics=args.metrics,
-                evaluation_mode=args.evaluation_mode,
-                n_iter_bayes_opt=args.n_iter_bayes_opt,
-                seed=args.seed,
-            )
-            results["model"] = model_name
-            results["dataset"] = dataset_name
-            results["evaluation_mode"] = args.evaluation_mode
-            results["seed"] = args.seed
-            if args.evaluation_mode == "cross_val":
-                results["split_idx"] = args.split_idx
-            if args.evaluation_mode == "bayes_opt":
-                results["n_iter_bayes_opt"] = args.n_iter_bayes_opt
+            try:
+                results = run_model_on_dataset(
+                    X_train=X_train.copy(),
+                    X_test=X_test.copy(),
+                    y_train=y_train.copy(),
+                    y_test=y_test.copy(),
+                    cat_idx=data.get("categorical", None),
+                    model_name=model_name,
+                    metrics=args.metrics,
+                    evaluation_mode=args.evaluation_mode,
+                    n_iter_bayes_opt=args.n_iter_bayes_opt,
+                    seed=args.seed,
+                )
+                results["model"] = model_name
+                results["dataset"] = dataset_name
+                results["evaluation_mode"] = args.evaluation_mode
+                results["seed"] = args.seed
+                if args.evaluation_mode == "cross_val":
+                    results["split_idx"] = args.split_idx
+                if args.evaluation_mode == "bayes_opt":
+                    results["n_iter_bayes_opt"] = args.n_iter_bayes_opt
+            except Exception as e:
+                results = {
+                    "model": model_name,
+                    "dataset": dataset_name,
+                    "evaluation_mode": args.evaluation_mode,
+                    "seed": args.seed,
+                    "error": str(e),
+                }
 
             if args.wandb_project is not None:
                 wandb.log(results)
