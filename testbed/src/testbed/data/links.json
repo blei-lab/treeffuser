@@ -13,6 +13,5 @@
     "news": "https://archive.ics.uci.edu/static/public/332/online+news+popularity.zip",
     "power": "https://archive.ics.uci.edu/static/public/294/combined+cycle+power+plant.zip",
     "superconductor": "https://archive.ics.uci.edu/static/public/464/superconductivty+data.zip",
-    "wave": "https://archive.ics.uci.edu/static/public/494/wave+energy+converters.zip",
-    "census": null
+    "wave": "https://archive.ics.uci.edu/static/public/494/wave+energy+converters.zip"
 }
