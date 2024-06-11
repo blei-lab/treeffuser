@@ -20,9 +20,9 @@ from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 import treeffuser._score_models as _score_models
-from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import Score
 from treeffuser._warnings import ConvergenceWarning
+from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import get_sde
 from treeffuser.sde import sdeint
 from treeffuser.sde.initialize import initialize_sde
@@ -58,9 +58,9 @@ class Treeffuser(BaseEstimator, abc.ABC):
         self._sde_manual_hyperparams = sde_manual_hyperparams
         self._score_model = None
         self._is_fitted = False
-        self._x_preprocessor = Preprocessor()
+        self._x_preprocessor = ScalerMixedTypes()
         self._x_cat_idx = None
-        self._y_preprocessor = Preprocessor()
+        self._y_preprocessor = ScalerMixedTypes()
         self._y_dim = None
 
     @property

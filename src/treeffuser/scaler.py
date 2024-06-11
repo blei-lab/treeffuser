@@ -3,50 +3,52 @@ from typing import Optional
 
 from jaxtyping import Float
 from numpy import ndarray
-from sklearn.preprocessing import MinMaxScaler
 from sklearn.preprocessing import StandardScaler
 
 
-class Preprocessor:
+class ScalerMixedTypes:
     """
-    General lightweight preprocessor for data.
+    Data scaler for mixed data-types with continuous and categorical features.
 
-    In addition to handling simple stuff like normalization and standardization
-    of continuous data we do some lightweight standardization of categorical data.
+    - Standardize continuous data to have mean 0 and standard deviation 1 (or between -1
+      and 1 if specified).
+    - Leave categorical data unchanged if specified.
 
+    This class does not check the input data. The indices of the categorical features must be
+    provided, or they will be treated as continuous and standardized.
+
+    Parameters
+    ----------
+    scaler : scaler from sklearn.preprocessing, optional
+        The scaler to use for continuous features. Default is `StandardScaler` if not provided.
     """
 
     def __init__(
         self,
-        use_min_max: bool = False,
+        scaler=None,
     ) -> None:
-        self._scaler = None
         self._cat_idx = None
         self._is_fitted = False
         self._x_dim = None
-        self._use_min_max = use_min_max
+        if scaler is None:
+            self._scaler = StandardScaler()
 
     def fit(self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None):
         """
-        Standardizes the data to have mean 0 and standard deviation 1.
+        Fit the scaler provided at initialization to the data.
 
-        This class does no checking of the input data. It is assumed that the user
-        has already checked that the input data is valid.
-
-        Args:
-        X: The data to fit the preprocessor to.
-        cat_idx: The indices of the categorical features.
+        Parameters
+        ----------
+        X : ndarray of shape (batch, x_dim)
+            The data to fit the preprocessor to.
+        cat_idx : list of int, optional
+            The indices of the categorical features.
         """
         self._reset()
         cat_idx = cat_idx if cat_idx is not None else []
+        non_cat_idx = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
 
-        X_non_cat = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
-
-        if self._use_min_max:
-            self._scaler = MinMaxScaler(feature_range=(-1, 1))
-        else:
-            self._scaler = StandardScaler(with_mean=True, with_std=True)
-        self._scaler.fit(X_non_cat)
+        self._scaler.fit(non_cat_idx)
         self._cat_idx = cat_idx
         self._is_fitted = True
         self._x_dim = X.shape[1]
@@ -54,14 +56,17 @@ class Preprocessor:
 
     def transform(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch x_dim"]:
         """
-        Standardizes the data to have mean 0 and standard deviation 1. The categorical
-        features are left unchanged.
+        Standardizes the data. The categorical features are left unchanged.
 
-        This class does no checking of the input data. It is assumed that the user
-        has already checked that the input data is valid.
+        Parameters
+        ----------
+        X : ndarray of shape (batch, x_dim)
+            The data to transform.
 
-        Args:
-        X: The data to transform.
+        Returns
+        -------
+        X_transformed : ndarray of shape (batch, x_dim)
+            The transformed data with standardized continuous features.
         """
         if not self._is_fitted:
             raise ValueError("The preprocessor has not been fitted yet.")
@@ -82,12 +87,17 @@ class Preprocessor:
         """
         Standardizes the data to have mean 0 and standard deviation 1.
 
-        This class does no checking of the input data. It is assumed that the user
-        has already checked that the input data is valid.
+        Parameters
+        ----------
+        X : ndarray of shape (batch, x_dim)
+            The data to fit and transform.
+        cat_idx : list of int, optional
+            The indices of the categorical features.
 
-        Args:
-        X: The data to fit the preprocessor to.
-        cat_idx: The indices of the categorical features.
+        Returns
+        -------
+        X_transformed : ndarray of shape (batch, x_dim)
+            The transformed data with standardized continuous features.
         """
         self.fit(X, cat_idx)
         return self.transform(X)
@@ -97,6 +107,16 @@ class Preprocessor:
     ) -> Float[ndarray, "batch x_dim"]:
         """
         Takes the data back to the original scale.
+
+        Parameters
+        ----------
+        X : ndarray of shape (batch, x_dim)
+            The data to transform back.
+
+        Returns
+        -------
+        X_untransformed : ndarray of shape (batch, x_dim)
+            The untransformed data with the original scale.
         """
         if not self._is_fitted:
             raise ValueError("The preprocessor has not been fitted yet.")
@@ -115,7 +135,8 @@ class Preprocessor:
         """
         Resets the state of the preprocessor.
         """
-        self._scaler = None
+        self._scaler = self._scaler.__class__()
         self._cat_idx = None
         self._is_fitted = False
+        self._x_dim = None
         return self

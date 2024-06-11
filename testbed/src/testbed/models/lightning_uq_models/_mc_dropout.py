@@ -17,10 +17,10 @@ from skopt.space import Integer
 from skopt.space import Real
 from torch.optim import Adam
 
-from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
 from testbed.models.lightning_uq_models._utils import _to_tensor
+from treeffuser.scaler import ScalerMixedTypes
 
 
 class MCDropout(ProbabilisticModel, MultiOutputMixin):
@@ -95,8 +95,8 @@ class MCDropout(ProbabilisticModel, MultiOutputMixin):
         self._y_dim = y.shape[1]
         self._x_dim = X.shape[1]
 
-        self._x_scaler = Preprocessor()
-        self._y_scaler = Preprocessor()
+        self._x_scaler = ScalerMixedTypes()
+        self._y_scaler = ScalerMixedTypes()
 
         X = self._x_scaler.fit_transform(X)
         y = self._y_scaler.fit_transform(y)
