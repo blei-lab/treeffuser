@@ -5,3 +5,4 @@ six>=1.14.0
 tox
 twine
 scipy
+poetry
