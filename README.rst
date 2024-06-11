@@ -4,6 +4,7 @@ Treeffuser: Easy to use probabilistic prediction with tree-based diffusion model
 Treeffuser is an easy to use package for probabilistic prediction with tree-based diffusion models.
 It is desgined to adhere closely to the scikit-learn API and requires minimal user tuning.
 ..  code-block:: python
+
     from treeffuser import Treeffuser
     import numpy as np
 
