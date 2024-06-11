@@ -1,7 +1,41 @@
-[build-system]
-requires = [
-    "setuptools>=30.3.0",
+[tool.poetry]
+name = "treeffuser"
+version = "0.1.0"
+description = ""
+authors = [
+    "Nicolas Beltran-Velez <nb2838@columbia.edu>",
+    "Alessandro Antonio Grande <alessandro.grande@columbia.edu>",
+    "Achille Nazaret <achille.nazaret@gmail.com>",
 ]
+license = "MIT"
+readme = "README.rst"
+packages = [{include = "treeffuser", from= "src"}]
+repository = "https://github.com/blei-lab/treeffuser"
+include = [
+    "pyproject.toml",
+    "AUTHORS.rst",
+    "README.rst",
+    "LICENSE"
+]
+
+[tool.poetry.dependencies]
+python = "^3.9"
+numpy = "^1.24"
+jaxtyping = "^0.2.19"
+einops = "^0.8.0"
+scipy = "^1.13.1"
+tqdm = "^4.66.4"
+lightgbm = "^4.3.0"
+ml-collections = "^0.1.1"
+scikit-learn = "^1.5.0"
+
+
+[tool.poetry.group.test.dependencies]
+pytest = "^8.2.2"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
 
 [tool.ruff.per-file-ignores]
 "ci/*" = ["S"]
@@ -56,3 +90,6 @@ target-version = ["py38"]
 
 [tool.ruff.format]
 indent-style="space"
+
+[tool.pytest.ini_options]
+pythonpath = "src"
