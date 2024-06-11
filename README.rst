@@ -1,36 +1,34 @@
-========
 Treeffuser: Easy to use probabilistic prediction with tree-based diffusion models.
-========
+==================================================================================
 
 Treeffuser is an easy to use package for probabilistic prediction with tree-based diffusion models.
 It is desgined to adhere closely to the scikit-learn API and requires minimal user tuning.
+..  code-block:: python
+    from treeffuser import Treeffuser
+    import numpy as np
 
+    # (n_training, n_features), (n_training, n_targets)
+    X, y = ...  # load your data
+    # (n_test, n_features)
+    X_test = ...  # load your test data
 
-```python
-from treeffuser import Treeffuser
-import numpy as np
+    model = Treeffuser()
+    model.fit(X, y)
 
-# (n_training, n_features), (n_training, n_targets)
-X, y = ...  # load your data
-# (n_test, n_features)
-X_test = ...  # load your test data
+    # (n_samples, n_test, n_targets)
+    y_samples = model.sample(X, n_samples=1000)
 
-model = Treeffuser()
-model.fit(X, y)
+    # Compute downstream metrics
+    mean = np.mean(y_samples, axis=0)
+    std = np.std(y_samples, axis=0)
+    ... # other metrics
 
-# (n_samples, n_test, n_targets)
-y_samples = model.sample(X, n_samples=1000)
-
-# Compute downstream metrics
-mean = np.mean(y_samples, axis=0)
-std = np.std(y_samples, axis=0)
-... # other metrics
-```
 
 Installation
 ============
 
-::
+You can install treeffuser via pip from PyPI with the following command::
+
     pip install treeffuser
 
 You can also install the in-development version with::
