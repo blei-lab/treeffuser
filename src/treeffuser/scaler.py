@@ -10,12 +10,12 @@ class ScalerMixedTypes:
     """
     Data scaler for mixed data-types with continuous and categorical features.
 
-    - Standardize continuous data to have mean 0 and standard deviation 1 (or between -1
-      and 1 if specified).
-    - Leave categorical data unchanged if specified.
+    Scale continuous features and leave categorical features unchanged. By default, the scaling
+    is done using `StandardScaler` from scikit-learn, which standardizes the data to have mean 0
+    and standard deviation 1.
 
     This class does not check the input data. The indices of the categorical features must be
-    provided, or they will be treated as continuous and standardized.
+    provided, or they will be treated as continuous and scaled.
 
     Parameters
     ----------
@@ -46,9 +46,10 @@ class ScalerMixedTypes:
         """
         self._reset()
         cat_idx = cat_idx if cat_idx is not None else []
-        non_cat_idx = X[:, [i for i in range(X.shape[1]) if i not in cat_idx]]
+        non_cat_idx = [i for i in range(X.shape[1]) if i not in cat_idx]
+        X_non_cat = X[:, non_cat_idx]
 
-        self._scaler.fit(non_cat_idx)
+        self._scaler.fit(X_non_cat)
         self._cat_idx = cat_idx
         self._is_fitted = True
         self._x_dim = X.shape[1]
@@ -56,7 +57,7 @@ class ScalerMixedTypes:
 
     def transform(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch x_dim"]:
         """
-        Standardizes the data. The categorical features are left unchanged.
+        Standardize/scale the data. The categorical features are left unchanged.
 
         Parameters
         ----------
