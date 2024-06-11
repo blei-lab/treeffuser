@@ -1,5 +1,6 @@
+====================
 Treeffuser
-==========
+====================
 
 Treeffuser is an easy-to-use package for probabilistic prediction on tabular data with tree-based diffusion models.
 It's goal is to estimate distributions of the form `p(y|x)` where `x` is a feature vector and `y` is a target vector
@@ -8,7 +9,7 @@ and the form of `p(y|x)` can be arbitrarily complex (e.g multimodal, heteroskeda
 It is designed to adhere closely to the scikit-learn API and requires minimal user tuning.
 
 Usage Example
-=============
+-------------
 
 Here's how you can use Treeffuser in your project:
 
