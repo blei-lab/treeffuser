@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "treeffuser"
-version = "0.1.0"
-description = ""
+version = "0.1.1"
+description = "Probabilistic predictions for tabular data, using diffusion models and decision trees."
 authors = [
     "Nicolas Beltran-Velez <nb2838@columbia.edu>",
     "Alessandro Antonio Grande <alessandro.grande@columbia.edu>",
