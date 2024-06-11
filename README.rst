@@ -3,7 +3,7 @@ Treeffuser
 ====================
 
 Treeffuser is an easy-to-use package for probabilistic prediction on tabular data with tree-based diffusion models.
-It's goal is to estimate distributions of the form `p(y|x)` where `x` is a feature vector and `y` is a target vector
+Its goal is to estimate distributions of the form `p(y|x)` where `x` is a feature vector, `y` is a target vector
 and the form of `p(y|x)` can be arbitrarily complex (e.g multimodal, heteroskedastic, non-gaussian, heavy-tailed, etc).
 
 It is designed to adhere closely to the scikit-learn API and requires minimal user tuning.
@@ -50,30 +50,3 @@ You can install Treeffuser via pip from PyPI with the following command::
 You can also install the in-development version with::
 
     pip install git+https://github.com/blei-lab/tree-diffuser.git@main
-
-Development
-===========
-
-To run all the tests, run::
-
-    tox
-
-However, this is usually excessive, so it is easier to use pytest with
-your environment. When you push, tox will run automatically.
-
-Note: To combine the coverage data from all the tox environments, run:
-
-.. list-table::
-    :widths: 10 90
-    :stub-columns: 1
-
-    - - Windows
-      - ::
-
-            set PYTEST_ADDOPTS=--cov-append
-            tox
-
-    - - Other
-      - ::
-
-            PYTEST_ADDOPTS=--cov-append tox
