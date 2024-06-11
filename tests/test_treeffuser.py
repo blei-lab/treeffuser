@@ -1,9 +1,10 @@
 import numpy as np
 from scipy.stats import ks_2samp
-from sklearn.model_selection import train_test_split
 
 from treeffuser import LightGBMTreeffuser
-from utils import gaussian_mixture_pdf
+
+from .utils import gaussian_mixture_pdf
+from .utils import train_test_split
 
 
 def test_treeffuser_bimodal_linear_regression():

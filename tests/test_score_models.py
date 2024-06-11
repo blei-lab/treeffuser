@@ -4,12 +4,12 @@ Contains all of the test for the different score model classes.
 
 import numpy as np
 from einops import repeat
-from sklearn.metrics import r2_score
 
 from treeffuser._score_models import LightGBMScore
 from treeffuser.sde.sdes import VESDE
 
 from .utils import generate_bimodal_linear_regression_data
+from .utils import r2_score
 
 
 def test_linear_regression():
