@@ -1,6 +1,5 @@
 """
-This file should contain a general abstraction of the score models and
-should function as a wrapper for different models we might want to use.
+Contains different score models to be used to approximate the score of a given SDE.
 """
 
 import abc
@@ -16,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from treeffuser.sde import DiffusionSDE
 
 ###################################################
-# Helper functions
+# Helper functions # TODO move at the bottom
 ###################################################
 
 
@@ -221,16 +220,19 @@ class LightGBMScoreModel(ScoreModel):
         cat_idx: Optional[List[int]] = None,
     ):
         """
-        Fit the score model to the data.
+        Fit the score model to the data and the given SDE.
 
-        Args:
-            X: input data
-            y: target data
-            n_repeats: How many times to repeat the training dataset.
-            likelihood_reweighting: Whether to reweight the likelihoods.
-            likelihood_weighting: If `True`, weight the mixture of score
-                matching losses according to https://arxiv.org/abs/2101.09258;
-                otherwise use the weighting recommended in song's SDEs paper.
+        Parameters
+        ----------
+        X : Float[np.ndarray, "batch x_dim"]
+            The input data.
+        y : Float[np.ndarray, "batch y_dim"]
+            The true output values.
+        sde : DiffusionSDE
+            The SDE that the model is supposed to approximate the score of.
+        cat_idx : Optional[List[int]]
+            List of indices of categorical features in the input data. If `None`, all features are
+            assumed to be continuous.
         """
         y_dim = y.shape[1]
         self.sde = sde

@@ -33,39 +33,51 @@ class Treeffuser(BaseTabularDiffusion):
         extra_lightgbm_params: Optional[dict] = None,
     ):
         """
-        Diffusion model args
-        -------------------------------
-        sde_name (str): The SDE name.
-        sde_initialize_with_data (bool): Whether to initialize the SDE hyperparameters
-            with data.
-        sde_manual_hyperparams: (dict): A dictionary for explicitly setting the SDE
-            hyperparameters, overriding default or data-based initializations.
-        n_repeats (int): How many times to repeat the training dataset. i.e how
-            many noisy versions of a point to generate for training.
-        LightGBM args
-        -------------------------------
-        eval_percent (float): Percentage of the training data to use for validation.
-            If `None`, no validation set is used.
-        early_stopping_rounds (int): If `None`, no early stopping is performed. Otherwise,
-            the model will stop training if no improvement is observed in the validation
-            set for `early_stopping_rounds` consecutive iterations.
-        n_estimators (int): Number of boosting iterations.
-        num_leaves (int): Maximum tree leaves for base learners.
-        max_depth (int): Maximum tree depth for base learners, <=0 means no limit.
-        learning_rate (float): Boosting learning rate.
-        max_bin (int): Max number of bins that feature values will be bucketed in. This
-            is used for lightgbm's histogram binning algorithm.
-        subsample_for_bin (int): Number of samples for constructing bins (can ignore).
-        min_child_samples (int): Minimum number of data needed in a child (leaf). If
-            less than this number, will not create the child.
-        subsample (float): Subsample ratio of the training instance.
-        subsample_freq (int): Frequence of subsample, <=0 means no enable.
-            How often to subsample the training data.
-        seed (int): Random seed.
-        early_stopping_rounds (int): If `None`, no early stopping is performed. Otherwise,
-            the model will stop training if no improvement is observed in the validation
-        n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
-            number of available cores.
+        n_repeats : int
+            How many times to repeat the training dataset when fitting the score. That is, how many
+            noisy versions of a point to generate for training.
+        n_estimators : int
+            LightGBM: Number of boosting iterations.
+        eval_percent : float
+            LightGBM: Percentage of the training data to use for validation. If `None`, no validation
+            set is used TODO: what happen if early_stopping_rounds is not None but eval_percent is None?
+        early_stopping_rounds : int
+            LightGBM: If `None`, no early stopping is performed. Otherwise, the model will stop training
+            if no improvement is observed in the validation set for `early_stopping_rounds` consecutive
+            iterations.
+        num_leaves : int
+            LightGBM: Maximum tree leaves for base learners.
+        max_depth : int
+            LightGBM: Maximum tree depth for base learners, <=0 means no limit.
+        learning_rate : float
+            LightGBM: Boosting learning rate.
+        max_bin : int
+            LightGBM: Max number of bins that feature values will be bucketed in. This is used for
+            lightgbm's histogram binning algorithm.
+        min_child_samples : int
+            LightGBM: Minimum number of data needed in a child (leaf). If less than this number, will
+            not create the child.
+        subsample : float
+            LightGBM: Subsample ratio of the training instance.
+        subsample_freq : int
+            LightGBM: Frequency of subsample, <=0 means no enable. How often to subsample the training
+            data.
+        n_jobs : int
+            LightGBM: Number of parallel threads. If set to -1, the number is set to the number of available cores.
+        sde_name : str
+            SDE: Name of the SDE to use. See `treeffuser.sde.get_diffusion_sde` for available SDEs.
+        sde_initialize_from_data : bool
+            SDE: Whether to initialize the SDE from the data. If `True`, the SDE hyperparameters are
+            initialized with a heuristic based on the data (see `treeffuser.sde.initialize.py`).
+            Otherwise, sde_hyperparam_min and sde_hyperparam_max are used. (default: False)
+        sde_hyperparam_min : float or "default"
+            SDE: TODO
+        sd_hyperparam_max : float or "default"
+            SDE: TODO
+        seed : int
+            Random seed for generating the training data and fitting the model.
+        verbose : int
+            Verbosity of the score model.
         """
         super().__init__(
             sde_initialize_from_data=sde_initialize_from_data,
