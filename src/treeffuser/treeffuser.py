@@ -1,27 +1,18 @@
-"""
-This should be the main file corresponding to the project.
-"""
-
-from typing import List
+from typing import Literal
 from typing import Optional
+from typing import Union
 
-from jaxtyping import Float
-from ml_collections import ConfigDict
-from numpy import ndarray
-
-import treeffuser._score_models as _score_models
 from treeffuser._base_tabular_diffusion import BaseTabularDiffusion
+from treeffuser._score_models import LightGBMScoreModel
+from treeffuser._score_models import ScoreModel
+from treeffuser.sde import DiffusionSDE
+from treeffuser.sde import get_diffusion_sde
 
 
 class Treeffuser(BaseTabularDiffusion):
     def __init__(
         self,
-        # Diffusion model args
-        sde_name: str = "vesde",
-        sde_initialize_with_data: bool = False,
-        sde_manual_hyperparams: Optional[dict] = None,
         n_repeats: int = 10,
-        # Score estimator args
         n_estimators: int = 100,
         eval_percent: Optional[float] = None,
         early_stopping_rounds: Optional[int] = None,
@@ -29,13 +20,17 @@ class Treeffuser(BaseTabularDiffusion):
         max_depth: int = -1,
         learning_rate: float = 0.1,
         max_bin: int = 255,
-        subsample_for_bin: int = 200000,
         min_child_samples: int = 20,
         subsample: float = 1.0,
         subsample_freq: int = 0,
-        verbose: int = 0,
-        seed: Optional[int] = None,
         n_jobs: int = -1,
+        sde_name: str = "vesde",
+        sde_initialize_from_data: bool = False,
+        sde_hyperparam_min: Union[float, Literal["default"]] = None,
+        sde_hyperparam_max: Union[float, Literal["default"]] = None,
+        seed: Optional[int] = None,
+        verbose: int = 0,
+        extra_lightgbm_params: Optional[dict] = None,
     ):
         """
         Diffusion model args
@@ -72,68 +67,57 @@ class Treeffuser(BaseTabularDiffusion):
         n_jobs (int): Number of parallel threads. If set to -1, the number is set to the
             number of available cores.
         """
-        if sde_initialize_with_data and sde_manual_hyperparams is not None:
-            raise Warning(
-                "Manual hypeparameter setting will override data-based initialization."
-            )
-
         super().__init__(
-            sde_name=sde_name,
-            sde_initialize_with_data=sde_initialize_with_data,
-            sde_manual_hyperparams=sde_manual_hyperparams,
+            sde_initialize_from_data=sde_initialize_from_data,
         )
-        self._score_config = ConfigDict(
-            {
-                "n_repeats": n_repeats,
-                "n_estimators": n_estimators,
-                "eval_percent": eval_percent,
-                "early_stopping_rounds": early_stopping_rounds,
-                "num_leaves": num_leaves,
-                "max_depth": max_depth,
-                "learning_rate": learning_rate,
-                "max_bin": max_bin,
-                "subsample_for_bin": subsample_for_bin,
-                "min_child_samples": min_child_samples,
-                "subsample": subsample,
-                "subsample_freq": subsample_freq,
-                "verbose": verbose,
-                "seed": seed,
-                "n_jobs": n_jobs,
-            }
+        self.sde_name = sde_name
+        self.n_repeats = n_repeats
+        self.n_estimators = n_estimators
+        self.eval_percent = eval_percent
+        self.early_stopping_rounds = early_stopping_rounds
+        self.num_leaves = num_leaves
+        self.max_depth = max_depth
+        self.learning_rate = learning_rate
+        self.max_bin = max_bin
+        self.min_child_samples = min_child_samples
+        self.subsample = subsample
+        self.subsample_freq = subsample_freq
+        self.n_jobs = n_jobs
+        self.seed = seed
+        self.verbose = verbose
+        self.sde_initialize_from_data = sde_initialize_from_data
+        self.sde_hyperparam_min = sde_hyperparam_min
+        self.sde_hyperparam_max = sde_hyperparam_max
+        self.extra_lightgbm_params = extra_lightgbm_params or {}
+
+    def get_new_sde(self) -> DiffusionSDE:
+        sde_cls = get_diffusion_sde(self.sde_name)
+        if not issubclass(sde_cls, DiffusionSDE):
+            raise ValueError(f"SDE {sde_cls} is not a subclass of DiffusionSDE")
+        sde_kwargs = {}
+        if self.sde_hyperparam_min is not None:
+            sde_kwargs["hyperparam_min"] = self.sde_hyperparam_min
+        if self.sde_hyperparam_max is not None:
+            sde_kwargs["hyperparam_max"] = self.sde_hyperparam_max
+        sde = sde_cls(**sde_kwargs)
+        return sde
+
+    def get_new_score_model(self) -> ScoreModel:
+        score_model = LightGBMScoreModel(
+            n_repeats=self.n_repeats,
+            n_estimators=self.n_estimators,
+            eval_percent=self.eval_percent,
+            early_stopping_rounds=self.early_stopping_rounds,
+            num_leaves=self.num_leaves,
+            max_depth=self.max_depth,
+            learning_rate=self.learning_rate,
+            max_bin=self.max_bin,
+            min_child_samples=self.min_child_samples,
+            subsample=self.subsample,
+            subsample_freq=self.subsample_freq,
+            verbose=self.verbose,
+            seed=self.seed,
+            n_jobs=self.n_jobs,
+            **self.extra_lightgbm_params,
         )
-
-    def fit(
-        self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
-    ):
-        """
-        Fit the model to the data.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Input data with shape (batch, x_dim).
-        y : np.ndarray
-            Target data with shape (batch, y_dim).
-        cat_idx: list
-            List with indices of the columns of X that are categorical.
-
-        Parameters
-        ----------
-        An instance of the model for chaining.
-        """
-        if cat_idx:
-            self._x_cat_idx = cat_idx
-            self._score_config.update({"categorical_features": cat_idx})
-
-        super().fit(X, y)
-
-    @property
-    def score_config(self):
-        return self._score_config
-
-    @property
-    def _score_model_class(self):
-        return _score_models.LightGBMScore
+        return score_model
