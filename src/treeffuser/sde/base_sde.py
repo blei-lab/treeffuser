@@ -4,8 +4,6 @@ from typing import Callable
 from jaxtyping import Float
 from numpy import ndarray
 
-_AVAILABLE_SDES = {}
-
 
 class BaseSDE(abc.ABC):
     """
@@ -119,54 +117,3 @@ class CustomSDE(BaseSDE):
 
     def __repr__(self):
         return f"CustomSDE(drift_fn={self.drift_fn}, diffusion_fn={self.diffusion_fn})"
-
-
-def _register_sde(name: str):
-    """
-    A decorator for registering available SDEs and making them accessible by name,
-    with the `get_sde` function.
-
-    Args:
-        name (str): Name of the SDE.
-
-    Examples:
-        >>> @_register_sde(name="my_sde")
-        ... class MySDE(BaseSDE):
-        ...     def drift_and_diffusion(self, y, t):
-        ...         ...
-        >>> sde_cls = get_sde("my_sde")
-        >>> sde_instance = sde_cls()
-
-    See Also:
-        get_sde: Function to get an SDE by name.
-    """
-
-    def _register(cls):
-        if name in _AVAILABLE_SDES:
-            raise ValueError(f"Already registered SDE with name: {name}")
-        _AVAILABLE_SDES[name] = cls
-        return cls
-
-    return _register
-
-
-def get_sde(name: str):
-    """
-    Function to retrieve a registered SDE by its name.
-
-    Args:
-        name (str): The name of the SDE.
-
-    Raises:
-        ValueError: If the SDE with the given name is not registered.
-
-    Returns:
-        The class of the registered SDE.
-
-    Examples:
-        >>> sde_class = get_sde("my_sde")
-        >>> sde_instance = sde_class()
-    """
-    if name not in _AVAILABLE_SDES:
-        raise ValueError(f"Unknown SDE {name}. Available SDEs: {list(_AVAILABLE_SDES.keys())}")
-    return _AVAILABLE_SDES[name]
