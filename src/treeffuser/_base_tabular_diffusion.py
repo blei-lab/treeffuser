@@ -112,6 +112,22 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        n_samples : int
+            Number of samples to draw for each input.
+        n_parallel : int, optional
+            Number of parallel samples to draw. Default is 10.
+        n_steps : int, optional
+            Number of steps to take by the SDE solver. Default is 100.
+        seed : int, optional
+            Seed for the random number generator of the sampling. Default is None.
+        verbose : int, optional
+            Verbosity level. 0 is ... TODO detail
+            Default is 0.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
@@ -277,6 +293,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth : Union[float, Literal["scott", "silverman"]], optional
             The bandwidth of the kernel. If bandwidth is a float, it defines the bandwidth of the kernel.
             If bandwidth is a string, one of the  "scott" and "silverman" estimation methods. Default is 1.0.
+        verbose : bool, optional
+            If True, displays a progress bar for the sampling. Default is False.
 
         Returns
         -------
