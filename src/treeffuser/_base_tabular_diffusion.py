@@ -108,7 +108,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         n_parallel: int = 10,
         n_steps: int = 100,
         seed=None,
-        verbose: int = 0,
+        verbose: bool = False,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
@@ -125,9 +125,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             Number of steps to take by the SDE solver. Default is 100.
         seed : int, optional
             Seed for the random number generator of the sampling. Default is None.
-        verbose : int, optional
-            Verbosity level. 0 is ... TODO detail
-            Default is 0.
+        verbose : bool, optional
+            Show a progress bar indicating the number of samples drawn. Default is False.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
@@ -140,7 +139,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         y_samples = []
         x_batched = None
 
-        pbar = tqdm(total=n_samples, disable=verbose < 1)
+        pbar = tqdm(total=n_samples, disable=~verbose)
         while n_samples_sampled < n_samples:
             batch_size_samples = min(n_parallel, n_samples - n_samples_sampled)
             y_batch = self.sde.sample_from_theoretical_prior(
