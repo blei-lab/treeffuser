@@ -8,7 +8,7 @@ from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
-from treeffuser.treeffuser import LightGBMTreeffuser
+import treeffuser as tf
 
 from .base_model import ProbabilisticModel
 
@@ -52,7 +52,7 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
         y: Float[ndarray, "batch y_dim"],
         cat_idx: Optional[List[int]] = None,
     ) -> "ProbabilisticModel":
-        self.model = LightGBMTreeffuser(
+        self.model = tf.Treeffuser(
             n_estimators=self.n_estimators,
             n_repeats=self.n_repeats,
             sde_name="vesde",
