@@ -117,7 +117,9 @@ def _make_training_data(
 
         val_mean, val_std = sde.get_mean_std_pt_given_y0(y_test, t_val)
         perturbed_y_val = val_mean + val_std * z_val
-        predictors_val = np.concatenate([X_test, perturbed_y_val, t_val.reshape(-1, 1)], axis=1)
+        predictors_val = np.concatenate(
+            [X_test, perturbed_y_val, t_val.reshape(-1, 1)], axis=1
+        )
         predicted_val = -1.0 * z_val
 
     # cat_idx is not changed

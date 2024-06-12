@@ -90,7 +90,9 @@ def _kl_univariate_gaussians(
     `log (scale_2 / scale_1) + (scale_1^2 + (loc_1 - loc_2) ^ 2) / (2 * scale_2^2) - .5`.
     """
     return (
-        np.log(scale_2 / scale_1) + (scale_1**2 + (loc_1 - loc_2) ** 2) / (2 * scale_2**2) - 1 / 2
+        np.log(scale_2 / scale_1)
+        + (scale_1**2 + (loc_1 - loc_2) ** 2) / (2 * scale_2**2)
+        - 1 / 2
     )
 
 

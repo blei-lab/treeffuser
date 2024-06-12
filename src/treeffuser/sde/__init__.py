@@ -1,4 +1,4 @@
-import treeffuser.sde.diffusion_sdes  # noqa: F401
+import treeffuser.sde.diffusion_sdes
 import treeffuser.sde.solvers  # noqa: F401
 from treeffuser.sde.base_sde import BaseSDE
 from treeffuser.sde.base_sde import CustomSDE
