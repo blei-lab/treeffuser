@@ -10,9 +10,9 @@ from jaxtyping import Float
 from numpy import ndarray
 
 from treeffuser.sde import sdeint
-from treeffuser.sde.sdes import VESDE
-from treeffuser.sde.sdes import VPSDE
-from treeffuser.sde.sdes import SubVPSDE
+from treeffuser.sde.diffusion_sdes import VESDE
+from treeffuser.sde.diffusion_sdes import VPSDE
+from treeffuser.sde.diffusion_sdes import SubVPSDE
 
 
 def _score_linear_vesde(

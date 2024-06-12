@@ -7,6 +7,7 @@ from einops import repeat
 
 from treeffuser._score_models import LightGBMScore
 from treeffuser.sde.sdes import VESDE
+from treeffuser.sde.diffusion_sdes import VESDE
 
 from .utils import generate_bimodal_linear_regression_data
 from .utils import r2_score
