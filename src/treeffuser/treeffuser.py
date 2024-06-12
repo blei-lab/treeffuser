@@ -14,8 +14,8 @@ class Treeffuser(BaseTabularDiffusion):
         self,
         n_repeats: int = 10,
         n_estimators: int = 100,
-        eval_percent: Optional[float] = None,
         early_stopping_rounds: Optional[int] = None,
+        eval_percent: float = 0.1,
         num_leaves: int = 31,
         max_depth: int = -1,
         learning_rate: float = 0.1,
@@ -38,13 +38,13 @@ class Treeffuser(BaseTabularDiffusion):
             noisy versions of a point to generate for training.
         n_estimators : int
             LightGBM: Number of boosting iterations.
-        eval_percent : float
-            LightGBM: Percentage of the training data to use for validation. If `None`, no validation
-            set is used TODO: what happen if early_stopping_rounds is not None but eval_percent is None?
         early_stopping_rounds : int
             LightGBM: If `None`, no early stopping is performed. Otherwise, the model will stop training
             if no improvement is observed in the validation set for `early_stopping_rounds` consecutive
             iterations.
+        eval_percent : float
+            LightGBM: Percentage of the training data to use for validation if `early_stopping_rounds`
+            is not `None`.
         num_leaves : int
             LightGBM: Maximum tree leaves for base learners.
         max_depth : int
@@ -71,9 +71,9 @@ class Treeffuser(BaseTabularDiffusion):
             initialized with a heuristic based on the data (see `treeffuser.sde.initialize.py`).
             Otherwise, sde_hyperparam_min and sde_hyperparam_max are used. (default: False)
         sde_hyperparam_min : float or "default"
-            SDE: TODO
-        sd_hyperparam_max : float or "default"
-            SDE: TODO
+            SDE: The scale of the SDE at t=0 (see `VESDE`, `VPSDE`, `SubVPSDE`).
+        sde_hyperparam_max : float or "default"
+            SDE: The scale of the SDE at t=T (see `VESDE`, `VPSDE`, `SubVPSDE`).
         seed : int
             Random seed for generating the training data and fitting the model.
         verbose : int

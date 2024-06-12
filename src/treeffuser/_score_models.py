@@ -117,9 +117,7 @@ def _make_training_data(
 
         val_mean, val_std = sde.get_mean_std_pt_given_y0(y_test, t_val)
         perturbed_y_val = val_mean + val_std * z_val
-        predictors_val = np.concatenate(
-            [X_test, perturbed_y_val, t_val.reshape(-1, 1)], axis=1
-        )
+        predictors_val = np.concatenate([X_test, perturbed_y_val, t_val.reshape(-1, 1)], axis=1)
         predicted_val = -1.0 * z_val
 
     # cat_idx is not changed
@@ -163,27 +161,27 @@ class LightGBMScoreModel(ScoreModel):
         How many times to repeat the training dataset when fitting the score. That is, how many
         noisy versions of a point to generate for training.
     eval_percent : float
-        Percentage of the training data to use for validation for optional early stopping. If `None`,
-        no validation set is used. TODO: what happens if eval_percent is not None but early_stopping_rounds is None?
+        Percentage of the training data to use for validation for optional early stopping. It is
+        ignored if `early_stopping_rounds` is not set in the `lgbm_args`.
     n_jobs : int
         LightGBM: Number of parallel threads. If set to -1, the number is set to the number of available cores.
     seed : int
         Random seed for generating the training data and fitting the model.
     verbose : int
         Verbosity of the score model.
+    **lgbm_args
+        Additional arguments to pass to the LightGBM model. See the LightGBM documentation for more
+        information. E.g. `early_stopping_rounds`, `n_estimators`, `learning_rate`, `max_depth`,
     """
 
     def __init__(
         self,
         n_repeats: Optional[int] = 10,
-        eval_percent: Optional[float] = None,
+        eval_percent: float = 0.1,
         n_jobs: Optional[int] = -1,
         seed: Optional[int] = None,
         **lgbm_args,
     ) -> None:
-        if "early_stopping_rounds" in lgbm_args:
-            eval_percent = eval_percent if eval_percent is not None else 0.1
-
         self.n_repeats = n_repeats
         self.eval_percent = eval_percent
         self.n_jobs = n_jobs
