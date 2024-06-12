@@ -29,8 +29,8 @@ def initialize_vpsde(
     hyperparam_min = 0.01
     y0_max = y0.max()
 
-    def kl_helper(hyperparam_max):
-        schedule = LinearSchedule(hyperparam_min, hyperparam_max)
+    def kl_helper(hyperparam_max_local):
+        schedule = LinearSchedule(hyperparam_min, hyperparam_max_local)
         hyperparam_integral = schedule.get_integral(T)
         kl = _kl_univariate_gaussians(
             y0_max * np.exp(-0.5 * hyperparam_integral),
@@ -59,8 +59,8 @@ def initialize_subvpsde(
     hyperparam_min = 0.01
     y0_max = y0.max()
 
-    def kl_helper(hyperparam_max):
-        schedule = LinearSchedule(hyperparam_min, hyperparam_max)
+    def kl_helper(hyperparam_max_local):
+        schedule = LinearSchedule(hyperparam_min, hyperparam_max_local)
         hyperparam_integral = schedule.get_integral(T)
         kl = _kl_univariate_gaussians(
             y0_max * np.exp(-0.5 * hyperparam_integral), 1 - np.exp(-hyperparam_integral), 0, 1
@@ -90,9 +90,7 @@ def _kl_univariate_gaussians(
     `log (scale_2 / scale_1) + (scale_1^2 + (loc_1 - loc_2) ^ 2) / (2 * scale_2^2) - .5`.
     """
     return (
-        np.log(scale_2 / scale_1)
-        + (scale_1**2 + (loc_1 - loc_2) ** 2) / (2 * scale_2**2)
-        - 1 / 2
+        np.log(scale_2 / scale_1) + (scale_1**2 + (loc_1 - loc_2) ** 2) / (2 * scale_2**2) - 1 / 2
     )
 
 

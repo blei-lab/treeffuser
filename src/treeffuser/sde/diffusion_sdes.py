@@ -210,9 +210,9 @@ class VESDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
-        self.hyperparam_min = None
-        self.hyperparam_max = None
         self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
         self.set_hyperparams(hyperparam_min, hyperparam_max)
 
     def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:
@@ -292,9 +292,9 @@ class VPSDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
-        self.hyperparam_min = None
-        self.hyperparam_max = None
         self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
         self.set_hyperparams(hyperparam_min, hyperparam_max)
 
     def set_hyperparams(self, hyperparam_min, hyperparam_max):
@@ -373,9 +373,9 @@ class SubVPSDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
-        self.hyperparam_min = None
-        self.hyperparam_max = None
         self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
         self.set_hyperparams(hyperparam_min, hyperparam_max)
 
     def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:

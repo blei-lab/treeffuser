@@ -15,7 +15,7 @@ from sklearn.model_selection import train_test_split
 from treeffuser.sde import DiffusionSDE
 
 ###################################################
-# Helper functions # TODO move at the bottom
+# Helper functions
 ###################################################
 
 

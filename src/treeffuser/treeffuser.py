@@ -104,8 +104,6 @@ class Treeffuser(BaseTabularDiffusion):
 
     def get_new_sde(self) -> DiffusionSDE:
         sde_cls = get_diffusion_sde(self.sde_name)
-        if not issubclass(sde_cls, DiffusionSDE):
-            raise ValueError(f"SDE {sde_cls} is not a subclass of DiffusionSDE")
         sde_kwargs = {}
         if self.sde_hyperparam_min is not None:
             sde_kwargs["hyperparam_min"] = self.sde_hyperparam_min
