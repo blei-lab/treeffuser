@@ -90,3 +90,9 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
             "early_stopping_rounds": Integer(10, 100),
             "num_leaves": Integer(10, 50),
         }
+
+    def get_extra_stats(self) -> dict:
+        n_estimators_true = self.model.n_estimators_true
+        if len(n_estimators_true) == 1:
+            n_estimators_true = n_estimators_true[0]
+        return {"n_estimators_true": n_estimators_true}

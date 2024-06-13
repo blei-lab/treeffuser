@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Literal, List
 from typing import Optional
 
 from treeffuser._base_tabular_diffusion import BaseTabularDiffusion
@@ -133,3 +133,11 @@ class Treeffuser(BaseTabularDiffusion):
             **self.extra_lightgbm_params,
         )
         return score_model
+
+    @property
+    def n_estimators_true(self) -> List[int]:
+        """
+        The number of estimators that are actually used in the models (after early stopping),
+        one for each dimension of the score (i.e. the dimension of y).
+        """
+        return self.score_model.n_estimators_true

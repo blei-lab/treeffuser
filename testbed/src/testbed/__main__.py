@@ -420,6 +420,7 @@ def run_model_on_dataset(
         results[f"{metric_name}_time"] = metric_time_end - metric_time_start
 
     results.update(model.get_params())
+    results.update(model.get_extra_stats())
     return results
 
 
