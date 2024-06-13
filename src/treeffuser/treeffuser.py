@@ -19,6 +19,7 @@ class Treeffuser(BaseTabularDiffusion):
         max_depth: int = -1,
         learning_rate: float = 0.1,
         max_bin: int = 255,
+        subsample_for_bin: int = 200000,
         min_child_samples: int = 20,
         subsample: float = 1.0,
         subsample_freq: int = 0,
@@ -53,6 +54,8 @@ class Treeffuser(BaseTabularDiffusion):
         max_bin : int
             LightGBM: Max number of bins that feature values will be bucketed in. This is used for
             lightgbm's histogram binning algorithm.
+        subsample_for_bin : int
+            LightGBM: Number of samples for constructing bins.
         min_child_samples : int
             LightGBM: Minimum number of data needed in a child (leaf). If less than this number, will
             not create the child.
