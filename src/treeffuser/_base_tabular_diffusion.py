@@ -80,6 +80,13 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self : TabularDiffusion
             The fitted model.
         """
+        if cat_idx is not None:
+            for idx in cat_idx:
+                if idx < 0 or idx >= X.shape[1]:
+                    raise ValueError(
+                        f"Invalid indices in `cat_idx`: {idx} is not in "
+                        f"[0, {X.shape[1]}-1] (the shape of X)."
+                    )
         self.sde = self.get_new_sde()
         self.score_model = self.get_new_score_model()
         self._x_preprocessor = Preprocessor()
