@@ -102,6 +102,10 @@ class ProbabilisticModel(ABC, BaseEstimator):
         )
         return -1.0 * next(iter(metric.compute(self, X, y).values()))
 
+    def get_extra_stats(self) -> dict:
+        """To be subclassed to get extra stats from the model to be logged."""
+        return {}
+
 
 class CachedProbabilisticModel(ProbabilisticModel):
     """

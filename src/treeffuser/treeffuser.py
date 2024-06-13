@@ -1,3 +1,4 @@
+from typing import List
 from typing import Literal
 from typing import Optional
 
@@ -93,6 +94,7 @@ class Treeffuser(BaseTabularDiffusion):
         self.max_depth = max_depth
         self.learning_rate = learning_rate
         self.max_bin = max_bin
+        self.subsample_for_bin = subsample_for_bin
         self.min_child_samples = min_child_samples
         self.subsample = subsample
         self.subsample_freq = subsample_freq
@@ -124,6 +126,7 @@ class Treeffuser(BaseTabularDiffusion):
             max_depth=self.max_depth,
             learning_rate=self.learning_rate,
             max_bin=self.max_bin,
+            subsample_for_bin=self.subsample_for_bin,
             min_child_samples=self.min_child_samples,
             subsample=self.subsample,
             subsample_freq=self.subsample_freq,
@@ -133,3 +136,11 @@ class Treeffuser(BaseTabularDiffusion):
             **self.extra_lightgbm_params,
         )
         return score_model
+
+    @property
+    def n_estimators_true(self) -> List[int]:
+        """
+        The number of estimators that are actually used in the models (after early stopping),
+        one for each dimension of the score (i.e. the dimension of y).
+        """
+        return self.score_model.n_estimators_true
