@@ -40,7 +40,7 @@ class ScalerMixedTypes:
         Parameters
         ----------
         X : ndarray of shape (batch, x_dim)
-            The data to fit the preprocessor to.
+            The data to fit the scaler to.
         cat_idx : list of int, optional
             The indices of the categorical features.
         """
@@ -67,7 +67,7 @@ class ScalerMixedTypes:
         Returns
         -------
         X_transformed : ndarray of shape (batch, x_dim)
-            The transformed data with standardized continuous features.
+            The transformed data with scaled continuous features.
         """
         if not self._is_fitted:
             raise ValueError("The preprocessor has not been fitted yet.")
@@ -86,7 +86,7 @@ class ScalerMixedTypes:
         self, X: Float[ndarray, "batch x_dim"], cat_idx: Optional[List[int]] = None
     ) -> Float[ndarray, "batch x_dim"]:
         """
-        Standardizes the data to have mean 0 and standard deviation 1.
+        Fit the scaler and transform the data in one step.
 
         Parameters
         ----------
@@ -98,7 +98,12 @@ class ScalerMixedTypes:
         Returns
         -------
         X_transformed : ndarray of shape (batch, x_dim)
-            The transformed data with standardized continuous features.
+            The transformed data with scaled continuous features.
+
+        See Also
+        --------
+        fit : Fit the preprocessor to the data.
+        transform : Transform the data.
         """
         self.fit(X, cat_idx)
         return self.transform(X)
