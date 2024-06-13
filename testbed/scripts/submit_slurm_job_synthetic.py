@@ -7,7 +7,7 @@ template = """#!/bin/sh
 ##SBATCH --account=stats
 # CPU or GPU
 #--------------------
-#SBATCH -c 4
+#SBATCH -c 2
 #--------------------
 ## SBATCH -c 8
 ## SBATCH --gres=gpu:1
@@ -33,7 +33,7 @@ unset CUDA_VISIBLE_DEVICES
 
 path = Path(__file__).resolve().parent
 parent_path = path.parent
-main_script_path = parent_path / "src" / "testbed" / "__main__.py"
+main_script_path = parent_path / "src" / "testbed" / "run_simulated_datasets.py"
 
 seeds = [0]
 evaluation_mode = "bayes_opt"
@@ -42,65 +42,50 @@ model_names = [
     "ngboost",
     "ibug",
     "treeffuser",
-    "deep_ensemble",
     "quantile_regression_tree",
-    # "mc_dropout",
-    # "card",
-    "ppm_lightgbm",
-    "ppm_xgboost",
-    "ppm_mlp",
+    "deep_ensemble",
 ]
 
-
-datasets = [
-    "bike",
-    # "boston",
-    "communities",  # contains NaN
-    "energy",  # y is 2d
-    # "facebook",
-    "kin8nm",
-    # "msd",  # very big X (463715, 90)
-    "naval",
-    "news",
-    "power",
-    # "protein",
-    "superconductor",
-    # "wave", # very big
-    "wine",
-    "yacht",
-    "movies",
-]
+dim_xs = [1, 5, 10, 20]
+n_obss = [100, 500, 1000, 5000]
 
 
 def get_cmd(
-    model,
     seed,
     split_idx,
-    dataset,
     evaluation_mode,
+    n,
+    d,
+    is_linear,
 ):
     tmp = (
         f"python {main_script_path}"
-        f" --models {model}"
+        f" --models ngboost ibug treeffuser deep_ensemble quantile_regression_tree"
         f" --seed {seed}"
         f" --split_idx {split_idx}"
-        f" --datasets {dataset}"
+        f" --datasets normal student_t"
         f" --evaluation_mode {evaluation_mode}"
-        # f" --wandb_project crps-bayesopt-2"
-        f" --wandb_project point_prediction"
+        f" --wandb_project simulated_datasets_v2"
         f" --n_iter_bayes_opt 25"
+        f" --dim_input {d}"
+        f" --dataset_size {n}"
+        f" --is_linear {str(is_linear).lower()}"
     )
     return tmp
 
 
+# v2: normed ngboost
+
+
 def get_slurm_script(
-    model,
     seed,
     split_idx,
-    dataset,
     evaluation_mode,
+    n,
+    d,
+    is_linear,
 ):
-    cmd = get_cmd(model, seed, split_idx, dataset, evaluation_mode)
+    cmd = get_cmd(seed, split_idx, evaluation_mode, n, d, is_linear)
     return f"{template}\n{cmd}"
 
 
@@ -108,12 +93,22 @@ jobs_scripts_path = Path("jobs_scripts")
 jobs_scripts_path.mkdir(parents=True, exist_ok=True)
 
 scripts = []
-for model in model_names:
-    for seed in seeds:
-        for split in split_idx:
-            for dataset in datasets:
-                script = get_slurm_script(model, seed, split, dataset, evaluation_mode)
-                scripts.append(script)
+# for model in model_names:
+# for dataset in datasets:
+for seed in seeds:
+    for split in split_idx:
+        for n in n_obss:
+            for d in dim_xs:
+                for is_linear in [True]:
+                    script = get_slurm_script(
+                        seed,
+                        split,
+                        evaluation_mode,
+                        n,
+                        d,
+                        is_linear,
+                    )
+                    scripts.append(script)
 
 for i, script in enumerate(scripts):
     slurm_script_path = jobs_scripts_path / f"job_{i}.sh"
