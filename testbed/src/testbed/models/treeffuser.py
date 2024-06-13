@@ -29,8 +29,9 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
         subsample: float = 1.0,
         subsample_freq: int = 0,
         verbose: bool = 0,
-        sde_initialize_with_data: bool = False,
-        sde_manual_hyperparams: Optional[Dict[str, float]] = None,
+        sde_initialize_from_data: bool = False,
+        sde_hyperparam_min: Optional[float] = None,
+        sde_hyperparam_max: Optional[float] = None,
     ):
         super().__init__(seed)
         self.n_estimators = n_estimators
@@ -41,9 +42,9 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
         self.subsample = subsample
         self.subsample_freq = subsample_freq
         self.verbose = verbose
-        self.sde_manual_hyperparams = sde_manual_hyperparams
-        self.sde_initialize_with_data = sde_initialize_with_data
-
+        self.sde_initialize_from_data = sde_initialize_from_data
+        self.sde_hyperparam_min = sde_hyperparam_min
+        self.sde_hyperparam_max = sde_hyperparam_max
         self.model = None
 
     def fit(
@@ -56,7 +57,9 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
             n_estimators=self.n_estimators,
             n_repeats=self.n_repeats,
             sde_name="vesde",
-            sde_initialize_with_data=self.sde_initialize_with_data,
+            sde_initialize_from_data=self.sde_initialize_from_data,
+            sde_hyperparam_min=self.sde_hyperparam_min,
+            sde_hyperparam_max=self.sde_hyperparam_max,
             learning_rate=self.learning_rate,
             early_stopping_rounds=self.early_stopping_rounds,
             num_leaves=self.num_leaves,
@@ -64,7 +67,6 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
             subsample=self.subsample,
             subsample_freq=self.subsample_freq,
             verbose=self.verbose,
-            sde_manual_hyperparams=self.sde_manual_hyperparams,
         )
 
         self.model.fit(X, y, cat_idx)
@@ -77,7 +79,7 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
     def sample(
         self, X: Float[ndarray, "batch x_dim"], n_samples=10, seed=None
     ) -> Float[ndarray, "n_samples batch y_dim"]:
-        return self.model.sample(X, n_samples, n_parallel=10, n_steps=50, seed=seed)
+        return self.model.sample(X, n_samples, n_parallel=10, n_steps=50, seed=seed, verbose=True)
 
     @staticmethod
     def search_space() -> dict:

@@ -9,8 +9,8 @@ import pytest
 from jaxtyping import Float
 from numpy import ndarray
 
+from treeffuser.sde import get_diffusion_sde
 from treeffuser.sde import sdeint
-from treeffuser.sde.initialize import initialize_sde
 
 
 def _score_linear_vesde(
@@ -113,7 +113,8 @@ def test_linear_sde(sde_name, score_fn):
     y = alpha * x + np.random.normal(size=(n, y_dim)) * gamma * x
 
     # Define SDE
-    sde = initialize_sde(sde_name, y)
+    sde = get_diffusion_sde(sde_name)()
+    sde.initialize_hyperparams_from_data(y)
     print(sde)
     hyperparams = sde.get_hyperparams()
     score_fn = partial(score_fn, **hyperparams, x=x, alpha=alpha, gamma=gamma)
