@@ -33,10 +33,14 @@ def _check_array(array: ndarray[float]):
     if not isinstance(array, np.ndarray):
         raise TypeError("Input must be a numpy array.")
 
+    # Check shapes
     if array.ndim > 3:
         raise ValueError("Input array cannot have more than three dimensions.")
     elif array.ndim == 1:
         array = array.reshape(-1, 1)
+
+    # Cast floats
+    array = np.asarray(array, dtype=np.float32)
 
     return array
 
@@ -80,23 +84,26 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
 
     def _validate_data(
-        X: ndarray,
-        y: ndarray,
-    ) -> Tuple[Float[ndarray, "batch x_dim"], Float[ndarray, "batch y_dim"]]:
-        # Reshape arrays to adhere to (batch, n_dim) convention
-        X = _check_array(X)
-        y = _check_array(y)
+        X: Optional[ndarray] = None,
+        y: Optional[ndarray] = None,
+        validate_X: bool = True,
+        validate_y: bool = True,
+    ) -> Tuple[
+        Optional[Float[ndarray, "batch x_dim"]], Optional[Float[ndarray, "batch y_dim"]]
+    ]:
+        """Reshape X and/or y to adhere to the (batch, n_dim) convention, and cast them as flows."""
+        if validate_X and X is not None:
+            X = _check_array(X)
 
-        # Cast as floats
-        X = np.asarray(X, dtype=np.float32)
-        y = np.asarray(y, dtype=np.float32)
+        if validate_y and y is not None:
+            y = _check_array(y)
 
         return X, y
 
     def fit(
         self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
+        X: ndarray,
+        y: ndarray,
         cat_idx: Optional[List[int]] = None,
     ):
         """
@@ -128,6 +135,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self._x_scaler = ScalerMixedTypes()
         self._y_scaler = ScalerMixedTypes()
 
+        # store the original number of dimensions of the response
+        # before reshaping the data so as to ensure that predictions
+        # have the same shape as the user-inputted response
+        self._y_original_ndim = y.ndim
         X, y = self._validate_data(X, y)
 
         self._y_dim = y.shape[1]
@@ -152,7 +163,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         n_steps: int = 100,
         seed=None,
         verbose: bool = False,
-    ) -> Float[ndarray, "n_samples batch y_dim"]:
+    ) -> Float[ndarray, "n_samples y_original_shape"]:
         """
         Sample from the diffusion model.
 
@@ -173,6 +184,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
+
+        X = self._validate_data(X=X, validate_y=False)
 
         x_transformed = self._x_scaler.transform(X)
         batch_size_x = x_transformed.shape[0]
@@ -215,21 +228,29 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         y_transformed = np.concatenate(y_samples, axis=0)
         y_untransformed = self._y_scaler.inverse_transform(y_transformed)
+
         y_untransformed = einops.rearrange(
             y_untransformed,
             "(n_samples batch) y_dim -> n_samples batch y_dim",
             n_samples=n_samples,
         )
+
+        # ensure output aligns with original shape provided by user
+        if self._y_original_ndim == 1:
+            y_untransformed = y_untransformed.squeeze(axis=-1)
+
         return y_untransformed
 
     def predict(
         self,
-        X: Float[ndarray, "batch x_dim"],
+        X: ndarray,
         ode: bool = False,
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
     ):
+        X = self._validate_data(X=X, validate_y=False)
+
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
@@ -296,13 +317,18 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
+        X = self._validate_data(X=X, validate_y=False)
+
         y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
 
         n_samples, batch, _ = y_samples.shape
 
         kdes = []
         for i in range(batch):
-            y_i = y_samples[:, i, :]
+            if self._y_original_ndim == 1:
+                y_i = y_samples[:, i]
+            else:
+                y_i = y_samples[:, i, :]
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_i)
             kdes.append(kde)
