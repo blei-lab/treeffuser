@@ -15,7 +15,7 @@ Here's how you can use Treeffuser in your project:
 
 .. code-block:: python
 
-    from treeffuser import LightGBMTreeffuser
+    from treeffuser import Treeffuser
     import numpy as np
 
     # (n_training, n_features), (n_training, n_targets)
@@ -24,7 +24,7 @@ Here's how you can use Treeffuser in your project:
     X_test = ...  # load your test data
 
     # Estimate p(y|x) with a tree-based diffusion model
-    model = LightGBMTreeffuser()
+    model = Treeffuser()
     model.fit(X, y)
 
     # Draw samples y ~ p(y|x) for each test point

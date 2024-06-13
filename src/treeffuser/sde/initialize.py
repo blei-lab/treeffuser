@@ -1,17 +1,11 @@
 import warnings
 from typing import Callable
-from typing import Optional
 from typing import Tuple
-from typing import Union
 
 import numpy as np
 from jaxtyping import Float
 
-from .base_sde import get_sde
 from .parameter_schedule import LinearSchedule
-from .sdes import VESDE
-from .sdes import VPSDE
-from .sdes import SubVPSDE
 
 
 class ConvergenceWarning(Warning):
@@ -19,58 +13,7 @@ class ConvergenceWarning(Warning):
     pass
 
 
-def initialize_sde(
-    name: str,
-    y0: Float[np.ndarray, "batch y_dim"],
-    T: float = 1,
-    kl_tol: Optional[float] = 10 ** (-5),
-    verbose: bool = False,
-) -> Union[VESDE, VPSDE, SubVPSDE]:
-    """
-    Initializes an SDE model based on the given name and initial data.
-
-    For all SDEs, it sets `hyperparam_min` to 0.01. For VESDE, it sets `hyperparam_max`
-    to the maximum pairwise distance in y0, following [1]. For VPSDE and Sub-VPSDE, it
-    sets `hyperparam_max` to the smallest value that controls the KL divergence between
-    the perturbation kernel at T and the theoretical prior.
-
-    Parameters
-    ----------
-    name : str
-        The SDE model to initialize ('vesde', 'vpsde', 'sub-vpsde').
-    y0 : np.ndarray
-        The data array with the training outcome.
-    T : float, optional
-        End time of the SDE, default is 1.
-    kl_tol : float, optional
-        kl divergence tolerance for initialization, default is 1e-5. This is only used
-        for VPSDE and Sub-VPSDE.
-
-    Returns
-    -------
-    An instance of the specified SDE model.
-
-    References
-    -------
-        [1] Song, Y. and Ermon, S., 2020. Improved techniques for training score-based
-        generative models. NeurIPS (2020).
-    """
-    if name.lower() == "vesde":
-        hyperparam_min, hyperparam_max = _initialize_vesde(y0)
-    elif name.lower() == "vpsde":
-        hyperparam_min, hyperparam_max = _initialize_vpsde(y0, T, kl_tol)
-    elif name.lower() == "sub-vpsde":
-        hyperparam_min, hyperparam_max = _initialize_subvpsde(y0, T, kl_tol)
-    else:
-        raise NotImplementedError
-
-    sde = get_sde(name)(hyperparam_min, hyperparam_max)
-    if verbose:
-        print(sde)
-    return sde
-
-
-def _initialize_vesde(y0: Float[np.ndarray, "batch y_dim"]) -> Tuple[float, float]:
+def initialize_vesde(y0: Float[np.ndarray, "batch y_dim"]) -> Tuple[float, float]:
     hyperparam_min = 0.01
     if y0.shape[1] == 1:
         max_pairwise_difference = y0.max() - y0.min()
@@ -80,14 +23,14 @@ def _initialize_vesde(y0: Float[np.ndarray, "batch y_dim"]) -> Tuple[float, floa
     return hyperparam_min, max_pairwise_difference
 
 
-def _initialize_vpsde(
+def initialize_vpsde(
     y0: Float[np.ndarray, "batch y_dim"], T: float = 1, kl_tol: float = 10 ** (-5)
 ) -> Tuple[float, float]:
     hyperparam_min = 0.01
     y0_max = y0.max()
 
-    def kl_helper(hyperparam_max):
-        schedule = LinearSchedule(hyperparam_min, hyperparam_max)
+    def kl_helper(hyperparam_max_local):
+        schedule = LinearSchedule(hyperparam_min, hyperparam_max_local)
         hyperparam_integral = schedule.get_integral(T)
         kl = _kl_univariate_gaussians(
             y0_max * np.exp(-0.5 * hyperparam_integral),
@@ -110,14 +53,14 @@ def _initialize_vpsde(
     return hyperparam_min, hyperparam_max
 
 
-def _initialize_subvpsde(
+def initialize_subvpsde(
     y0: Float[np.ndarray, "batch y_dim"], T: float = 1, kl_tol: float = 10 ** (-5)
 ) -> Tuple[float, float]:
     hyperparam_min = 0.01
     y0_max = y0.max()
 
-    def kl_helper(hyperparam_max):
-        schedule = LinearSchedule(hyperparam_min, hyperparam_max)
+    def kl_helper(hyperparam_max_local):
+        schedule = LinearSchedule(hyperparam_min, hyperparam_max_local)
         hyperparam_integral = schedule.get_integral(T)
         kl = _kl_univariate_gaussians(
             y0_max * np.exp(-0.5 * hyperparam_integral), 1 - np.exp(-hyperparam_integral), 0, 1
@@ -168,6 +111,9 @@ def _bisect(
     - f is continuous and decreasing in [a, b]
     - |f(a)| > tol and |f(b)| <= tol.
     """
+    if max_iter <= 0:
+        raise ValueError("max_iter must be greater than 0.")
+    x = 0
     for _ in range(max_iter):
         x = (a + b) / 2
         if np.abs(f(x)) > tol:

@@ -5,7 +5,6 @@ from typing import Tuple
 from typing import Type
 
 import numpy as np
-import torch.distributions
 import wandb
 from jaxtyping import Float
 from numpy import ndarray
@@ -49,9 +48,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Predict the mean for each input.
         """
 
-    def predict_distribution(
-        self, X: Float[ndarray, "batch x_dim"]
-    ) -> torch.distributions.Distribution:
+    def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
         """
         Predict the distribution for each input.
         """
@@ -104,6 +101,10 @@ class ProbabilisticModel(ABC, BaseEstimator):
             n_samples=n_samples,
         )
         return -1.0 * next(iter(metric.compute(self, X, y).values()))
+
+    def get_extra_stats(self) -> dict:
+        """To be subclassed to get extra stats from the model to be logged."""
+        return {}
 
 
 class CachedProbabilisticModel(ProbabilisticModel):
@@ -299,8 +300,12 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         @use_named_args(space)
         def objective(**params):
             model = self._model_class(**params)
-            model.fit(X_train, y_train)
-            score = model.score(X_val, y_val)
+            try:
+                model.fit(X_train, y_train)
+                score = model.score(X_val, y_val)
+            except Exception as e:
+                print(e)
+                score = -10000000000
             return -score
 
         from skopt import forest_minimize

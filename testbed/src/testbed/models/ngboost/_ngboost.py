@@ -9,6 +9,7 @@ from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
+from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
 
@@ -23,12 +24,19 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
     NGBoost only accepts 1 dimensional y values.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, seed=0):
+    def __init__(
+        self,
+        n_estimators: int = 5000,
+        learning_rate: float = 0.05,
+        seed=0,
+        early_stopping_rounds=20,
+    ):
         super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.model = None
         self.dim_y = None
+        self.early_stopping_rounds = early_stopping_rounds
 
     def fit(
         self,
@@ -38,6 +46,12 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         """
         Fit the model to the data.
         """
+
+        self._x_scaler = Preprocessor()
+        self._y_scaler = Preprocessor()
+
+        X = self._x_scaler.fit_transform(X)
+        y = self._y_scaler.fit_transform(y)
 
         self.dim_y = y.shape[1]
 
@@ -50,7 +64,7 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
             self.model = NGBRegressor(
                 n_estimators=self.n_estimators,
                 learning_rate=self.learning_rate,
-                early_stopping_rounds=10,
+                early_stopping_rounds=self.early_stopping_rounds,
                 minibatch_frac=minibatch_frac,
                 validation_fraction=validation_fraction,
                 verbose=False,
@@ -75,15 +89,18 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         """
         Predict the mean for each input.
         """
+        X = self._x_scaler.transform(X)
         predictions = self.model.predict(X)
         if self.dim_y == 1:
             predictions = predictions.reshape(-1, 1)
+        predictions = self._y_scaler.inverse_transform(predictions)
         return predictions
 
     def predict_distribution(self, X) -> torch.distributions.Distribution:
         """
         Predict the distribution for each input.
         """
+        raise NotImplementedError
         dist_ngboost = self.model.pred_dist(X)
         if self.dim_y == 1:
             mean = torch.tensor(dist_ngboost.dist.mean().reshape(-1, 1))
@@ -103,9 +120,13 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         Sample from the probability distribution for each input.
         """
         np.random.seed(seed)
+        X = self._x_scaler.transform(X)
         samples = np.array(self.model.pred_dist(X).sample(n_samples))
         if self.dim_y == 1:
             samples = samples.reshape(n_samples, -1, 1)
+        samples = samples.reshape(-1, self.dim_y)
+        samples = self._y_scaler.inverse_transform(samples)
+        samples = samples.reshape(n_samples, -1, self.dim_y)
         return samples
 
     @staticmethod
@@ -115,7 +136,7 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         """
         return {
             "n_estimators": Integer(100, 10000),
-            "learning_rate": Real(0.01, 1),
+            "learning_rate": Real(0.005, 0.2),
         }
 
 
@@ -196,8 +217,8 @@ class NGBoostPoisson(ProbabilisticModel):
     NGBoost only accepts 1 dimensional y values.
     """
 
-    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05):
-        super().__init__()
+    def __init__(self, n_estimators: int = 5000, learning_rate: float = 0.05, seed=0):
+        super().__init__(seed)
         self.n_estimators = n_estimators
         self.learning_rate = learning_rate
         self.model = None

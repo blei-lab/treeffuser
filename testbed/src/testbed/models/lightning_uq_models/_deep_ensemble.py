@@ -289,7 +289,7 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
         X = self.scaler_x.transform(X)
         y = self.scaler_y.transform(y)
 
-        log_sum_std = np.sum(np.log(self.scaler_y.scale_))
+        log_sum_std = np.sum(np.log(self.scaler_y._scaler.scale_))
 
         X_tensor = torch.tensor(X, dtype=torch.float)
         y_tensor = torch.tensor(y, dtype=torch.float)
@@ -321,8 +321,8 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
             model.eval()
             mean, var = model(X_tensor)
             std = torch.sqrt(var)
-            mean = mean * self.scaler_y.scale_ + self.scaler_y.mean_
-            std = std * self.scaler_y.scale_
+            mean = mean * self.scaler_y._scaler.scale_ + self.scaler_y._scaler.mean_
+            std = std * self.scaler_y._scaler.scale_
             parameters.append((mean, std))
 
         mix = torch.distributions.Categorical(

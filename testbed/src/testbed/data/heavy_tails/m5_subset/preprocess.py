@@ -15,9 +15,11 @@ def main(path_raw_dataset_dir: Path):
     # gross
     X_train = data["X_train"]
     X_test = data["X_test"]
-    y_train = data["y_train"]
-    y_test = data["y_test"]
+    y_train = data["y_train"].round()
+    y_test = data["y_test"].round()
     categorical = data["cat_cols"]
+    col_names = data["col_names"]
+    categorical = [col_names.index(col) for col in categorical]
 
     new_data_dict = {
         "x": X_train,

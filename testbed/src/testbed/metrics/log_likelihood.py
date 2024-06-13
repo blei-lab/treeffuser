@@ -3,7 +3,6 @@ from typing import List
 from typing import Union
 
 import numpy as np
-import torch
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import GridSearchCV
@@ -199,6 +198,8 @@ class LogLikelihoodExactMetric(Metric):
             return {
                 "nll_true": np.nan,
             }
+
+        import torch
 
         nll = -y_distribution.log_prob(torch.tensor(y_test)).mean()
 
