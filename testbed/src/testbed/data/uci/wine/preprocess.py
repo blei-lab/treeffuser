@@ -28,7 +28,7 @@ def main(path_raw_dataset_dir: Path):
     # extract outcome and covariates
     y = x[:, -2].copy().reshape((-1, 1))
     x = np.delete(x, -2, 1)
-    categorical = [x.shape[1]]
+    categorical = [x.shape[1] - 1]
 
     k_fold_splits = _assign_k_splits(x.shape[0], 10, 0)
 
