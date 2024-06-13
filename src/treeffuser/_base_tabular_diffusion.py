@@ -17,9 +17,9 @@ from sklearn.base import BaseEstimator
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
-from treeffuser.scaler import ScalerMixedTypes
 from treeffuser._score_models import ScoreModel
 from treeffuser._warnings import ConvergenceWarning
+from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
 from treeffuser.sde import sdeint
 
