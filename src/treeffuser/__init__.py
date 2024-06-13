@@ -1,4 +1,4 @@
 __version__ = "0.0.0"
-from treeffuser.treeffuser import LightGBMTreeffuser
+from treeffuser.treeffuser import Treeffuser
 
-__all__ = ["LightGBMTreeffuser"]
+__all__ = ["Treeffuser"]

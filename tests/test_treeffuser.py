@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.stats import ks_2samp
 
-from treeffuser import LightGBMTreeffuser
+from treeffuser import Treeffuser
 
 from .utils import gaussian_mixture_pdf
 from .utils import train_test_split
@@ -36,7 +36,7 @@ def test_treeffuser_bimodal_linear_regression():
     X_test = X[n:]
     y_test = y[n:]
 
-    model = LightGBMTreeffuser(
+    model = Treeffuser(
         verbose=1,
         n_repeats=20,
         n_estimators=10000,
@@ -71,7 +71,7 @@ def test_sample_based_nll_gaussian_mixture():
 
     x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.05, random_state=42)
 
-    model = LightGBMTreeffuser(
+    model = Treeffuser(
         verbose=1,
         n_repeats=20,
         n_estimators=10000,
@@ -107,8 +107,5 @@ def test_categorical():
     y = rng.normal(loc=X_noncat + 2 * X_cat, scale=1, size=(n, 1))
 
     for cat_idx in [None, [1]]:
-        model = LightGBMTreeffuser()
+        model = Treeffuser()
         model.fit(X=X, y=y, cat_idx=cat_idx)
-
-
-test_categorical()

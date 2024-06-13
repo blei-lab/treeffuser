@@ -1,6 +1,7 @@
 import abc
 from typing import Dict
 from typing import Optional
+from typing import Type
 from typing import Union
 
 import numpy as np
@@ -8,9 +9,13 @@ from jaxtyping import Float
 from numpy import ndarray
 
 from .base_sde import BaseSDE
-from .base_sde import _register_sde
+from .initialize import initialize_subvpsde
+from .initialize import initialize_vesde
+from .initialize import initialize_vpsde
 from .parameter_schedule import ExponentialSchedule
 from .parameter_schedule import LinearSchedule
+
+_AVAILABLE_DIFFUSION_SDES = {}
 
 
 class DiffusionSDE(BaseSDE):
@@ -20,6 +25,18 @@ class DiffusionSDE(BaseSDE):
     diffusion coefficient independent of `Y`, and the drift is an affine function of Y.
     As a result, the conditional distribution p_t(y | y0) is Gaussian.
     """
+
+    def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:
+        """
+        Initialize the hyperparameters of the SDE from the data `y0`.
+
+        This method can be implemented by subclasses to initialize the hyperparameters.
+
+        Parameters
+        ----------
+        y0 : ndarray of shape (*batch, y_dim)
+            Data y0.
+        """
 
     @property
     def T(self) -> float:
@@ -113,7 +130,67 @@ class DiffusionSDE(BaseSDE):
         return kernel_density_fn
 
 
-@_register_sde(name="vesde")
+def _register_diffusion_sde(name: str):
+    """
+    A decorator for registering available diffusion SDEs and making them accessible by name,
+    with the `get_diffusion_sde` function.
+
+    Args:
+        name (str): Name of the SDE.
+
+    Examples:
+        >>> @_register_diffusion_sde(name="my_sde")
+        ... class MySDE(BaseSDE):
+        ...     def drift_and_diffusion(self, y, t):
+        ...         ...
+        >>> sde_cls = get_diffusion_sde("my_sde")
+        >>> sde_instance = sde_cls()
+
+    See Also:
+        get_diffusion_sde: Function to get an SDE by name.
+    """
+
+    def _register(cls):
+        if name in _AVAILABLE_DIFFUSION_SDES:
+            raise ValueError(f"Already registered DiffusionSDE with name: {name}")
+        _AVAILABLE_DIFFUSION_SDES[name] = cls
+        return cls
+
+    return _register
+
+
+def get_diffusion_sde(name: Optional[str] = None) -> Type[DiffusionSDE] | dict:
+    """
+    Function to retrieve a registered diffusion SDE by its name.
+
+    Parameters:
+    -----------
+    name: str
+        The name of the SDE to retrieve. If None, returns a dictionary of all available SDEs.
+
+    Returns:
+    --------
+    BaseSDE or dict: The SDE class corresponding to the given name, or a dictionary of all available SDEs.
+
+    Raises:
+    -------
+    ValueError: If the given name is not registered.
+
+    Examples:
+    ---------
+        >>> sde_class = get_diffusion_sde("my_sde")
+        >>> sde_instance = sde_class()
+    """
+    if name is None:
+        return _AVAILABLE_DIFFUSION_SDES
+    if name not in _AVAILABLE_DIFFUSION_SDES:
+        raise ValueError(
+            f"Unknown SDE {name}. Available SDEs: {list(_AVAILABLE_DIFFUSION_SDES.keys())}"
+        )
+    return _AVAILABLE_DIFFUSION_SDES[name]
+
+
+@_register_diffusion_sde(name="vesde")
 class VESDE(DiffusionSDE):
     """
     Variance-exploding SDE (VESDE):
@@ -133,6 +210,24 @@ class VESDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
+
+    def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:
+        """
+        Initialize the hyperparameters of the SDE from the data `y0`.
+
+        Parameters
+        ----------
+        y0 : ndarray of shape (*batch, y_dim)
+            Data y0.
+        """
+        hyperparam_min, hyperparam_max = initialize_vesde(y0)
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
+
+    def set_hyperparams(self, hyperparam_min, hyperparam_max):
         self.hyperparam_min = hyperparam_min
         self.hyperparam_max = hyperparam_max
         self.hyperparam_schedule = ExponentialSchedule(hyperparam_min, hyperparam_max)
@@ -142,10 +237,10 @@ class VESDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> tuple[Float[ndarray, "batch y_dim"], Float[ndarray, "batch y_dim"]]:
+    ) -> tuple[Float[ndarray, "batch y_dim"] | float, Float[ndarray, "batch y_dim"] | float]:
         hyperparam = self.hyperparam_schedule(t)
         hyperparam_prime = self.hyperparam_schedule.get_derivative(t)
-        drift = 0
+        drift = 0.0
         diffusion = np.sqrt(2 * hyperparam * hyperparam_prime)
         return drift, diffusion
 
@@ -178,7 +273,7 @@ class VESDE(DiffusionSDE):
         return f"VESDE(hyperparam_min={self.hyperparam_min}, hyperparam_max={self.hyperparam_max})"
 
 
-@_register_sde(name="vpsde")
+@_register_diffusion_sde(name="vpsde")
 class VPSDE(DiffusionSDE):
     """
     Variance-preserving SDE (VPSDE):
@@ -197,9 +292,27 @@ class VPSDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
+
+    def set_hyperparams(self, hyperparam_min, hyperparam_max):
         self.hyperparam_min = hyperparam_min
         self.hyperparam_max = hyperparam_max
         self.hyperparam_schedule = LinearSchedule(hyperparam_min, hyperparam_max)
+
+    def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:
+        """
+        Initialize the hyperparameters of the SDE from the data `y0`.
+
+        Parameters
+        ----------
+        y0 : ndarray of shape (*batch, y_dim)
+            Data y0.
+        """
+        hyperparam_min, hyperparam_max = initialize_vpsde(y0)
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
 
     def get_hyperparams(self):
         return {"hyperparam_min": self.hyperparam_min, "hyperparam_max": self.hyperparam_max}
@@ -241,7 +354,7 @@ class VPSDE(DiffusionSDE):
         return f"VPSDE(hyperparam_min={self.hyperparam_min}, hyperparam_max={self.hyperparam_max})"
 
 
-@_register_sde(name="sub-vpsde")
+@_register_diffusion_sde(name="sub-vpsde")
 class SubVPSDE(DiffusionSDE):
     """
     Sub-Variance-preserving SDE (SubVPSDE):
@@ -260,6 +373,24 @@ class SubVPSDE(DiffusionSDE):
     """
 
     def __init__(self, hyperparam_min=0.01, hyperparam_max=20):
+        self.hyperparam_schedule = None
+        self.hyperparam_min = 0.0
+        self.hyperparam_max = 0.0
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
+
+    def initialize_hyperparams_from_data(self, y0: Float[ndarray, "batch y_dim"]) -> None:
+        """
+        Initialize the hyperparameters of the SDE from the data `y0`.
+
+        Parameters
+        ----------
+        y0 : ndarray of shape (*batch, y_dim)
+            Data y0.
+        """
+        hyperparam_min, hyperparam_max = initialize_subvpsde(y0)
+        self.set_hyperparams(hyperparam_min, hyperparam_max)
+
+    def set_hyperparams(self, hyperparam_min, hyperparam_max):
         self.hyperparam_min = hyperparam_min
         self.hyperparam_max = hyperparam_max
         self.hyperparam_schedule = LinearSchedule(hyperparam_min, hyperparam_max)

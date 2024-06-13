@@ -3,7 +3,6 @@ from typing import List
 from typing import Union
 
 import numpy as np
-import torch
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import GridSearchCV
@@ -130,9 +129,7 @@ def fit_and_evaluate_int_prob(y_train: Float[ndarray, "n_samples y_dim"], y_test
     total_counts = np.sum(counts) + 1
 
     counts_dict = dict(zip(unique, counts))
-    probs_test = np.array(
-        [(counts_dict.get(y, 0) + epsilon) / total_counts for y in y_test_int]
-    )
+    probs_test = np.array([(counts_dict.get(y, 0) + epsilon) / total_counts for y in y_test_int])
     log_probs_test = np.log(probs_test)
     return np.sum(log_probs_test)
 
@@ -199,6 +196,8 @@ class LogLikelihoodExactMetric(Metric):
             return {
                 "nll_true": np.nan,
             }
+
+        import torch
 
         nll = -y_distribution.log_prob(torch.tensor(y_test)).mean()
 

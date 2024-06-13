@@ -5,7 +5,6 @@ from typing import Tuple
 from typing import Type
 
 import numpy as np
-import torch.distributions
 import wandb
 from jaxtyping import Float
 from numpy import ndarray
@@ -49,9 +48,7 @@ class ProbabilisticModel(ABC, BaseEstimator):
         Predict the mean for each input.
         """
 
-    def predict_distribution(
-        self, X: Float[ndarray, "batch x_dim"]
-    ) -> torch.distributions.Distribution:
+    def predict_distribution(self, X: Float[ndarray, "batch x_dim"]):
         """
         Predict the distribution for each input.
         """
