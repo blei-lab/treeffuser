@@ -20,7 +20,7 @@ def main(path_raw_dataset_dir: Path):
     # extract outcome and covariates
     X = data.iloc[:, :-1]
     y = data.iloc[:, -1]
-    categorical = [0]
+    categorical = []  # TODO: it contains some binary variables if we want to support them
 
     k_fold_splits = _assign_k_splits(X.values.shape[0], 10, 0)
 
