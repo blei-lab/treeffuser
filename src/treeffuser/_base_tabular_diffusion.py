@@ -7,6 +7,7 @@ import warnings
 from typing import List
 from typing import Literal
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import einops
@@ -22,6 +23,27 @@ from treeffuser._warnings import ConvergenceWarning
 from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
 from treeffuser.sde import sdeint
+
+###################################################
+# Helper functions
+###################################################
+
+
+def _check_array(array: ndarray[float]):
+    if not isinstance(array, np.ndarray):
+        raise TypeError("Input must be a numpy array.")
+
+    if array.ndim > 3:
+        raise ValueError("Input array cannot have more than three dimensions.")
+    elif array.ndim == 1:
+        array = array.reshape(-1, 1)
+
+    return array
+
+
+###################################################
+# Main class
+###################################################
 
 
 class BaseTabularDiffusion(BaseEstimator, abc.ABC):
@@ -56,6 +78,20 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
         Return the score model.
         """
+
+    def _validate_data(
+        X: ndarray,
+        y: ndarray,
+    ) -> Tuple[Float[ndarray, "batch x_dim"], Float[ndarray, "batch y_dim"]]:
+        # Reshape arrays to adhere to (batch, n_dim) convention
+        X = _check_array(X)
+        y = _check_array(y)
+
+        # Cast as floats
+        X = np.asarray(X, dtype=np.float32)
+        y = np.asarray(y, dtype=np.float32)
+
+        return X, y
 
     def fit(
         self,
@@ -92,8 +128,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self._x_scaler = ScalerMixedTypes()
         self._y_scaler = ScalerMixedTypes()
 
-        X = np.asarray(X, dtype=np.float32)
-        y = np.asarray(y, dtype=np.float32)
+        X, y = self._validate_data(X, y)
+
         self._y_dim = y.shape[1]
         x_transformed = self._x_scaler.fit_transform(
             X,
