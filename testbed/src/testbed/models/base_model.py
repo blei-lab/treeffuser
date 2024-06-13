@@ -106,40 +106,6 @@ class ProbabilisticModel(ABC, BaseEstimator):
         return -1.0 * next(iter(metric.compute(self, X, y).values()))
 
 
-class CachedProbabilisticModel(ProbabilisticModel):
-    """
-    A probabilistic model that caches the predictions for each input, for faster evaluation.
-    """
-
-    def __init__(self, model: ProbabilisticModel):
-        super().__init__()
-        self._cache = {}
-        self.model = model
-
-    def fit(
-        self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
-    ) -> ProbabilisticModel:
-        self.model.fit(X, y)
-        return self
-
-    def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
-        if "predict" not in self._cache:
-            self._cache["predict"] = self.model.predict(X)
-        return self._cache["predict"]
-
-    def sample(
-        self, X: Float[ndarray, "batch x_dim"], n_samples=10
-    ) -> Float[ndarray, "n_samples batch y_dim"]:
-        if "sample" not in self._cache:
-            self._cache["sample"] = self.model.sample(X, n_samples)
-        return self._cache["sample"]
-
-    def clear_cache(self):
-        self._cache = {}
-
-
 class BayesOptCVProbabilisticModel(ProbabilisticModel):
     """
     A probabilistic model that uses Bayesian optimization to find the best hyperparameters.
