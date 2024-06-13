@@ -70,7 +70,7 @@ def _make_training_data(
 ):
     """
     Creates the training data for the score model. This functions assumes that
-    1.  Score is parametrized as score(x, y, t) = GBT(x, y, t) / std(t)
+    1.  Score is parametrized as score(y, x, t) = GBT(y, x, t) / std(t)
     2.  The loss that we want to use is
         || std(t) * score(y_perturbed, x, t) - (mean(y, t) - y_perturbed)/std(t) ||^2
         Which corresponds to the standard denoising objective with weights std(t)**2
@@ -79,8 +79,8 @@ def _make_training_data(
         where z is the noise added to y_perturbed.
 
     Returns:
-    - predictors_train: X_train=[x_train, y_perturbed_train, t_train] for lgbm
-    - predictors_val: X_val=[x_val, y_perturbed_val, t_val] for lgbm
+    - predictors_train: X_train=[y_perturbed_train, x_train, t_train] for lgbm
+    - predictors_val: X_val=[y_perturbed_val, x_val, t_val] for lgbm
     - predicted_train: y_train=[-z_train] for lgbm
     - predicted_val: y_val=[-z_val] for lgbm
     """
@@ -106,10 +106,8 @@ def _make_training_data(
 
     train_mean, train_std = sde.get_mean_std_pt_given_y0(y_train, t_train)
     perturbed_y_train = train_mean + train_std * z_train
-
     predictors_train = np.concatenate([perturbed_y_train, X_train, t_train], axis=1)
     predicted_train = -1.0 * z_train
-    cat_idx = [c + y_train.shape[1] for c in cat_idx] if cat_idx is not None else None
 
     # VALIDATION DATA
     if eval_percent is not None:
@@ -123,7 +121,8 @@ def _make_training_data(
         )
         predicted_val = -1.0 * z_val
 
-    # cat_idx is not changed
+    cat_idx = [c + y_train.shape[1] for c in cat_idx] if cat_idx is not None else None
+
     return predictors_train, predictors_val, predicted_train, predicted_val, cat_idx
 
 
@@ -175,6 +174,11 @@ class LightGBMScoreModel(ScoreModel):
     **lgbm_args
         Additional arguments to pass to the LightGBM model. See the LightGBM documentation for more
         information. E.g. `early_stopping_rounds`, `n_estimators`, `learning_rate`, `max_depth`,
+
+    Attributes
+    ----------
+    n_estimators_true : List[int]
+        The true number of trees in each model (in case early stopping is used).
     """
 
     def __init__(
@@ -192,7 +196,8 @@ class LightGBMScoreModel(ScoreModel):
 
         self._lgbm_args = lgbm_args
         self.sde = None
-        self.models = None  # Convention inputs are (x, y, t)
+        self.models = None  # Convention inputs are (y, x, t)
+        self.n_estimators_true = None
 
     def score(
         self,
@@ -207,7 +212,7 @@ class LightGBMScoreModel(ScoreModel):
         predictors = np.concatenate([y, X, t], axis=1)
         _, std = self.sde.get_mean_std_pt_given_y0(y, t)
         for i in range(y.shape[-1]):
-            # The score is parametrized: score(x, y, t) = GBT(x, y, t) / std(t)
+            # The score is parametrized: score(y, x, t) = GBT(y, x, t) / std(t)
             score_p = self.models[i].predict(predictors, num_threads=self.n_jobs)
             score = score_p / std[:, i]
             scores.append(score)
@@ -263,3 +268,6 @@ class LightGBMScoreModel(ScoreModel):
             )
             models.append(score_model_i)
         self.models = models
+
+        # collect the true number of trees learned by each model
+        self.n_estimators_true = [model.n_estimators_ for model in self.models]
