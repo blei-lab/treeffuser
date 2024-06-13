@@ -300,8 +300,12 @@ class BayesOptProbabilisticModel(ProbabilisticModel):
         @use_named_args(space)
         def objective(**params):
             model = self._model_class(**params)
-            model.fit(X_train, y_train)
-            score = model.score(X_val, y_val)
+            try:
+                model.fit(X_train, y_train)
+                score = model.score(X_val, y_val)
+            except Exception as e:
+                print(e)
+                score = -10000000000
             return -score
 
         from skopt import forest_minimize

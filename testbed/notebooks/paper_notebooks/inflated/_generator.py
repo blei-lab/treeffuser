@@ -46,6 +46,8 @@ class CustomRandomGenerator(Generator):
         size: int,
         x_inf: float = 0,
         x_sup: float = 1,
+        x_shift_coefficient: float = 1.0,
+        x_atom_coefficient: float = 1.0,
     ):
         """
         Covariate-Inflated Gamma
@@ -61,10 +63,10 @@ class CustomRandomGenerator(Generator):
         for i, atom in enumerate(x):
             y[i] = self.mixed(
                 p_atoms=[p_atom_fn(atom)],
-                loc_atoms=[atom],
+                loc_atoms=[atom * x_atom_coefficient],
                 continuous_distr_name="gamma",
                 continuous_distr_params={"shape": shape, "scale": scale},
-                continuous_shift=atom,
+                continuous_shift=atom * x_shift_coefficient,
                 size=1,
             )
 
@@ -78,13 +80,20 @@ def gamma_density(x, shape, scale, shift):
     return np.exp(log_density)
 
 
-def CIG_conditional_density(x, p_atom, shape: float, scale: float):
+def CIG_conditional_density(
+    x,
+    p_atom,
+    shape: float,
+    scale: float,
+    x_shift_coefficient: float = 1.0,
+    x_atom_coefficient: float = 1.0,
+):
     def density_fn(y):
         density = np.zeros_like(y)
         density[y >= x] = (1 - p_atom) * gamma_density(
-            y[y >= x], shape=shape, scale=scale, shift=x
+            y[y >= x], shape=shape, scale=scale, shift=x * x_shift_coefficient
         )
-        density[y == x] += p_atom
+        density[y == x * x_atom_coefficient] += p_atom
         return density
 
     return density_fn

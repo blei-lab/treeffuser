@@ -89,7 +89,7 @@ class Treeffuser(ProbabilisticModel, MultiOutputMixin):
             "n_repeats": Integer(10, 50),
             "learning_rate": Real(0.01, 1, "log-uniform"),
             "early_stopping_rounds": Integer(10, 100),
-            "num_leaves": Integer(10, 50),
+            "num_leaves": Integer(10, 100),
         }
 
     def get_extra_stats(self) -> dict:
