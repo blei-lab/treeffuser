@@ -427,7 +427,7 @@ def run_model_on_dataset(
 
     train_start = time.time()
     if model_name in SUPPORT_CATEGORICAL:
-        model.fit(X_train, y_train, cat_idx)
+        model.fit(X_train, y_train)  # , cat_idx)
     else:
         model.fit(X_train, y_train)
     train_end = time.time()
@@ -562,7 +562,7 @@ def main() -> None:
                 X_test=X_test,
                 y_train=y_train,
                 y_test=y_test,
-                cat_idx=data.get("categorical", None),
+                cat_idx=None,  # data.get("categorical", None),
                 model_name=model_name,
                 metrics=args.metrics,
                 evaluation_mode=args.evaluation_mode,
