@@ -38,7 +38,6 @@ main_script_path = parent_path / "src" / "testbed" / "__main__.py"
 seeds = [0]
 # evaluation_mode = "normal"
 evaluation_mode = "bayes_opt"
-split_idx = list(range(10))
 model_names = [
     "ngboost",
     "ngboost_poisson",
@@ -88,10 +87,9 @@ jobs_scripts_path.mkdir(parents=True, exist_ok=True)
 scripts = []
 for model in model_names:
     for seed in seeds:
-        for split in split_idx:
-            for dataset in datasets:
-                script = get_slurm_script(model, seed, split, dataset, evaluation_mode)
-                scripts.append(script)
+        for dataset in datasets:
+            script = get_slurm_script(model, seed, 0, dataset, evaluation_mode)
+            scripts.append(script)
 
 for i, script in enumerate(scripts):
     slurm_script_path = jobs_scripts_path / f"job_{i}.sh"
