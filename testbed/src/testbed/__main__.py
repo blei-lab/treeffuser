@@ -59,6 +59,12 @@ def get_model(
 
         return NGBoostGaussian
 
+    available_models.append("ngboost_poisson")
+    if model_name == "ngboost_poisson":
+        from testbed.models.ngboost import NGBoostPoisson
+
+        return NGBoostPoisson
+
     available_models.append("ngboost_mixture_gaussian")
     if model_name == "ngboost_mixture_gaussian":
         from testbed.models.ngboost import NGBoostMixtureGaussian
