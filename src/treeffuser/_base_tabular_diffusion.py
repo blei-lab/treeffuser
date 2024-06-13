@@ -329,7 +329,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 10,
-        bandwidth: float | Literal["scott", "silverman"] = 1.0,
+        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> float:
         y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
