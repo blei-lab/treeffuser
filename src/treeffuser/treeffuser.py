@@ -1,4 +1,5 @@
-from typing import Literal, List
+from typing import List
+from typing import Literal
 from typing import Optional
 
 from treeffuser._base_tabular_diffusion import BaseTabularDiffusion
