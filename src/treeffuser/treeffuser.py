@@ -1,6 +1,7 @@
 from typing import List
 from typing import Literal
 from typing import Optional
+from typing import Union
 
 from treeffuser._base_tabular_diffusion import BaseTabularDiffusion
 from treeffuser._score_models import LightGBMScoreModel
@@ -27,8 +28,8 @@ class Treeffuser(BaseTabularDiffusion):
         n_jobs: int = -1,
         sde_name: str = "vesde",
         sde_initialize_from_data: bool = False,
-        sde_hyperparam_min: Optional[float | Literal["default"]] = None,
-        sde_hyperparam_max: Optional[float | Literal["default"]] = None,
+        sde_hyperparam_min: Optional[Union[float, Literal["default"]]] = None,
+        sde_hyperparam_max: Optional[Union[float, Literal["default"]]] = None,
         seed: Optional[int] = None,
         verbose: int = 0,
         extra_lightgbm_params: Optional[dict] = None,

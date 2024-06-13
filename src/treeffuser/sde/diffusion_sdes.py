@@ -159,7 +159,7 @@ def _register_diffusion_sde(name: str):
     return _register
 
 
-def get_diffusion_sde(name: Optional[str] = None) -> Type[DiffusionSDE] | dict:
+def get_diffusion_sde(name: Optional[str] = None) -> Union[Type[DiffusionSDE], dict]:
     """
     Function to retrieve a registered diffusion SDE by its name.
 
@@ -237,7 +237,9 @@ class VESDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> tuple[Float[ndarray, "batch y_dim"] | float, Float[ndarray, "batch y_dim"] | float]:
+    ) -> Union[
+        tuple[Float[ndarray, "batch y_dim"], float, Float[ndarray, "batch y_dim"], float]
+    ]:
         hyperparam = self.hyperparam_schedule(t)
         hyperparam_prime = self.hyperparam_schedule.get_derivative(t)
         drift = 0.0
