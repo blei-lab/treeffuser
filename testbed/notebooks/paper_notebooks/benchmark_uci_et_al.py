@@ -168,6 +168,8 @@ methods = {
     "drf": "DRF",
     "treeffuser": "Treeffuser",
     "treeffuser_default": "Treeffuser*",
+    "ppm_lightgbm": "PP LightGBM",
+    "ppm_xgboost": "PP XGBoost",
 }
 results = results[["$N, d_x, d_y$"] + list(methods.keys()) + [" "]]
 results = results.rename(columns=methods)

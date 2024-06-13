@@ -123,6 +123,24 @@ def get_model(
 
         return NNffuser
 
+    available_models.append("ppm_lightgbm")
+    if model_name == "ppm_lightgbm":
+        from testbed.models.point_prediction_model import PPMLightGBM
+
+        return PPMLightGBM
+
+    available_models.append("ppm_xgboost")
+    if model_name == "ppm_xgboost":
+        from testbed.models.point_prediction_model import PPMXGBoost
+
+        return PPMXGBoost
+
+    available_models.append("ppm_mlp")
+    if model_name == "ppm_mlp":
+        from testbed.models.point_prediction_model import PPMMLP
+
+        return PPMMLP
+
     if return_available_models:
         return available_models
 
