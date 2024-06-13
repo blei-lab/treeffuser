@@ -107,8 +107,9 @@ def _make_training_data(
     train_mean, train_std = sde.get_mean_std_pt_given_y0(y_train, t_train)
     perturbed_y_train = train_mean + train_std * z_train
 
-    predictors_train = np.concatenate([X_train, perturbed_y_train, t_train], axis=1)
+    predictors_train = np.concatenate([perturbed_y_train, X_train, t_train], axis=1)
     predicted_train = -1.0 * z_train
+    cat_idx = [c + y_train.shape[1] for c in cat_idx] if cat_idx is not None else None
 
     # VALIDATION DATA
     if eval_percent is not None:
@@ -117,9 +118,7 @@ def _make_training_data(
 
         val_mean, val_std = sde.get_mean_std_pt_given_y0(y_test, t_val)
         perturbed_y_val = val_mean + val_std * z_val
-        predictors_val = np.concatenate(
-            [X_test, perturbed_y_val, t_val.reshape(-1, 1)], axis=1
-        )
+        predictors_val = np.concatenate([perturbed_y_val, X_test, t_val.reshape(-1, 1)], axis=1)
         predicted_val = -1.0 * z_val
 
     # cat_idx is not changed
@@ -203,7 +202,7 @@ class LightGBMScoreModel(ScoreModel):
             raise ValueError("The model has not been fitted yet.")
 
         scores = []
-        predictors = np.concatenate([X, y, t], axis=1)
+        predictors = np.concatenate([y, X, t], axis=1)
         _, std = self.sde.get_mean_std_pt_given_y0(y, t)
         for i in range(y.shape[-1]):
             # The score is parametrized: score(x, y, t) = GBT(x, y, t) / std(t)
