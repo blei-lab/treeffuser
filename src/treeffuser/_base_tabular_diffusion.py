@@ -17,9 +17,9 @@ from sklearn.base import BaseEstimator
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
-from treeffuser._preprocessors import Preprocessor
 from treeffuser._score_models import ScoreModel
 from treeffuser._warnings import ConvergenceWarning
+from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
 from treeffuser.sde import sdeint
 
@@ -39,10 +39,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self.sde_initialize_from_data = sde_initialize_from_data
         self.score_model = None
         self._is_fitted = False
-        self._x_preprocessor = None
+        self._x_scaler = None
         self._x_dim = None
         self._x_cat_idx = None
-        self._y_preprocessor = None
+        self._y_scaler = None
         self._y_dim = None
 
     @abc.abstractmethod
@@ -89,17 +89,17 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                     )
         self.sde = self.get_new_sde()
         self.score_model = self.get_new_score_model()
-        self._x_preprocessor = Preprocessor()
-        self._y_preprocessor = Preprocessor()
+        self._x_scaler = ScalerMixedTypes()
+        self._y_scaler = ScalerMixedTypes()
 
         X = np.asarray(X, dtype=np.float32)
         y = np.asarray(y, dtype=np.float32)
         self._y_dim = y.shape[1]
-        x_transformed = self._x_preprocessor.fit_transform(
+        x_transformed = self._x_scaler.fit_transform(
             X,
             cat_idx=cat_idx,
         )
-        y_transformed = self._y_preprocessor.fit_transform(y)
+        y_transformed = self._y_scaler.fit_transform(y)
 
         if self.sde_initialize_from_data:
             self.sde.initialize_hyperparams_from_data(y_transformed)
@@ -138,7 +138,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        x_transformed = self._x_preprocessor.transform(X)
+        x_transformed = self._x_scaler.transform(X)
         batch_size_x = x_transformed.shape[0]
         y_dim = self._y_dim
 
@@ -178,7 +178,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         pbar.close()
 
         y_transformed = np.concatenate(y_samples, axis=0)
-        y_untransformed = self._y_preprocessor.inverse_transform(y_transformed)
+        y_untransformed = self._y_scaler.inverse_transform(y_transformed)
         y_untransformed = einops.rearrange(
             y_untransformed,
             "(n_samples batch) y_dim -> n_samples batch y_dim",

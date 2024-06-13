@@ -18,9 +18,9 @@ from torch import Tensor
 from torch import nn
 from torch.optim import Adam
 
-from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
+from treeffuser.scaler import ScalerMixedTypes
 
 
 class MLP(nn.Module):
@@ -183,8 +183,8 @@ class DeepEnsemble(ProbabilisticModel, MultiOutputMixin):
         if len(y.shape) == 1:
             y = y.reshape(-1, 1)
 
-        self.scaler_x = Preprocessor()
-        self.scaler_y = Preprocessor()
+        self.scaler_x = ScalerMixedTypes()
+        self.scaler_y = ScalerMixedTypes()
 
         X = self.scaler_x.fit_transform(X)
         y = self.scaler_y.fit_transform(y)

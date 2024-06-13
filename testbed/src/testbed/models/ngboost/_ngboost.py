@@ -9,9 +9,9 @@ from sklearn.base import MultiOutputMixin
 from skopt.space import Integer
 from skopt.space import Real
 
-from testbed.models._preprocessors import Preprocessor
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
+from treeffuser.scaler import ScalerMixedTypes
 
 MAX_MINIBATCH_SIZE = 50_000
 MAX_VALIDATION_SIZE = 20_000
@@ -47,8 +47,8 @@ class NGBoostGaussian(ProbabilisticModel, MultiOutputMixin):
         Fit the model to the data.
         """
 
-        self._x_scaler = Preprocessor()
-        self._y_scaler = Preprocessor()
+        self._x_scaler = ScalerMixedTypes()
+        self._y_scaler = ScalerMixedTypes()
 
         X = self._x_scaler.fit_transform(X)
         y = self._y_scaler.fit_transform(y)

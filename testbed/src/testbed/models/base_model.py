@@ -363,7 +363,7 @@ def make_autoregressive_probabilistic_model(
     args = [f"{param}=None" for param in params]
     args_string = ", ".join(args)
 
-    class AutoRegressiveProbabilisticModel(ProbabilisticModel, SupportsMultioutput):
+    class AutoRegressiveProbabilisticModel(ProbabilisticModel, MultiOutputMixin):
         # A probabilistic model that models multi-output data by using an autoregressive model.
         # In particular if p(y_1|x) is a ProbabilisticModel, then: we model p(y_i|x, y_{i-1}, ..., y_1)
         # and then we sample sequentially to get the output.
