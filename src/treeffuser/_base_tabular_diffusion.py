@@ -7,6 +7,7 @@ import warnings
 from typing import List
 from typing import Literal
 from typing import Optional
+from typing import Tuple
 from typing import Union
 
 import einops
@@ -18,10 +19,48 @@ from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 from treeffuser._score_models import ScoreModel
+from treeffuser._warnings import CastFloat32Warning
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
 from treeffuser.sde import sdeint
+
+###################################################
+# Helper functions
+###################################################
+
+
+def _check_array(array: ndarray[float]):
+    if not isinstance(array, np.ndarray):
+        raise TypeError("Input must be a numpy array.")
+
+    # Check shapes
+    if array.ndim > 2:
+        raise ValueError("Input array cannot have more than three dimensions.")
+    elif array.ndim == 1:
+        array = array.reshape(-1, 1)
+
+    # Cast floats
+    try:
+        if array.dtype != np.float32:
+            array = np.asarray(array, dtype=np.float32)
+            warnings.warn(
+                "Input array is not float32; it has been recast to float32.",
+                CastFloat32Warning,
+                stacklevel=2,
+            )
+    except ValueError as e:
+        # Raise the ValueError preserving the original exception context, see B904 from flake8-bugbear
+        raise ValueError(
+            "Input array is not float32 and cannot be converted to float32."
+        ) from e  #
+
+    return array
+
+
+###################################################
+# Main class
+###################################################
 
 
 class BaseTabularDiffusion(BaseEstimator, abc.ABC):
@@ -57,6 +96,24 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         Return the score model.
         """
 
+    def _validate_data(
+        self,
+        X: Optional[ndarray] = None,
+        y: Optional[ndarray] = None,
+        validate_X: bool = True,
+        validate_y: bool = True,
+    ) -> Tuple[
+        Optional[Float[ndarray, "batch x_dim"]], Optional[Float[ndarray, "batch y_dim"]]
+    ]:
+        """Reshape X and/or y to adhere to the (batch, n_dim) convention, and cast them as flows."""
+        if validate_X and X is not None:
+            X = _check_array(X)
+
+        if validate_y and y is not None:
+            y = _check_array(y)
+
+        return X, y
+
     def fit(
         self,
         X: Float[ndarray, "batch x_dim"],
@@ -64,7 +121,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         cat_idx: Optional[List[int]] = None,
     ):
         """
-        Fit the tabular diffusion model to the data.
+        Fit the conditional diffusion model to the tabular data (X, y).
 
         Parameters
         ----------
@@ -79,6 +136,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         -------
         self : TabularDiffusion
             The fitted model.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
         if cat_idx is not None:
             for idx in cat_idx:
@@ -92,8 +154,12 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self._x_scaler = ScalerMixedTypes()
         self._y_scaler = ScalerMixedTypes()
 
-        X = np.asarray(X, dtype=np.float32)
-        y = np.asarray(y, dtype=np.float32)
+        # store the original number of dimensions of the response
+        # before reshaping the data so as to ensure that predictions
+        # have the same shape as the user-inputted response
+        self._y_original_ndim = y.ndim
+        X, y = self._validate_data(X=X, y=y)
+
         self._y_dim = y.shape[1]
         x_transformed = self._x_scaler.fit_transform(
             X,
@@ -118,7 +184,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool = False,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
-        Sample from the diffusion model.
+        Sample responses from the diffusion model conditional on the given input data `X`.
 
         Parameters
         ----------
@@ -134,10 +200,47 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             Seed for the random number generator of the sampling. Default is None.
         verbose : bool, optional
             Show a progress bar indicating the number of samples drawn. Default is False.
+
+        Returns
+        -------
+        Float[ndarray, "n_samples batch y_dim"]
+            Samples drawn from the diffusion model.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
+        X, _ = self._validate_data(X=X, validate_y=False)
+
+        y_samples = self._sample_raw(X, n_samples, n_parallel, n_steps, seed, verbose)
+
+        # Ensure output aligns with original shape provided by user
+        if self._y_original_ndim == 1:
+            y_samples = y_samples.squeeze(axis=-1)
+
+        return y_samples
+
+    def _sample_raw(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int,
+        n_parallel: int = 10,
+        n_steps: int = 100,
+        seed=None,
+        verbose: bool = False,
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
+        """
+        Sampling method that preserves shape conventions.
+        """
         x_transformed = self._x_scaler.transform(X)
         batch_size_x = x_transformed.shape[0]
         y_dim = self._y_dim
@@ -179,6 +282,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         y_transformed = np.concatenate(y_samples, axis=0)
         y_untransformed = self._y_scaler.inverse_transform(y_transformed)
+
         y_untransformed = einops.rearrange(
             y_untransformed,
             "(n_samples batch) y_dim -> n_samples batch y_dim",
@@ -189,23 +293,54 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     def predict(
         self,
         X: Float[ndarray, "batch x_dim"],
-        ode: bool = False,
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
     ):
+        """
+        Predict the conditional mean of the response given the input data X using Monte Carlo estimates.
+
+        The method iteratively samples from the model until the change in the norm of the mean estimate is within a specified
+        tolerance, or until a maximum number of samples is reached.
+
+        Parameters
+        ----------
+        X : Float[ndarray, "batch x_dim"]
+            Input data with shape (batch, x_dim).
+        tol : float, optional
+            Tolerance for the stopping criterion based on the relative change in the mean estimate. Default is 1e-3.
+        max_samples : int, optional
+            Maximum number of samples to draw in the Monte Carlo simulation to ensure convergence. Default is 100.
+        verbose : bool, optional
+            If True, displays a progress bar indicating the sampling progress. Default is False.
+
+        Returns
+        -------
+        Float[ndarray, "batch y_dim"]
+            The predicted conditional mean of the response for each input in X, shaped according to the original dimensionality
+            of the target data provided during training.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
+        """
+        X, _ = self._validate_data(X=X, validate_y=False)
+
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        if ode:
-            return self._predict_from_ode(X, tol, verbose)
-        else:
-            return self._predict_from_sample(X, tol, max_samples, verbose)
+        y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
 
-    def _predict_from_ode(
-        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
-    ) -> Float[ndarray, "batch y_dim"]:
-        raise NotImplementedError
+        if self._y_original_ndim == 1:
+            y_preds = y_preds.squeeze(axis=-1)
+
+        return y_preds
 
     def _predict_from_sample(
         self,
@@ -215,19 +350,19 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool,
     ) -> Float[ndarray, "batch y_dim"]:
         """
-        Predict the conditional mean of y given x via Monte Carlo estimates.
+        Predict the conditional mean of the response given the input data `X` using Monte Carlo estimates.
 
         This method iteratively generates samples of size 10, until the relative change in
-        the norm of each estimate is within a specified tolerance.
+        the norm of each estimate is within the specified tolerance `tol`.
         """
         n_samples = n_samples_increment = 10
 
-        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
+        mean_prev = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
         norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
         max_change = np.inf
 
         while max_change > tol and n_samples < max_samples:
-            sum_increment = self.sample(
+            sum_increment = self._sample_raw(
                 X=X,
                 n_samples=n_samples_increment,
                 verbose=verbose,
@@ -257,10 +392,41 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> List[KernelDensity]:
+        """
+        Estimate the distribution of the predicted responses for the given input data `X` using Gaussian
+        KDEs from `sklearn.neighbors.KernelDensity`.
+
+        Parameters
+        ----------
+        X : Float[ndarray, "batch x_dim"]
+            Input data with shape (batch, x_dim).
+        n_samples : int, optional
+            Number of samples to draw for each input. Default is 100.
+        bandwidth : Union[float, Literal["scott", "silverman"]], optional
+            The bandwidth of the kernel for the Kernel Density Estimation. If a float, it defines the bandwidth of the kernel. If a string, one of the "scott" or "silverman" estimation methods. Default is 1.0.
+        verbose : bool, optional
+            If True, displays a progress bar indicating the number of samples drawn. Default is False.
+
+        Returns
+        -------
+        List[KernelDensity]
+            A list of KernelDensity objects representing the estimated distributions for each input in X.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (`["batch x_dim"]`, `["batch y_dim"]`) by convention, but also works with 1D inputs (`["batch"]`) for single-dimensional data.
+        """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        X, _ = self._validate_data(X=X, validate_y=False)
+
+        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
 
         n_samples, batch, _ = y_samples.shape
 
@@ -277,7 +443,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        ode: bool = False,
         n_samples: int = 10,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -292,9 +457,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             Input data with shape (batch, x_dim).
         y : np.ndarray
             Target data with shape (batch, y_dim).
-        ode : bool, optional
-            If True, computes the negative log likelihood from ODE.
-            If False, computes it from samples. Default is True.
         n_samples : int, optional
             Number of samples to draw if computing the negative log likelihood from samples. Default is 10.
         bandwidth : Union[float, Literal["scott", "silverman"]], optional
@@ -307,22 +469,17 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         -------
         float
             The computed negative log likelihood value.
+
+        Note
+        ----
+        The method handles 2D inputs (`["batch x_dim"]`, `["batch y_dim"]`) by convention, but also works with 1D inputs (`["batch"]`) for single-dimensional data.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        if ode:
-            return self._compute_nll_from_ode(X, y, verbose)
-        else:
-            return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
+        X, y = self._validate_data(X=X, y=y)
 
-    def _compute_nll_from_ode(
-        self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
-        verbose: bool = False,
-    ):
-        raise NotImplementedError
+        return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
 
     def _compute_nll_from_sample(
         self,
@@ -332,14 +489,14 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> float:
-        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
 
         def fit_and_evaluate_kde(y_train, y_test):
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_train)
             return kde.score_samples(y_test).item()
 
-        n_samples, batch, y_dim = y_samples.shape
+        n_samples, batch, _ = y_samples.shape
 
         nll = 0
         for i in range(batch):
