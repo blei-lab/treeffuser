@@ -8,14 +8,27 @@ and the form of `p(y|x)` can be arbitrarily complex (e.g multimodal, heteroskeda
 
 It is designed to adhere closely to the scikit-learn API and requires minimal user tuning.
 
+Installation
+============
+
+You can install Treeffuser via pip from PyPI with the following command::
+
+    pip install treeffuser
+
+You can also install the in-development version with::
+
+    pip install git+https://github.com/blei-lab/tree-diffuser.git@main
+
+
 Usage Example
--------------
+============
 
 Here's a simple example demonstrating the usage of Treeffuser.
 
 We generate an heteroscedastic response with a sinusoidal mean and fat tails.
 
 .. code-block:: python
+
     import matplotlib.pyplot as plt
     import numpy as np
     from treeffuser import Treeffuser
@@ -26,9 +39,10 @@ We generate an heteroscedastic response with a sinusoidal mean and fat tails.
     x = rng.uniform(0, 2 * np.pi, size=n)
     y = np.sin(x) + rng.laplace(scale=x / 20, size=n)
 
-We fit Treeffuser and generate samples. These samples can be used to compute any downstream estimates of interest.
+We fit Treeffuser and generate samples. These can be used to compute any downstream estimates of interest.
 
 .. code-block:: python
+
     # Fit the model
     model = Treeffuser()
     model.fit(x, y)
@@ -43,6 +57,7 @@ We fit Treeffuser and generate samples. These samples can be used to compute any
 We then plot the original data along with the model's predictions.
 
 .. code-block:: python
+
     sorted_idx = np.argsort(x_new)
     x_sorted, y_preds_sorted, y_q05_sorted, y_q95_sorted = [
         arr[sorted_idx] for arr in [x_new, y_preds, y_q05, y_q95]
@@ -54,21 +69,8 @@ We then plot the original data along with the model's predictions.
     plt.xlabel("x")
     plt.ylabel("y")
     plt.show()
-
 .. image:: README_example.png
    :alt: Treeffuser on heteroscedastic data with sinuisodal response and fat tails
    :align: center
 
 Please refer to the docstrings for more information on the available methods and parameters.
-
-
-Installation
-============
-
-You can install Treeffuser via pip from PyPI with the following command::
-
-    pip install treeffuser
-
-You can also install the in-development version with::
-
-    pip install git+https://github.com/blei-lab/tree-diffuser.git@main
