@@ -19,6 +19,7 @@ from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 from treeffuser._score_models import ScoreModel
+from treeffuser._warnings import CastFloat32Warning
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
@@ -45,7 +46,7 @@ def _check_array(array: ndarray[float]):
             array = np.asarray(array, dtype=np.float32)
             warnings.warn(
                 "Input array is not float32; it has been recast to float32.",
-                UserWarning,
+                CastFloat32Warning,
                 stacklevel=2,
             )
     except ValueError as e:
