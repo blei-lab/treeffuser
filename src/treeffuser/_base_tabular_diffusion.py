@@ -84,6 +84,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
 
     def _validate_data(
+        self,
         X: Optional[ndarray] = None,
         y: Optional[ndarray] = None,
         validate_X: bool = True,
@@ -139,7 +140,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         # before reshaping the data so as to ensure that predictions
         # have the same shape as the user-inputted response
         self._y_original_ndim = y.ndim
-        X, y = self._validate_data(X, y)
+        X, y = self._validate_data(X=X, y=y)
 
         self._y_dim = y.shape[1]
         x_transformed = self._x_scaler.fit_transform(
@@ -185,8 +186,43 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X = self._validate_data(X=X, validate_y=False)
+        X, _ = self._validate_data(X=X, validate_y=False)
 
+        y_samples = self._sample_raw(X, n_samples, n_parallel, n_steps, seed, verbose)
+
+        # Ensure output aligns with original shape provided by user
+        if self._y_original_ndim == 1:
+            y_samples = y_samples[:, 0]
+
+        return y_samples
+
+    def _sample_raw(
+        self,
+        X: Float[ndarray, "batch x_dim"],
+        n_samples: int,
+        n_parallel: int = 10,
+        n_steps: int = 100,
+        seed=None,
+        verbose: bool = False,
+    ) -> Float[ndarray, "n_samples y_original_shape"]:
+        """
+        Sample from the diffusion model.
+
+        Parameters
+        ----------
+        X : np.ndarray
+            Input data with shape (batch, x_dim).
+        n_samples : int
+            Number of samples to draw for each input.
+        n_parallel : int, optional
+            Number of parallel samples to draw. Default is 10.
+        n_steps : int, optional
+            Number of steps to take by the SDE solver. Default is 100.
+        seed : int, optional
+            Seed for the random number generator of the sampling. Default is None.
+        verbose : bool, optional
+            Show a progress bar indicating the number of samples drawn. Default is False.
+        """
         x_transformed = self._x_scaler.transform(X)
         batch_size_x = x_transformed.shape[0]
         y_dim = self._y_dim
@@ -234,11 +270,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             "(n_samples batch) y_dim -> n_samples batch y_dim",
             n_samples=n_samples,
         )
-
-        # ensure output aligns with original shape provided by user
-        if self._y_original_ndim == 1:
-            y_untransformed = y_untransformed.squeeze(axis=-1)
-
         return y_untransformed
 
     def predict(
@@ -249,15 +280,20 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         max_samples: int = 100,
         verbose: bool = False,
     ):
-        X = self._validate_data(X=X, validate_y=False)
+        X, _ = self._validate_data(X=X, validate_y=False)
 
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
         if ode:
-            return self._predict_from_ode(X, tol, verbose)
+            y_preds = self._predict_from_ode(X, tol, verbose)
         else:
-            return self._predict_from_sample(X, tol, max_samples, verbose)
+            y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
+
+        if self._y_original_ndim == 1:
+            y_preds = y_preds[:, 0]
+
+        return y_preds
 
     def _predict_from_ode(
         self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
@@ -279,12 +315,12 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
         n_samples = n_samples_increment = 10
 
-        mean_prev = self.sample(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
+        mean_prev = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
         norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
         max_change = np.inf
 
         while max_change > tol and n_samples < max_samples:
-            sum_increment = self.sample(
+            sum_increment = self._sample_raw(
                 X=X,
                 n_samples=n_samples_increment,
                 verbose=verbose,
@@ -317,9 +353,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X = self._validate_data(X=X, validate_y=False)
+        X, _ = self._validate_data(X=X, validate_y=False)
 
-        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
 
         n_samples, batch, _ = y_samples.shape
 
@@ -373,6 +409,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
+        X, _ = self._validate_data(X=X, validate_y=False)
+
         if ode:
             return self._compute_nll_from_ode(X, y, verbose)
         else:
@@ -394,14 +432,14 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> float:
-        y_samples = self.sample(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
 
         def fit_and_evaluate_kde(y_train, y_test):
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_train)
             return kde.score_samples(y_test).item()
 
-        n_samples, batch, y_dim = y_samples.shape
+        n_samples, batch, _ = y_samples.shape
 
         nll = 0
         for i in range(batch):
