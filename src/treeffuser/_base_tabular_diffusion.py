@@ -361,10 +361,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         kdes = []
         for i in range(batch):
-            if self._y_original_ndim == 1:
-                y_i = y_samples[:, i]
-            else:
-                y_i = y_samples[:, i, :]
+            y_i = y_samples[:, i, :]
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_i)
             kdes.append(kde)
