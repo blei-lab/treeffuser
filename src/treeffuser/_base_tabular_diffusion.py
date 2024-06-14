@@ -42,17 +42,17 @@ def _check_array(array: ndarray[float]):
 
     # Cast floats
     try:
-        if array.dtype != np.float32:
+        if not np.issubdtype(array.dtype, np.floating):
             array = np.asarray(array, dtype=np.float32)
             warnings.warn(
-                "Input array is not float32; it has been recast to float32.",
+                "Input array is not float; it has been recast to float32.",
                 CastFloat32Warning,
                 stacklevel=2,
             )
     except ValueError as e:
         # Raise the ValueError preserving the original exception context, see B904 from flake8-bugbear
         raise ValueError(
-            "Input array is not float32 and cannot be converted to float32."
+            "Input array is not float and cannot be converted to float32."
         ) from e  #
 
     return array
