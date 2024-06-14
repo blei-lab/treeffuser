@@ -120,7 +120,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         cat_idx: Optional[List[int]] = None,
     ):
         """
-        Fit the tabular diffusion model to the data.
+        Fit the conditional diffusion model to the tabular data (X, y).
 
         Parameters
         ----------
@@ -135,6 +135,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         -------
         self : TabularDiffusion
             The fitted model.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
         if cat_idx is not None:
             for idx in cat_idx:
@@ -178,7 +183,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool = False,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
-        Sample from the diffusion model.
+        Sample responses from the diffusion model conditional on the given input data `X`.
 
         Parameters
         ----------
@@ -194,6 +199,21 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             Seed for the random number generator of the sampling. Default is None.
         verbose : bool, optional
             Show a progress bar indicating the number of samples drawn. Default is False.
+
+        Returns
+        -------
+        Float[ndarray, "n_samples batch y_dim"]
+            Samples drawn from the diffusion model.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
@@ -218,22 +238,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool = False,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
-        Sample from the diffusion model.
-
-        Parameters
-        ----------
-        X : np.ndarray
-            Input data with shape (batch, x_dim).
-        n_samples : int
-            Number of samples to draw for each input.
-        n_parallel : int, optional
-            Number of parallel samples to draw. Default is 10.
-        n_steps : int, optional
-            Number of steps to take by the SDE solver. Default is 100.
-        seed : int, optional
-            Seed for the random number generator of the sampling. Default is None.
-        verbose : bool, optional
-            Show a progress bar indicating the number of samples drawn. Default is False.
+        Sampling method that preserves shape conventions.
         """
         x_transformed = self._x_scaler.transform(X)
         batch_size_x = x_transformed.shape[0]
@@ -291,6 +296,39 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         max_samples: int = 100,
         verbose: bool = False,
     ):
+        """
+        Predict the conditional mean of the response given the input data X using Monte Carlo estimates.
+
+        The method iteratively samples from the model until the change in the norm of the mean estimate is within a specified
+        tolerance, or until a maximum number of samples is reached.
+
+        Parameters
+        ----------
+        X : Float[ndarray, "batch x_dim"]
+            Input data with shape (batch, x_dim).
+        tol : float, optional
+            Tolerance for the stopping criterion based on the relative change in the mean estimate. Default is 1e-3.
+        max_samples : int, optional
+            Maximum number of samples to draw in the Monte Carlo simulation to ensure convergence. Default is 100.
+        verbose : bool, optional
+            If True, displays a progress bar indicating the sampling progress. Default is False.
+
+        Returns
+        -------
+        Float[ndarray, "batch y_dim"]
+            The predicted conditional mean of the response for each input in X, shaped according to the original dimensionality
+            of the target data provided during training.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
+        but also works with 1D inputs (["batch"]) for single-dimensional data.
+        """
         X, _ = self._validate_data(X=X, validate_y=False)
 
         if not self._is_fitted:
@@ -311,7 +349,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool,
     ) -> Float[ndarray, "batch y_dim"]:
         """
-        Predict the conditional mean of the response given the input data `X` via Monte Carlo estimates.
+        Predict the conditional mean of the response given the input data `X` using Monte Carlo estimates.
 
         This method iteratively generates samples of size 10, until the relative change in
         the norm of each estimate is within the specified tolerance `tol`.
@@ -353,6 +391,35 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> List[KernelDensity]:
+        """
+        Estimate the distribution of the predicted responses for the given input data `X` using Gaussian
+        KDEs from `sklearn.neighbors.KernelDensity`.
+
+        Parameters
+        ----------
+        X : Float[ndarray, "batch x_dim"]
+            Input data with shape (batch, x_dim).
+        n_samples : int, optional
+            Number of samples to draw for each input. Default is 100.
+        bandwidth : Union[float, Literal["scott", "silverman"]], optional
+            The bandwidth of the kernel for the Kernel Density Estimation. If a float, it defines the bandwidth of the kernel. If a string, one of the "scott" or "silverman" estimation methods. Default is 1.0.
+        verbose : bool, optional
+            If True, displays a progress bar indicating the number of samples drawn. Default is False.
+
+        Returns
+        -------
+        List[KernelDensity]
+            A list of KernelDensity objects representing the estimated distributions for each input in X.
+
+        Raises
+        ------
+        ValueError
+            If the model has not been fitted yet.
+
+        Note
+        ----
+        The method handles 2D inputs (`["batch x_dim"]`, `["batch y_dim"]`) by convention, but also works with 1D inputs (`["batch"]`) for single-dimensional data.
+        """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
@@ -401,6 +468,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         -------
         float
             The computed negative log likelihood value.
+
+        Note
+        ----
+        The method handles 2D inputs (`["batch x_dim"]`, `["batch y_dim"]`) by convention, but also works with 1D inputs (`["batch"]`) for single-dimensional data.
         """
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
