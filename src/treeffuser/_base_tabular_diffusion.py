@@ -192,7 +192,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         # Ensure output aligns with original shape provided by user
         if self._y_original_ndim == 1:
-            y_samples = y_samples[:, 0]
+            y_samples = y_samples.squeeze(axis=-1)
 
         return y_samples
 
@@ -204,7 +204,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         n_steps: int = 100,
         seed=None,
         verbose: bool = False,
-    ) -> Float[ndarray, "n_samples y_original_shape"]:
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
 
@@ -291,7 +291,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
 
         if self._y_original_ndim == 1:
-            y_preds = y_preds[:, 0]
+            y_preds = y_preds.squeeze(axis=-1)
 
         return y_preds
 
