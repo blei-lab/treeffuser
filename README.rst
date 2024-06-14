@@ -11,34 +11,56 @@ It is designed to adhere closely to the scikit-learn API and requires minimal us
 Usage Example
 -------------
 
-Here's how you can use Treeffuser in your project:
+Here's a simple example demonstrating the usage of Treeffuser.
+
+We generate an heteroscedastic response with a sinusoidal mean and fat tails.
 
 .. code-block:: python
-
-    from treeffuser import Treeffuser
+    import matplotlib.pyplot as plt
     import numpy as np
+    from treeffuser import Treeffuser
 
-    # (n_training, n_features), (n_training, n_targets)
-    X, y = ...  # load your data
-    # (n_test, n_features)
-    X_test = ...  # load your test data
+    # Generate data
+    rng = np.random.default_rng(seed=0)
+    n = 5000
+    x = rng.uniform(0, 2 * np.pi, size=n)
+    y = np.sin(x) + rng.laplace(scale=x / 20, size=n)
 
-    # Estimate p(y|x) with a tree-based diffusion model
+We fit Treeffuser and generate samples. These samples can be used to compute any downstream estimates of interest.
+
+.. code-block:: python
+    # Fit the model
     model = Treeffuser()
-    model.fit(X, y)
+    model.fit(x, y)
 
-    # Draw samples y ~ p(y|x) for each test point
-    # (n_samples, n_test, n_targets)
-    y_samples = model.sample(X_test, n_samples=1000)
-
-    # Compute downstream metrics
-    mean = np.mean(y_samples, axis=0)
-    std = np.std(y_samples, axis=0)
-    median = np.median(y_samples, axis=0)
-    quantile = np.quantile(y_samples, q=0 axis=0)
+    # Generate samples and return downstream estimates
+    x_new = np.linspace(x.min(), x.max(), 200)
+    y_samples = model.sample(x_new, n_samples=10**2, verbose=True)
+    y_preds = y_samples.mean(axis=0)
+    y_q05, y_q95 = np.quantile(y_samples, q=[0.05, 0.95], axis=0)
     ... # other metrics
 
+We then plot the original data along with the model's predictions.
+
+.. code-block:: python
+    sorted_idx = np.argsort(x_new)
+    x_sorted, y_preds_sorted, y_q05_sorted, y_q95_sorted = [
+        arr[sorted_idx] for arr in [x_new, y_preds, y_q05, y_q95]
+    ]
+    plt.plot(x_sorted, y_preds_sorted, color="black")
+    plt.fill_between(x_sorted, y_q05_sorted, y_q95_sorted, color="gray", alpha=0.4)
+    plt.scatter(x, y, s=1)
+
+    plt.xlabel("x")
+    plt.ylabel("y")
+    plt.show()
+
+.. image:: README_example.png
+   :alt: Treeffuser on heteroscedastic data with sinuisodal response and fat tails
+   :align: center
+
 Please refer to the docstrings for more information on the available methods and parameters.
+
 
 Installation
 ============
