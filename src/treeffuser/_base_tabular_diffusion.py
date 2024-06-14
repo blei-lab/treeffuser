@@ -34,13 +34,20 @@ def _check_array(array: ndarray[float]):
         raise TypeError("Input must be a numpy array.")
 
     # Check shapes
-    if array.ndim > 3:
+    if array.ndim > 2:
         raise ValueError("Input array cannot have more than three dimensions.")
     elif array.ndim == 1:
         array = array.reshape(-1, 1)
 
     # Cast floats
-    array = np.asarray(array, dtype=np.float32)
+    try:
+        if array.dtype != np.float32:
+            array = np.asarray(array, dtype=np.float32)
+            warnings.warn(
+                "Input array is not float32; it has been recast to float32.", UserWarning
+            )
+    except ValueError:
+        raise ValueError("Input array is not float32 and cannot be converted to float32.")
 
     return array
 
@@ -103,8 +110,8 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def fit(
         self,
-        X: ndarray,
-        y: ndarray,
+        X: Float[ndarray, "batch x_dim"],
+        y: Float[ndarray, "batch y_dim"],
         cat_idx: Optional[List[int]] = None,
     ):
         """
@@ -164,7 +171,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         n_steps: int = 100,
         seed=None,
         verbose: bool = False,
-    ) -> Float[ndarray, "n_samples y_original_shape"]:
+    ) -> Float[ndarray, "n_samples batch y_dim"]:
         """
         Sample from the diffusion model.
 
@@ -274,7 +281,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def predict(
         self,
-        X: ndarray,
+        X: Float[ndarray, "batch x_dim"],
         ode: bool = False,
         tol: float = 1e-3,
         max_samples: int = 100,
@@ -406,7 +413,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._validate_data(X=X, validate_y=False)
+        X, y = self._validate_data(X=X, y=y)
 
         if ode:
             return self._compute_nll_from_ode(X, y, verbose)
