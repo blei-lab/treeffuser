@@ -282,7 +282,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     def predict(
         self,
         X: Float[ndarray, "batch x_dim"],
-        ode: bool = False,
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
@@ -292,20 +291,12 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        if ode:
-            y_preds = self._predict_from_ode(X, tol, verbose)
-        else:
-            y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
+        y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
 
         if self._y_original_ndim == 1:
             y_preds = y_preds.squeeze(axis=-1)
 
         return y_preds
-
-    def _predict_from_ode(
-        self, X: Float[ndarray, "batch x_dim"], tol: float = 1e-3, verbose: bool = False
-    ) -> Float[ndarray, "batch y_dim"]:
-        raise NotImplementedError
 
     def _predict_from_sample(
         self,
@@ -315,10 +306,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         verbose: bool,
     ) -> Float[ndarray, "batch y_dim"]:
         """
-        Predict the conditional mean of y given x via Monte Carlo estimates.
+        Predict the conditional mean of the response given the input data `X` via Monte Carlo estimates.
 
         This method iteratively generates samples of size 10, until the relative change in
-        the norm of each estimate is within a specified tolerance.
+        the norm of each estimate is within the specified tolerance `tol`.
         """
         n_samples = n_samples_increment = 10
 
@@ -379,7 +370,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        ode: bool = False,
         n_samples: int = 10,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -394,9 +384,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
             Input data with shape (batch, x_dim).
         y : np.ndarray
             Target data with shape (batch, y_dim).
-        ode : bool, optional
-            If True, computes the negative log likelihood from ODE.
-            If False, computes it from samples. Default is True.
         n_samples : int, optional
             Number of samples to draw if computing the negative log likelihood from samples. Default is 10.
         bandwidth : Union[float, Literal["scott", "silverman"]], optional
@@ -415,18 +402,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         X, y = self._validate_data(X=X, y=y)
 
-        if ode:
-            return self._compute_nll_from_ode(X, y, verbose)
-        else:
-            return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
-
-    def _compute_nll_from_ode(
-        self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
-        verbose: bool = False,
-    ):
-        raise NotImplementedError
+        return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
 
     def _compute_nll_from_sample(
         self,
