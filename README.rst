@@ -73,4 +73,4 @@ We then plot the original data along with the model's predictions.
    :alt: Treeffuser on heteroscedastic data with sinuisodal response and fat tails
    :align: center
 
-Please refer to the docstrings for more information on the available methods and parameters.
+Please refer to the documentation for more information on the available methods and parameters.
