@@ -23,7 +23,7 @@ You can also install the development version with::
 Usage Example
 ============
 
-Here's a simple example demonstrating the usage of Treeffuser.
+Here's a simple example demonstrating how to use Treeffuser.
 
 We generate an heteroscedastic response with a sinusoidal mean and heavy tails.
 
