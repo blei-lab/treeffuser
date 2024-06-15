@@ -25,7 +25,7 @@ Usage Example
 
 Here's a simple example demonstrating the usage of Treeffuser.
 
-We generate an heteroscedastic response with a sinusoidal mean and fat tails.
+We generate an heteroscedastic response with a sinusoidal mean and heavy tails.
 
 .. code-block:: python
 
