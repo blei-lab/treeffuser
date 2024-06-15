@@ -15,7 +15,7 @@ You can install Treeffuser via pip from PyPI with the following command::
 
     pip install treeffuser
 
-You can also install the in-development version with::
+You can also install the development version with::
 
     pip install git+https://github.com/blei-lab/tree-diffuser.git@main
 
