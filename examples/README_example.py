@@ -24,7 +24,10 @@ plt.scatter(x, y_samples[0, :], s=1, alpha=0.7, label="Treeffuser samples")
 plt.xlabel("$x$")
 plt.ylabel("$y$")
 
-plt.legend(loc="upper center", bbox_to_anchor=(0.5, -0.125), ncol=2)
+legend = plt.legend(loc="upper center", scatterpoints=1, bbox_to_anchor=(0.5, -0.125), ncol=2)
+for legend_handle in legend.legend_handles:
+    legend_handle.set_sizes([32])  # change marker size for legend
+
 plt.tight_layout()
 
 plt.savefig("README_example.png", dpi=120)
