@@ -22,7 +22,7 @@ You can also install the development version with:
 Usage Example
 =============
 
-Here's a simple example demonstrating how to use Treeffuser. 
+Here's a simple example demonstrating how to use Treeffuser.
 
 We generate an heteroscedastic response with two sinusoidal components and heavy tails.
 
@@ -56,7 +56,7 @@ We fit Treeffuser and generate samples. We then plot the samples against the raw
 .. image:: README_example.png
    :alt: Treeffuser on heteroscedastic data with sinuisodal response and heavy tails.
 
-Treeffuser accurately learns the target conditional densities and can generate samples from them. 
+Treeffuser accurately learns the target conditional densities and can generate samples from them.
 
 Then, the Treeffuser samples can be used to compute any downstream estimates of interest.
 
