@@ -13,9 +13,9 @@ from treeffuser.sde import get_diffusion_sde
 class Treeffuser(BaseTabularDiffusion):
     def __init__(
         self,
-        n_repeats: int = 10,
-        n_estimators: int = 100,
-        early_stopping_rounds: Optional[int] = None,
+        n_repeats: int = 30,
+        n_estimators: int = 3000,
+        early_stopping_rounds: Optional[int] = 50,
         eval_percent: float = 0.1,
         num_leaves: int = 31,
         max_depth: int = -1,
