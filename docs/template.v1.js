@@ -3856,7 +3856,7 @@ var frontMatter = function(dom, data) {
     }
     return a;
   });
-  
+
 
 };
 
@@ -3887,7 +3887,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
 (function(exports) {
 
     function BibtexParser() {
-        
+
         this.months = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
         this.notKey = [',','{','}',' ','='];
         this.pos = 0;
@@ -4049,7 +4049,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
                     { return k.toLowerCase(); }
                 else
                     { throw "Value expected:" + this.input.substring(start) + ' for key: ' + k; }
-            
+
             }
         };
 
@@ -4079,7 +4079,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
                     return this$1.input.substring(start, this$1.pos);
                 } else {
                     this$1.pos++;
-                    
+
                 }
             }
         };
@@ -4108,7 +4108,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
                 if (this$1.tryMatch("}")) {
                     break;
                 }
-                
+
                 kv = this$1.key_equals_value();
                 this$1.currentEntry['entryTags'][kv[0]] = kv[1];
             }
@@ -4165,7 +4165,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
             }
         };
     }
-    
+
     exports.toJSON = function(bibtex) {
         var b = new BibtexParser();
         b.setInput(bibtex);
@@ -4195,7 +4195,7 @@ var bibtexParse = createCommonjsModule(function (module, exports) {
             out += '}\n\n';
         }
         return out;
-        
+
     };
 
 })(exports);
@@ -5406,6 +5406,7 @@ function citation_meta_content(ref){
   return content;
 }
 
+/*
 var html$1 = "\n<style>\n  dt-banner {\n    background: #FFF59D;\n    display: block;\n    text-align: center;\n    color: black;\n    height: 70px;\n    line-height: 70px;\n  }\n</style>\n<div>This article is a draft, awaiting review for publication in Distill</div>\n";
 
 var banner = function(dom, data) {
@@ -5417,6 +5418,7 @@ var banner = function(dom, data) {
     banner.style.display = "none";
   });
 };
+*/
 
 var mustache = createCommonjsModule(function (module, exports) {
 /*!
@@ -6119,7 +6121,7 @@ var citation = function(dom, data) {
       return a.author.localeCompare(b.author);
     });
   }*/
-  
+
   var appendCiteHoverDiv = (function() {
     function nodeFromString(str) {
       var div = dom.createElement("div");
@@ -16569,7 +16571,7 @@ function escape(html, encode) {
 }
 
 function unescape(html) {
-	// explicitly match decimal, hex, and named HTML entities 
+	// explicitly match decimal, hex, and named HTML entities
   return html.replace(/&(#(?:\d+)|(?:#x[0-9A-Fa-f]+)|(?:\w+));?/g, function(_, n) {
     n = n.toLowerCase();
     if (n === 'colon') { return ':'; }
@@ -17388,7 +17390,7 @@ if (Prism.languages.markup) {
 			alias: 'language-css'
 		}
 	});
-	
+
 	Prism.languages.insertBefore('inside', 'attr-value', {
 		'style-attr': {
 			pattern: /\s*style=("|').*?\1/i,
