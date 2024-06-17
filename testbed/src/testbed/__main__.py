@@ -59,6 +59,12 @@ def get_model(
 
         return NGBoostGaussian
 
+    available_models.append("ngboost_poisson")
+    if model_name == "ngboost_poisson":
+        from testbed.models.ngboost import NGBoostPoisson
+
+        return NGBoostPoisson
+
     available_models.append("ngboost_mixture_gaussian")
     if model_name == "ngboost_mixture_gaussian":
         from testbed.models.ngboost import NGBoostMixtureGaussian
@@ -116,6 +122,24 @@ def get_model(
         from testbed.models.nnffuser import NNffuser
 
         return NNffuser
+
+    available_models.append("ppm_lightgbm")
+    if model_name == "ppm_lightgbm":
+        from testbed.models.point_prediction_model import PPMLightGBM
+
+        return PPMLightGBM
+
+    available_models.append("ppm_xgboost")
+    if model_name == "ppm_xgboost":
+        from testbed.models.point_prediction_model import PPMXGBoost
+
+        return PPMXGBoost
+
+    available_models.append("ppm_mlp")
+    if model_name == "ppm_mlp":
+        from testbed.models.point_prediction_model import PPMMLP
+
+        return PPMMLP
 
     if return_available_models:
         return available_models
@@ -403,7 +427,7 @@ def run_model_on_dataset(
 
     train_start = time.time()
     if model_name in SUPPORT_CATEGORICAL:
-        model.fit(X_train, y_train, cat_idx)
+        model.fit(X_train, y_train)  # , cat_idx)
     else:
         model.fit(X_train, y_train)
     train_end = time.time()
@@ -539,7 +563,7 @@ def main() -> None:
                 X_test=X_test,
                 y_train=y_train,
                 y_test=y_test,
-                cat_idx=data.get("categorical", None),
+                cat_idx=None,  # data.get("categorical", None),
                 model_name=model_name,
                 metrics=args.metrics,
                 evaluation_mode=args.evaluation_mode,

@@ -138,7 +138,7 @@ def get_data(
         if not path_raw_dataset_dir.exists():
             path_raw_dataset_dir.mkdir()
 
-        if not any(path_raw_dataset_dir.iterdir()):
+        if not any(path_raw_dataset_dir.iterdir()) and dataset != "m5_subset":
             # download raw files
             links = _get_links()
             if dataset not in links:
