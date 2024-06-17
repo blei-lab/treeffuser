@@ -55,6 +55,7 @@ We fit Treeffuser and generate samples. We then plot the samples against the raw
 
 .. image:: README_example.png
    :alt: Treeffuser on heteroscedastic data with sinuisodal response and heavy tails.
+   :align: center
 
 Treeffuser accurately learns the target conditional densities and can generate samples from them.
 
