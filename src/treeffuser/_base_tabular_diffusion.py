@@ -18,6 +18,7 @@ from sklearn.base import BaseEstimator
 from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
+from treeffuser._samples import Samples
 from treeffuser._score_models import ScoreModel
 from treeffuser._warnings import CastFloat32Warning
 from treeffuser._warnings import ConvergenceWarning
@@ -227,7 +228,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if self._y_original_ndim == 1:
             y_samples = y_samples.squeeze(axis=-1)
 
-        return y_samples
+        return Samples(y_samples)
 
     def _sample_raw(
         self,
@@ -428,7 +429,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
 
-        n_samples, batch, _ = y_samples.shape
+        batch = y_samples.shape[2]
 
         kdes = []
         for i in range(batch):
