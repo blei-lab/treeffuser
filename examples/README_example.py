@@ -18,8 +18,8 @@ model.fit(x, y)
 # Generate and plot samples
 y_samples = model.sample(x, n_samples=1, seed=seed, verbose=True)
 
-plt.scatter(x, y, s=1, label="raw data")
-plt.scatter(x, y_samples[0, :], s=1, alpha=0.7, label="samples")
+plt.scatter(x, y, s=1, label="observed data")
+plt.scatter(x, y_samples[0, :], s=1, alpha=0.7, label="Treeffuser samples")
 
 plt.xlabel("$x$")
 plt.ylabel("$y$")
