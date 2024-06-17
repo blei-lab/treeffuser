@@ -8,8 +8,8 @@ seed = 0
 n = 5000
 rng = np.random.default_rng(seed=seed)
 x = rng.uniform(0, 2 * np.pi, size=n)
-comp = rng.integers(0, 2, size=n)
-y = comp * np.sin(x - np.pi / 2) + (1 - comp) * np.cos(x) + rng.laplace(scale=x / 30, size=n)
+z = rng.integers(0, 2, size=n)
+y = z * np.sin(x - np.pi / 2) + (1 - z) * np.cos(x) + rng.laplace(scale=x / 30, size=n)
 
 # Fit the model
 model = Treeffuser(sde_initialize_from_data=True, seed=seed)
