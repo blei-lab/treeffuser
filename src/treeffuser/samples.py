@@ -81,7 +81,7 @@ class Samples(np.ndarray):
         return super().mean(axis=axis, **unused_kwargs)
 
     def median(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return np.median(np.asarray(self), axis=axis, **unused_kwargs)
+        return np.median(self, axis=axis, **unused_kwargs)
 
     def min(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
         return super().min(axis=axis, **unused_kwargs)
