@@ -61,14 +61,15 @@ We fit Treeffuser and generate samples. We then plot the samples against the raw
 
 Treeffuser accurately learns the target conditional densities and can generate samples from them.
 
-Then, the Treeffuser samples can be used to compute any downstream estimates of interest.
+These samples can be used to compute any downstream estimates of interest.
 
 .. code-block:: python
 
     y_samples = model.sample(x, n_samples=100, verbose=True)
+
     # Estimate downstream quantities of interest
-    y_mean = y_samples.mean(axis=0)
-    y_std = y_samples.std(axis=0)
-    y_q05, y_q95 = np.quantile(y_samples, q=[0.05, 0.95], axis=0)
+    y_mean = y_samples.mean() # conditional mean
+    y_std = y_samples.std() # conditional std
+    quantiles = y_samples.quantile(q=[0.05, 0.95]) # conditional quantiles
 
 Please take a look at the documentation for more information on the available methods and parameters.
