@@ -41,7 +41,7 @@ class Samples(np.ndarray):
 
     def confidence_interval(
         self, confidence: float = 0.95
-    ) -> Float[np.ndarray, "batch y_dim 2"]:
+    ) -> Float[np.ndarray, "2 batch y_dim"]:
         _check_unidimensional(self)
         alpha = 1 - confidence
         return self.quantile(q=[alpha / 2, 1 - alpha / 2])

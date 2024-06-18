@@ -31,10 +31,18 @@ def test_samples():
     result = ks_2samp(y_samples[0, :].flatten(), y_test.flatten())
     assert result.pvalue > 0.05
 
-    # Check shapes of methods for Samples
-    assert y_samples.std().shape == (batch_test, y_dim)
+    # Basic tests for Samples methods: run and shape
+    assert y_samples.confidence_interval().shape == (2, batch_test, y_dim)
+    assert y_samples.correlation().shape == (batch_test, y_dim, y_dim)
+    assert len(y_samples.kde()) == (batch_test)
+    assert y_samples.max().shape == (batch_test, y_dim)
     assert y_samples.mean().shape == (batch_test, y_dim)
     assert y_samples.median().shape == (batch_test, y_dim)
-    assert y_samples.quantile(q=[0.05, 0.95]).shape == (batch_test, 2)
-    assert y_samples.range().shape == (batch_test, 2)
+    assert len(y_samples.mode()) == batch_test
+    assert y_samples.min().shape == (batch_test, y_dim)
+    assert y_samples.quantile(q=[0.05, 0.95]).shape == (2, batch_test, y_dim)
+    assert y_samples.range().shape == (batch_test, y_dim, 2)
     assert y_samples.std().shape == (batch_test, y_dim)
+
+
+test_samples()
