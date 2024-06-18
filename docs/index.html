@@ -16,7 +16,7 @@
 <!doctype html>
 
 <head>
-<script src="https://distill.pub/template.v2.js"></script>
+<script src="template.v2.js"></script>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf8">
 </head>
@@ -25,26 +25,25 @@
   <distill-header></distill-header>
   <d-front-matter>
     <script id='distill-front-matter' type="text/json">{
-    "title": "Why Momentum Really Works",
+    "title": "Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient Boosted Trees",
     "description": "Although \" extremely useful for visualizing high-dimensional data, t-SNE plots can sometimes be mysterious or misleading.",
-    "published": "Jan 10, 2017",
+    "published": "May 23, 2024",
     "authors": [
       {
-        "author":"Chris Olah",
+        "author":"Nicolas Beltran",
         "authorURL":"https://colah.github.io/",
-        "affiliations": [{"name": "Google Brain"}]
+        "affiliations": [{"name": "Columbia University"}]
       },
       {
-        "author":"Ludwig Schubert",
+        "author":"Alessandro Grande",
         "authorURL":"https://shancarter.com/",
-        "affiliations": [{"name": "Google Brain", "url": "https://g.co/brain"}]
+        "affiliations": [{"name": "Columbia University"}]
       },
       {
-        "author":"Shan Carter",
+        "author":"Achille Nazaret",
         "authorURL":"https://shancarter.com/",
         "affiliations": [
-          {"name": "Google Brain", "url": "https://g.co/brain"},
-          {"name": "NYT", "url": "https://nytimes.com"}
+          {"name": "Columbia University"}
         ]
       }
     ],
@@ -55,17 +54,26 @@
     }
   }</script>
   </d-front-matter>
+
+
   <d-title>
+    <!--
     <figure style="grid-column: page; margin: 1rem 0;"><img src="momentum.png"
         style="width:100%; border: 1px solid rgba(0, 0, 0, 0.2);" /></figure>
     <p>We often think of Momentum<d-cite key="mercier2011humans"></d-cite> as a means of dampening oscillations and
       speeding up the iterations, leading to faster convergence. But it has other interesting behavior. It allows a
       larger range of step-sizes to be used, and creates its own oscillations. What is going on?</p>
+    -->
   </d-title>
+
   <d-byline></d-byline>
+
+
   <d-article>
+    <!--
     <a class="marker" href="#section-1" id="section-1"><span>1</span></a>
     <h2>A Brief Survey of Techniques</h2>
+
     <p>Before diving in: if you haven’t encountered t-SNE before, here’s what you need to know about the math behind it.
       The goal is to take a set of points in a high-dimensional space and find a faithful representation of those points
       in a lower-dimensional space, typically the 2D plane. The algorithm is non-linear and adapts to the underlying
@@ -165,9 +173,11 @@
           });
         </script>
         <p>That's it for the example article!</p>
-
+    -->
   </d-article>
 
+
+  <!--
   <d-appendix>
 
     <h3>Contributions</h3>
@@ -177,7 +187,7 @@
 
     <d-bibliography src="bibliography.bib"></d-bibliography>
   </d-appendix>
-
+  -->
   <distill-footer></distill-footer>
 
 </body>
