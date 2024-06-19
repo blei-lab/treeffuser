@@ -19,30 +19,34 @@ def _check_unidimensional(array) -> None:
 ###################################################
 # Main class
 ###################################################
-class Samples(np.ndarray):
-    def __new__(cls, input_array):
+class Samples:
+    def __init__(self, input_array):
         if input_array.ndim < 2 or input_array.ndim > 3:
             raise ValueError("Samples must have either 2 or 3 dimensions.")
 
-        samples = np.asarray(input_array).view(cls)
-        samples.n_samples = input_array.shape[0]
-        samples.batch = input_array.shape[1]
-        samples.y_dim = 1 if input_array.ndim == 2 else input_array.shape[-1]
-        return samples
+        self.samples = input_array
+        self.n_samples = input_array.shape[0]
+        self.batch = input_array.shape[1]
+        self.y_dim = 1 if input_array.ndim == 2 else input_array.shape[-1]
+        self.shape = input_array.shape
+        self.ndim = input_array.ndim
 
-    def __array_finalize__(self, obj):
-        # this ensures that attributes are propagated to new instances created
-        # from numpy operations
-        if obj is None:
-            return
-        self.n_samples = getattr(obj, "n_samples", None)
-        self.batch = getattr(obj, "batch", None)
-        self.y_dim = getattr(obj, "y_dim", None)
+    def sample_mean(self) -> Float[np.ndarray, "batch y_dim"]:
+        """
+        Compute the mean of the samples for each `x`.
+        Estimate: E[Y | X = x] for each x.
+
+        Returns
+        -------
+        mean : np.ndarray
+            The mean of the samples for each `x`.
+        """
+        return self.samples.mean(axis=0)
 
     def sample_confidence_interval(
         self, confidence: float = 0.95
     ) -> Float[np.ndarray, "2 batch y_dim"]:
-        _check_unidimensional(self)
+        _check_unidimensional(self.samples)
         alpha = 1 - confidence
         return self.sample_quantile(q=[alpha / 2, 1 - alpha / 2])
 
@@ -50,7 +54,7 @@ class Samples(np.ndarray):
         correlation = np.empty((self.batch, self.y_dim, self.y_dim))
 
         for i in range(self.batch):
-            correlation[i, :, :] = np.corrcoef(self[:, i, :], rowvar=False)
+            correlation[i, :, :] = np.corrcoef(self.samples[:, i, :], rowvar=False)
 
         return correlation
 
@@ -65,9 +69,9 @@ class Samples(np.ndarray):
             range(self.batch), disable=not verbose, desc="Fitting kernel densities for each x"
         ):
             if self.ndim == 2:  # samples may have shape (n_samples, batch) when y_dim=1
-                y_i = self[:, i]
+                y_i = self.samples[:, i, None]
             else:
-                y_i = self[:, i, :]
+                y_i = self.samples[:, i, :]
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
             kde.fit(y_i)
             kdes.append(kde)
@@ -75,44 +79,64 @@ class Samples(np.ndarray):
         return kdes
 
     def sample_max(self) -> Float[np.ndarray, "batch y_dim"]:
-        return super().max(axis=0)
-
-    def sample_mean(self) -> Float[np.ndarray, "batch y_dim"]:
-        return super().mean(axis=0)
+        return self.samples.max(axis=0)
 
     def sample_median(self) -> Float[np.ndarray, "batch y_dim"]:
-        return np.median(self, axis=0)
+        return np.median(self.samples, axis=0)
 
     def sample_min(self) -> Float[np.ndarray, "batch y_dim"]:
-        return super().min(axis=0)
+        return self.samples.min(axis=0)
 
     def sample_mode(
         self,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
-    ) -> List[np.ndarray]:
-        _check_unidimensional(self)
+    ) -> Float[np.ndarray, "batch"]:
+        _check_unidimensional(self.samples)
 
         kdes = self.sample_kde(bandwidth=bandwidth)
 
         modes = []
         n_grid = np.max([2 * self.batch, 1000])  # heuristic for the grid granularity
         for i in tqdm(range(self.batch), disable=not verbose, desc="Searching for modes"):
-            if self.ndim == 2:
-                y_i = self[:, i]
+            if self.samples.ndim == 2:
+                y_i = self.samples[:, i, None]
             else:
-                y_i = self[:, i, :]
+                y_i = self.samples[:, i, :]
             grid = np.linspace(np.min(y_i), np.max(y_i), n_grid)
             log_density = kdes[i].score_samples(grid.reshape(-1, 1))
             modes.append(grid[np.argmax(log_density)])
+
+        modes = np.array(modes)
         return modes
 
     def sample_quantile(self, q) -> Float[np.ndarray, "q_dim batch y_dim"]:
-        return np.quantile(self, q, axis=0)
+        return np.quantile(self.samples, q, axis=0)
 
     def sample_range(self) -> Float[np.ndarray, "batch 2"]:
-        _check_unidimensional(self)
-        return np.stack((self.min(axis=0), self.max(axis=0)), axis=-1)
+        _check_unidimensional(self.samples)
+        return np.stack((self.samples.min(axis=0), self.samples.max(axis=0)), axis=-1)
 
-    def sample_std(self, axis: int = 0) -> Float[np.ndarray, "batch y_dim"]:
-        return super().std(axis=0)
+    def sample_std(self) -> Float[np.ndarray, "batch y_dim"]:
+        return self.samples.std(axis=0)
+
+    def __getitem__(self, key):
+        """
+        Prevent the user from removing the first or second dimension of the samples.
+        """
+        if isinstance(key, int):
+            key = (key,)
+        if isinstance(key[0], int):
+            raise ValueError(
+                f"Accessing `my_samples[{key}] would remove the first dimension of the samples,"
+                f"which is forbidden. Instead, use `my_samples.samples[{key}]`."
+            )
+        if len(key) >= 2 and isinstance(key[1], int):
+            # If key[0] is an ellipsis and self.ndim == 3 then key[1] actually refers to the
+            # third dimension, which is allowed
+            if not (key[0] is Ellipsis and self.ndim == 3):
+                raise ValueError(
+                    f"Accessing `my_samples[{key}] would remove the second dimension of the "
+                    f"samples which is forbidden. Instead, use `my_samples.samples[{key}]`."
+                )
+        return Samples(self.samples.__getitem__(key))
