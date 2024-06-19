@@ -39,14 +39,14 @@ class Samples(np.ndarray):
         self.batch = getattr(obj, "batch", None)
         self.y_dim = getattr(obj, "y_dim", None)
 
-    def confidence_interval(
+    def sample_confidence_interval(
         self, confidence: float = 0.95
     ) -> Float[np.ndarray, "2 batch y_dim"]:
         _check_unidimensional(self)
         alpha = 1 - confidence
         return self.quantile(q=[alpha / 2, 1 - alpha / 2])
 
-    def correlation(self) -> Float[np.ndarray, "batch y_dim y_dim"]:
+    def sample_correlation(self) -> Float[np.ndarray, "batch y_dim y_dim"]:
         correlation = np.empty((self.batch, self.y_dim, self.y_dim))
 
         for i in range(self.batch):
@@ -54,7 +54,7 @@ class Samples(np.ndarray):
 
         return correlation
 
-    def kde(
+    def sample_kde(
         self,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -74,19 +74,19 @@ class Samples(np.ndarray):
 
         return kdes
 
-    def max(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return super().max(axis=axis, **unused_kwargs)
+    def sample_max(self) -> Float[np.ndarray, "batch y_dim"]:
+        return super().max(axis=0)
 
-    def mean(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return super().mean(axis=axis, **unused_kwargs)
+    def sample_mean(self) -> Float[np.ndarray, "batch y_dim"]:
+        return super().mean(axis=0)
 
-    def median(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return np.median(self, axis=axis, **unused_kwargs)
+    def sample_median(self) -> Float[np.ndarray, "batch y_dim"]:
+        return np.median(self, axis=0)
 
-    def min(self, axis=0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return super().min(axis=axis, **unused_kwargs)
+    def sample_min(self) -> Float[np.ndarray, "batch y_dim"]:
+        return super().min(axis=0)
 
-    def mode(
+    def sample_mode(
         self,
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
@@ -107,12 +107,12 @@ class Samples(np.ndarray):
             modes.append(grid[np.argmax(log_density)])
         return modes
 
-    def quantile(self, q, axis=0, **unused_kwargs) -> Float[np.ndarray, "q_dim batch y_dim"]:
-        return np.quantile(self, q, axis=axis, **unused_kwargs)
+    def sample_quantile(self, q) -> Float[np.ndarray, "q_dim batch y_dim"]:
+        return np.quantile(self, q, axis=0)
 
-    def range(self) -> Float[np.ndarray, "batch 2"]:
+    def sample_range(self) -> Float[np.ndarray, "batch 2"]:
         _check_unidimensional(self)
         return np.stack((self.min(axis=0), self.max(axis=0)), axis=-1)
 
-    def std(self, axis: int = 0, **unused_kwargs) -> Float[np.ndarray, "batch y_dim"]:
-        return super().std(axis=axis, **unused_kwargs)
+    def sample_std(self, axis: int = 0) -> Float[np.ndarray, "batch y_dim"]:
+        return super().std(axis=0)
