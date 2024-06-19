@@ -44,7 +44,7 @@ class Samples(np.ndarray):
     ) -> Float[np.ndarray, "2 batch y_dim"]:
         _check_unidimensional(self)
         alpha = 1 - confidence
-        return self.quantile(q=[alpha / 2, 1 - alpha / 2])
+        return self.sample_quantile(q=[alpha / 2, 1 - alpha / 2])
 
     def sample_correlation(self) -> Float[np.ndarray, "batch y_dim y_dim"]:
         correlation = np.empty((self.batch, self.y_dim, self.y_dim))
@@ -93,7 +93,7 @@ class Samples(np.ndarray):
     ) -> List[np.ndarray]:
         _check_unidimensional(self)
 
-        kdes = self.kde(bandwidth=bandwidth)
+        kdes = self.sample_kde(bandwidth=bandwidth)
 
         modes = []
         n_grid = np.max([2 * self.batch, 1000])  # heuristic for the grid granularity

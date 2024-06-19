@@ -32,17 +32,14 @@ def test_samples():
     assert result.pvalue > 0.05
 
     # Basic tests for Samples methods: run and shape
-    assert y_samples.confidence_interval().shape == (2, batch_test, y_dim)
-    assert y_samples.correlation().shape == (batch_test, y_dim, y_dim)
-    assert len(y_samples.kde()) == (batch_test)
-    assert y_samples.max().shape == (batch_test, y_dim)
-    assert y_samples.mean().shape == (batch_test, y_dim)
-    assert y_samples.median().shape == (batch_test, y_dim)
-    assert len(y_samples.mode()) == batch_test
-    assert y_samples.min().shape == (batch_test, y_dim)
-    assert y_samples.quantile(q=[0.05, 0.95]).shape == (2, batch_test, y_dim)
-    assert y_samples.range().shape == (batch_test, y_dim, 2)
-    assert y_samples.std().shape == (batch_test, y_dim)
-
-
-test_samples()
+    assert y_samples.sample_confidence_interval().shape == (2, batch_test, y_dim)
+    assert y_samples.sample_correlation().shape == (batch_test, y_dim, y_dim)
+    assert len(y_samples.sample_kde()) == (batch_test)
+    assert y_samples.sample_max().shape == (batch_test, y_dim)
+    assert y_samples.sample_mean().shape == (batch_test, y_dim)
+    assert y_samples.sample_median().shape == (batch_test, y_dim)
+    assert len(y_samples.sample_mode()) == batch_test
+    assert y_samples.sample_min().shape == (batch_test, y_dim)
+    assert y_samples.sample_quantile(q=[0.05, 0.95]).shape == (2, batch_test, y_dim)
+    assert y_samples.sample_range().shape == (batch_test, y_dim, 2)
+    assert y_samples.sample_std().shape == (batch_test, y_dim)
