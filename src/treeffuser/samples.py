@@ -68,7 +68,7 @@ class Samples:
         for i in tqdm(
             range(self.batch), disable=not verbose, desc="Fitting kernel densities for each x"
         ):
-            if self.ndim == 2:  # samples may have shape (n_samples, batch) when y_dim=1
+            if self.ndim == 2:
                 y_i = self.samples[:, i, None]
             else:
                 y_i = self.samples[:, i, :]

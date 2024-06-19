@@ -32,7 +32,7 @@ We generate an heteroscedastic response with two sinusoidal components and heavy
 
     import matplotlib.pyplot as plt
     import numpy as np
-    from treeffuser import Treeffuser
+    from treeffuser import Treeffuser, Samples
 
     # Generate data
     seed = 0
@@ -66,10 +66,17 @@ These samples can be used to compute any downstream estimates of interest.
 .. code-block:: python
 
     y_samples = model.sample(x, n_samples=100, verbose=True)
+    # y_samples.shape == (n_samples, x.shape[0], y.shape[1])
 
     # Estimate downstream quantities of interest
-    y_mean = y_samples.mean() # conditional mean
-    y_std = y_samples.std() # conditional std
-    quantiles = y_samples.quantile(q=[0.05, 0.95]) # conditional quantiles
+    y_mean = y_samples.mean(axis=0) # conditional mean for each x
+    y_std = y_samples.std(axis=0) # conditional std for each x
+
+    # For convenience, we also provide a class `Samples` that can estimate standard quantities
+    y_samples = Samples(y_samples)
+    y_mean = y_samples.conditional_mean() # same as before
+    y_std = y_samples.conditional_std() # same as before
+    y_quantiles = y_samples.conditional_quantile(q=[0.05, 0.95]) # conditional quantiles for each x
+
 
 Please take a look at the documentation for more information on the available methods and parameters.
