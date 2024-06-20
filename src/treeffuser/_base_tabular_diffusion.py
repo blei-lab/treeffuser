@@ -21,7 +21,6 @@ from tqdm import tqdm
 from treeffuser._score_models import ScoreModel
 from treeffuser._warnings import CastFloat32Warning
 from treeffuser._warnings import ConvergenceWarning
-from treeffuser.samples import Samples
 from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
 from treeffuser.sde import sdeint
@@ -230,7 +229,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if self._y_original_ndim == 1:
             y_samples = y_samples.squeeze(axis=-1)
 
-        return Samples(y_samples)
+        return y_samples
 
     def _sample_without_validation(
         self,
