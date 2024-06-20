@@ -80,10 +80,9 @@ For convenience, we also provide a class `Samples` that can estimate standard qu
 .. code-block:: python
 
     y_samples = Samples(y_samples)
-    y_mean = y_samples.conditional_mean() # same as before
-    y_std = y_samples.conditional_std() # same as before
-    y_quantiles = y_samples.conditional_quantile(q=[0.05, 0.95]) # conditional quantiles for each x
-
+    y_mean = y_samples.sample_mean() # same as before
+    y_std = y_samples.sample_std() # same as before
+    y_quantiles = y_samples.sample_quantile(q=[0.05, 0.95]) # conditional quantiles for each x
 
 Please take a look at the documentation for more information on the available methods and parameters.
 
