@@ -15,7 +15,7 @@ def test_samples():
     # Basic tests for Samples methods: run and shape
     y_samples = Samples(y_samples)
     assert y_samples.sample_correlation().shape == (batch_test, y_dim, y_dim)
-    assert len(y_samples.sample_kde()) == (batch_test)
+    assert len(y_samples.sample_kde()) == batch_test
     assert y_samples.sample_max().shape == (batch_test, y_dim)
     assert y_samples.sample_mean().shape == (batch_test, y_dim)
     assert y_samples.sample_median().shape == (batch_test, y_dim)
