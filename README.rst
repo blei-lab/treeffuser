@@ -65,8 +65,7 @@ These samples can be used to compute any downstream estimates of interest.
 
 .. code-block:: python
 
-    y_samples = model.sample(x, n_samples=100, verbose=True)
-    # y_samples.shape == (n_samples, x.shape[0], y.shape[1])
+    y_samples = model.sample(x, n_samples=100, verbose=True) # y_samples.shape[0] is 100
 
     # Estimate downstream quantities of interest
     y_mean = y_samples.mean(axis=0) # conditional mean for each x
