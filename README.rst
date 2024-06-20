@@ -2,9 +2,13 @@
 Treeffuser
 ====================
 
-Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**. Treeffuser estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector. Treeffuser can model conditional distributions ``p(y|x)`` that are arbitrarily complex (e.g., multimodal, heteroscedastic, non-gaussian, heavy-tailed, etc.).
+Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
+It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
+Treeffuser can model conditional distributions ``p(y|x)`` that are arbitrarily complex (e.g., multimodal, heteroscedastic, non-gaussian, heavy-tailed, etc.).
 
-It is designed to adhere closely to the scikit-learn API and requires minimal user tuning.
+It is designed to adhere closely to the scikit-learn API and require minimal user tuning.
+
+Treeffuser is detailed in the paper: `Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient-Boosted Trees <https://arxiv.org/abs/2406.07658>`_.
 
 Installation
 ============
@@ -79,3 +83,19 @@ These samples can be used to compute any downstream estimates of interest.
 
 
 Please take a look at the documentation for more information on the available methods and parameters.
+
+Citing Treeffuser
+=================
+
+If you use Treeffuser or this codebase in your work, please cite the following paper:
+
+.. code-block:: bibtex
+
+    @article{beltran2024treeffuser,
+      title={Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient-Boosted Trees},
+      author={Beltran-Velez, Nicolas and Grande, Alessandro Antonio and Nazaret, Achille and Kucukelbir, Alp and Blei, David},
+      journal={arXiv preprint arXiv:2406.07658},
+      year={2024}
+    }
+
+
