@@ -20,7 +20,7 @@ def _check_unidimensional(array) -> None:
 # Main class
 ###################################################
 class Samples:
-    def __init__(self, input_array):
+    def __init__(self, input_array: Float[np.ndarray, "n_samples batch y_dim"]):
         if input_array.ndim < 2 or input_array.ndim > 3:
             raise ValueError("Samples must have either 2 or 3 dimensions.")
 
