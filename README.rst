@@ -97,5 +97,3 @@ If you use Treeffuser or this codebase in your work, please cite the following p
       journal={arXiv preprint arXiv:2406.07658},
       year={2024}
     }
-
-
