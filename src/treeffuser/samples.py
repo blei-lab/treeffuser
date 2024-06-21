@@ -22,7 +22,7 @@ def _check_unidimensional(array) -> None:
 class Samples:
     """
     A wrapper class for the output of Treeffuser, the samples from the
-    conditional distribution p(y|x). It provides convenient methods to
+    conditional distribution `p(y|x)`. It provides convenient methods to
     compute various statistics from the samples.
 
     Parameters
@@ -267,7 +267,12 @@ class Samples:
         q : float or list[float]
             Quantile or sequence of quantiles to compute.
         """
-        return np.quantile(self._samples, q, axis=0)
+        quantiles = np.quantile(self._samples, q, axis=0)
+        return (
+            quantiles
+            if isinstance(q, list)
+            else quantiles.reshape((1, self.batch, self.y_dim))
+        )
 
     def sample_range(self) -> Float[np.ndarray, "batch 2"]:
         """
