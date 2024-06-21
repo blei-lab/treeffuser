@@ -103,38 +103,19 @@ def test_samples_subscript(multivariate_normal_samples):
 ###################################################
 # Methods
 ###################################################
-@pytest.mark.parametrize(
-    "statistic, true_value",
-    [
-        ("sample_mean", 1),
-        ("sample_median", 1),
-        ("sample_mode", 1),
-        ("sample_std", np.sqrt(2)),
-    ],
-)
-def test_samples_main_statistics(statistic, true_value, normal_samples):
+def test_samples_apply(normal_samples):
+    def kurtosis(samples):
+        return np.mean((samples - np.mean(samples)) ** 4) / (np.std(samples) ** 4)
+
     samples = Samples(normal_samples["samples"])
-    batch = normal_samples["samples"].shape[1]
+    _, batch, y_dim = normal_samples["samples"].shape
 
-    sample_stat = getattr(samples, statistic)()
+    true_kurtosis = 3
+    sample_kurtosis = samples.sample_apply(fun=kurtosis)
+
+    assert sample_kurtosis.shape == (batch, y_dim)
     for i in range(batch):
-        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
-
-
-@pytest.mark.parametrize(
-    "statistic, true_value",
-    [
-        ("sample_max", 1),
-        ("sample_min", 0),
-    ],
-)
-def test_samples_max_min(statistic, true_value, uniform_samples):
-    samples = Samples(uniform_samples["samples"])
-    batch = uniform_samples["samples"].shape[1]
-
-    sample_stat = getattr(samples, statistic)()
-    for i in range(batch):
-        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
+        assert np.allclose(sample_kurtosis[i, :], true_kurtosis, atol=0.1)
 
 
 def test_samples_confidence_interval_and_quantiles(normal_samples):
@@ -169,3 +150,37 @@ def test_samples_correlation(multivariate_normal_samples):
 
     for i in range(batch):
         assert np.allclose(sample_correlation[i, :, :], true_correlation, atol=0.1)
+
+
+@pytest.mark.parametrize(
+    "statistic, true_value",
+    [
+        ("sample_mean", 1),
+        ("sample_median", 1),
+        ("sample_mode", 1),
+        ("sample_std", np.sqrt(2)),
+    ],
+)
+def test_samples_main_statistics(statistic, true_value, normal_samples):
+    samples = Samples(normal_samples["samples"])
+    batch = normal_samples["samples"].shape[1]
+
+    sample_stat = getattr(samples, statistic)()
+    for i in range(batch):
+        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
+
+
+@pytest.mark.parametrize(
+    "statistic, true_value",
+    [
+        ("sample_max", 1),
+        ("sample_min", 0),
+    ],
+)
+def test_samples_max_min(statistic, true_value, uniform_samples):
+    samples = Samples(uniform_samples["samples"])
+    batch = uniform_samples["samples"].shape[1]
+
+    sample_stat = getattr(samples, statistic)()
+    for i in range(batch):
+        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
