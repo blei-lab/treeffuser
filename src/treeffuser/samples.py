@@ -1,3 +1,4 @@
+from typing import Callable
 from typing import List
 from typing import Literal
 from typing import Union
@@ -55,37 +56,25 @@ class Samples:
         self.shape = input_array.shape
         self.ndim = input_array.ndim
 
-    def sample_mean(self) -> Float[np.ndarray, "batch y_dim"]:
+    def sample_apply(
+        self, fun: Callable[[np.ndarray], np.ndarray]
+    ) -> Float[np.ndarray, "batch y_dim"]:
         """
-        Compute the mean of the samples for each `x`.
-        Estimate: `E[Y | X = x]` for each `x`.
-        Equivalent to `np.mean(samples.to_numpy(), axis=0)`.
-
-        Returns
-        -------
-        mean : np.ndarray
-            The mean of the samples for each `x`.
-        """
-        return self._samples.mean(axis=0)
-
-    def sample_std(self, ddof: int = 0) -> Float[np.ndarray, "batch y_dim"]:
-        """
-        Compute the standard deviation of the samples for each `x`.
-        Estimate: `std[Y | X = x]` for each `x`.
-        Equivalent to `np.std(samples.to_numpy(), axis=0, ddof=ddof)`.
+        Apply a function to the samples for each `x`.
 
         Parameters
         ----------
-        ddof : int
-            Delta Degrees of Freedom. The divisor used in the calculation is `N - ddof`,
-            where N represents the number of elements.
+        func : callable
+            A function to apply to each sample. The function should take a numpy array of shape
+            (n_samples,) and return a numpy array of the same shape.
 
         Returns
         -------
-        std : np.ndarray
-            The standard deviation of the samples for each `x`.
+        result : np.ndarray
+            The result of applying the function to each row of the samples.
         """
-        return self._samples.std(axis=0, ddof=ddof)
+        result = np.apply_along_axis(fun, 0, self._samples)
+        return result
 
     def sample_confidence_interval(
         self, confidence: float = 0.95
@@ -179,6 +168,19 @@ class Samples:
             The maximum of the samples for each `x`.
         """
         return self._samples.max(axis=0)
+
+    def sample_mean(self) -> Float[np.ndarray, "batch y_dim"]:
+        """
+        Compute the mean of the samples for each `x`.
+        Estimate: `E[Y | X = x]` for each `x`.
+        Equivalent to `np.mean(samples.to_numpy(), axis=0)`.
+
+        Returns
+        -------
+        mean : np.ndarray
+            The mean of the samples for each `x`.
+        """
+        return self._samples.mean(axis=0)
 
     def sample_median(self) -> Float[np.ndarray, "batch y_dim"]:
         """
@@ -287,6 +289,25 @@ class Samples:
         """
         _check_unidimensional(self._samples)
         return np.stack((self._samples.min(axis=0), self._samples.max(axis=0)), axis=-1)
+
+    def sample_std(self, ddof: int = 0) -> Float[np.ndarray, "batch y_dim"]:
+        """
+        Compute the standard deviation of the samples for each `x`.
+        Estimate: `std[Y | X = x]` for each `x`.
+        Equivalent to `np.std(samples.to_numpy(), axis=0, ddof=ddof)`.
+
+        Parameters
+        ----------
+        ddof : int
+            Delta Degrees of Freedom. The divisor used in the calculation is `N - ddof`,
+            where N represents the number of elements.
+
+        Returns
+        -------
+        std : np.ndarray
+            The standard deviation of the samples for each `x`.
+        """
+        return self._samples.std(axis=0, ddof=ddof)
 
     def to_numpy(self) -> Float[np.ndarray, "n_samples batch y_dim"]:
         """
