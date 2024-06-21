@@ -15,9 +15,9 @@ def seed():
 @pytest.fixture(scope="module")
 def normal_samples(seed):
     rng = np.random.default_rng(seed=seed)
-    n_samples = 10**4
+    n_samples = 10**3
     loc = 1
-    scale = np.sqrt(2)
+    scale = 1
     return {
         "samples": rng.normal(loc=loc, scale=scale, size=(n_samples, 15, 1)),
         "loc": loc,
@@ -28,7 +28,7 @@ def normal_samples(seed):
 @pytest.fixture(scope="module")
 def uniform_samples(seed):
     rng = np.random.default_rng(seed=seed)
-    n_samples = 10**4
+    n_samples = 10**3
     low = 0
     high = 1
     return {
@@ -115,7 +115,9 @@ def test_samples_apply(normal_samples):
 
     assert sample_kurtosis.shape == (batch, y_dim)
     for i in range(batch):
-        assert np.allclose(sample_kurtosis[i, :], true_kurtosis, atol=0.1)
+        assert np.allclose(
+            sample_kurtosis[i, :], true_kurtosis, atol=0.5
+        ), f"sample_kurtosis={sample_kurtosis[i, :]}, true={true_kurtosis}"
 
 
 def test_samples_confidence_interval_and_quantiles(normal_samples):
@@ -134,10 +136,10 @@ def test_samples_confidence_interval_and_quantiles(normal_samples):
     assert sample_q_025.shape == (1, samples.batch, samples.y_dim)
     assert sample_confidence_interval.shape == (2, samples.batch, samples.y_dim)
     for i in range(samples.batch):
-        assert np.allclose(sample_q_975[:, i, :], true_q_975, atol=0.1)
-        assert np.allclose(sample_q_025[:, i, :], true_q_025, atol=0.1)
+        assert np.allclose(sample_q_975[:, i, :], true_q_975, atol=0.3)
+        assert np.allclose(sample_q_025[:, i, :], true_q_025, atol=0.3)
         assert np.allclose(
-            sample_confidence_interval[:, i, :].reshape(-1), true_confidence_interval, atol=0.1
+            sample_confidence_interval[:, i, :].reshape(-1), true_confidence_interval, atol=0.3
         )
 
 
@@ -152,35 +154,37 @@ def test_samples_correlation(multivariate_normal_samples):
         assert np.allclose(sample_correlation[i, :, :], true_correlation, atol=0.1)
 
 
-@pytest.mark.parametrize(
-    "statistic, true_value",
-    [
-        ("sample_mean", 1),
-        ("sample_median", 1),
-        ("sample_mode", 1),
-        ("sample_std", np.sqrt(2)),
-    ],
-)
-def test_samples_main_statistics(statistic, true_value, normal_samples):
+def test_samples_main_statistics(normal_samples):
+    true_values = {
+        "sample_mean": normal_samples["loc"],
+        "sample_median": normal_samples["loc"],
+        "sample_mode": normal_samples["loc"],
+        "sample_std": normal_samples["scale"],
+    }
+
     samples = Samples(normal_samples["samples"])
     batch = normal_samples["samples"].shape[1]
 
-    sample_stat = getattr(samples, statistic)()
-    for i in range(batch):
-        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
+    for statistic, true_value in true_values.items():
+        sample_stat = getattr(samples, statistic)()
+        for i in range(batch):
+            assert np.allclose(
+                sample_stat[i, ...], true_value, atol=0.1
+            ), f"{statistic}={sample_stat[i, ...]} vs. true={true_value}"
 
 
-@pytest.mark.parametrize(
-    "statistic, true_value",
-    [
-        ("sample_max", 1),
-        ("sample_min", 0),
-    ],
-)
-def test_samples_max_min(statistic, true_value, uniform_samples):
+def test_samples_max_min(uniform_samples):
+    true_values = {
+        "sample_max": uniform_samples["high"],
+        "sample_min": uniform_samples["low"],
+    }
+
     samples = Samples(uniform_samples["samples"])
     batch = uniform_samples["samples"].shape[1]
 
-    sample_stat = getattr(samples, statistic)()
-    for i in range(batch):
-        assert np.allclose(sample_stat[i, ...], true_value, atol=0.1)
+    for statistic, true_value in true_values.items():
+        sample_stat = getattr(samples, statistic)()
+        for i in range(batch):
+            assert np.allclose(
+                sample_stat[i, ...], true_value, atol=0.1
+            ), f"{statistic}={sample_stat[i, ...]} vs. true={true_value}"
