@@ -1,0 +1,154 @@
+/*
+ * Copyright 2018 The Distill Template Authors
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+html {
+  font-size: 14px;
+	line-height: 1.6em;
+  /* font-family: "Libre Franklin", "Helvetica Neue", sans-serif; */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", Arial, sans-serif;
+  /*, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";*/
+  text-size-adjust: 100%;
+  -ms-text-size-adjust: 100%;
+  -webkit-text-size-adjust: 100%;
+}
+
+@media(min-width: 768px) {
+  html {
+    font-size: 16px;
+  }
+}
+
+body {
+  margin: 0;
+}
+
+a {
+  color: #004276;
+}
+
+figure {
+  margin: 0;
+}
+
+table {
+	border-collapse: collapse;
+	border-spacing: 0;
+}
+
+table th {
+	text-align: left;
+}
+
+table thead {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+table thead th {
+  padding-bottom: 0.5em;
+}
+
+table tbody :first-child td {
+  padding-top: 0.5em;
+}
+
+pre {
+  overflow: auto;
+  max-width: 100%;
+}
+
+p {
+  margin-top: 0;
+  margin-bottom: 1em;
+}
+
+sup, sub {
+  vertical-align: baseline;
+  position: relative;
+  top: -0.4em;
+  line-height: 1em;
+}
+
+sub {
+  top: 0.4em;
+}
+
+.kicker,
+.marker {
+  font-size: 15px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.5);
+}
+
+
+/* Headline */
+
+@media(min-width: 1024px) {
+  d-title h1 span {
+    display: block;
+  }
+}
+
+/* Figure */
+
+figure {
+  position: relative;
+  margin-bottom: 2.5em;
+  margin-top: 1.5em;
+}
+
+figcaption+figure {
+
+}
+
+figure img {
+  width: 100%;
+}
+
+figure svg text,
+figure svg tspan {
+}
+
+figcaption,
+.figcaption {
+  color: rgba(0, 0, 0, 0.6);
+  font-size: 12px;
+  line-height: 1.5em;
+}
+
+@media(min-width: 1024px) {
+figcaption,
+.figcaption {
+    font-size: 13px;
+  }
+}
+
+figure.external img {
+  background: white;
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.1);
+  padding: 18px;
+  box-sizing: border-box;
+}
+
+figcaption a {
+  color: rgba(0, 0, 0, 0.6);
+}
+
+figcaption b,
+figcaption strong {
+  font-weight: 600;
+  color: rgba(0, 0, 0, 1.0);
+}
