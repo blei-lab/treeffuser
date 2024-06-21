@@ -1,7 +1,7 @@
 distill-header {
   position: relative;
   height: 60px;
-  background-color: hsl(200, 60%, 15%);
+  background-color: hsl(121, 64%, 22%);
   width: 100%;
   box-sizing: border-box;
   z-index: 2;
@@ -45,7 +45,7 @@ distill-header svg {
 distill-header svg path {
   fill: none;
   stroke: rgba(255, 255, 255, 0.8);
-  stroke-width: 3px;
+  stroke-width: 4px;
 }
 distill-header .logo {
   font-size: 17px;
