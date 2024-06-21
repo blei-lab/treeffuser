@@ -432,7 +432,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
-        n_samples, batch, _ = y_samples.shape
+        batch = y_samples.shape[1]
 
         kdes = []
         for i in range(batch):
