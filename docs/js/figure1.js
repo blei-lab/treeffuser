@@ -126,18 +126,44 @@ dots.enter().append("circle").attr("r", 2.5).attr("cx", function (d) {
     .attr("stroke", "black")
     .attr("stroke-width", 0.3);
 
-// Add a horizontal line (slider) that can be dragged up and down
-var drag = d3.drag().on("drag", function () {
+
+
+var interval;
+var y_conditioned_animation = Y_BAR_INIT;
+
+interval = d3.interval(function() {
+    y_conditioned_animation = (y_conditioned_animation + 0.005) % Y_MAX;
+    var y = y_conditioned_animation;
+    slider.attr("y1", yScale(y)).attr("y2", yScale(y));
+    d3.select("#sliderText").attr("y", yScale(y) - 5).text("x = " + y.toFixed(2));
+    updateGaussian(y);
+    d3.select("#yAxisLabelDensity").text("p(y | x = " + y.toFixed(2) + " )");
+}, 10); // Change the bar position every 1000ms (1 second)
+var drag = d3.drag().on("start", function() {
+    interval.stop(); // Stop the interval when the bar is manually dragged
+}).on("drag", function () {
     var y = Math.max(0, Math.min(Y_MAX, yScale.invert(d3.event.y)));
     d3.select(this).attr("y1", yScale(y)).attr("y2", yScale(y));
     d3.select("#sliderText").attr("y", yScale(y) - 5).text("x = " + y.toFixed(2));
-    updateGaussian(y);  // Update the Gaussian density plot when the slider is moved
-    // Update the y-axis label of the density plot
+    updateGaussian(y);
     d3.select("#yAxisLabelDensity").text("p(y | x = " + y.toFixed(2) + " )");
 });
+//
+// // Add a horizontal line (slider) that can be dragged up and down
+// var drag = d3.drag().on("drag", function () {
+//     var y = Math.max(0, Math.min(Y_MAX, yScale.invert(d3.event.y)));
+//     d3.select(this).attr("y1", yScale(y)).attr("y2", yScale(y));
+//     d3.select("#sliderText").attr("y", yScale(y) - 5).text("x = " + y.toFixed(2));
+//     updateGaussian(y);  // Update the Gaussian density plot when the slider is moved
+//     // Update the y-axis label of the density plot
+//     d3.select("#yAxisLabelDensity").text("p(y | x = " + y.toFixed(2) + " )");
+// });
+
+
+
 var slider = svgLeft.append("line").attr("x1", 0).attr("x2", width).attr("y1", yScale(Y_BAR_INIT)).attr("y2", yScale(Y_BAR_INIT))
-    .attr("stroke", "black")
-    .attr("stroke-width", 2).attr("class", "draggable").call(drag);
+    .attr("id", "slider")
+    .attr("class", "draggable").call(drag);
 
 svgLeft.append("text")
     .attr("id", "sliderText")

@@ -14,3 +14,15 @@
 #figure1  .draggable.dragging {
   cursor: grabbing;
 }
+
+#slider {
+  stroke: grey; /* Set the stroke color to black */
+  stroke-width: 7; /* Set the stroke width to 4 */
+  stroke-opacity: 0.6; /* Set the stroke opacity to 0.6 */
+}
+
+#slider:hover {
+  stroke-width: 10; /* Increase the stroke width to 6 on hover */
+  stroke: darkgray; /* Change the stroke color to grey on hover */
+
+}
