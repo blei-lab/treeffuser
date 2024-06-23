@@ -1,0 +1,22 @@
+code, pre {
+    font-family: 'Consolas', 'Monaco', monospace;
+    background-color: #f6f8fa;
+    border-radius: 3px;
+}
+
+code {
+    padding: 2px 4px;
+    font-size: 0.9em;
+    border: 1px solid #e1e4e8;
+}
+
+pre {
+    padding: 10px;
+    border: 1px solid #e1e4e8;
+    overflow-x: auto;
+}
+
+pre code {
+    padding: 0;
+    border: none;
+}
