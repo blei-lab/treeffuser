@@ -6,23 +6,27 @@
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'treeffuser'
-copyright = '2024, Nicolas Beltran-Velez, Alessandro Antonio Grande, Achille Nazaret'
-author = 'Nicolas Beltran-Velez, Alessandro Antonio Grande, Achille Nazaret'
-release = '0.1.3'
+project = "treeffuser"
+copyright = "2024, Nicolas Beltran-Velez, Alessandro Antonio Grande, Achille Nazaret"
+author = "Nicolas Beltran-Velez, Alessandro Antonio Grande, Achille Nazaret"
+release = "0.1.3"
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = [
+    "recommonmark",
+    "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",  # If using Google or NumPy style docstrings
+    "sphinx.ext.viewcode",  # To include source code links
+]
 
-templates_path = ['_templates']
+templates_path = ["_templates"]
 exclude_patterns = []
-
 
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'alabaster'
-html_static_path = ['_static']
+html_theme = "alabaster"
+html_static_path = ["_static"]
