@@ -23,6 +23,8 @@
   <link rel="stylesheet" type="text/css" href="css/title.css">
   <link rel="stylesheet" type="text/css" href="css/header.css">
   <link rel="stylesheet" type="text/css" href="css/treeffuser.css">
+  <link rel="stylesheet" type="text/css" href="css/feature-table.css">
+  <link rel="stylesheet" type="text/css" href="css/code.css">
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/flickity@2/dist/flickity.min.css">
@@ -33,6 +35,12 @@
   -->
 
   <style>
+    .fake-img {
+      background: #bbb;
+      border: 1px solid rgba(0, 0, 0, 0.1);
+      box-shadow: 0 0px 4px rgba(0, 0, 0, 0.1);
+      margin-bottom: 12px;
+  }
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf8">
@@ -165,6 +173,15 @@
       <li>The probability that <d-math>y</d-math> is in some interval,</li>
     </ul>
     <p>and many other quantities!</p>
+    <div class="fake-img">
+      <p>
+        This should be a cool animation  on the side of a bimodal
+        distribution showing the issues with predicting the mean?
+        Or at least two images?
+      </p>
+    </div>
+
+
 
     <p>
       The main difficulty is that in practice we don't have access to <d-math>p(y|x)</d-math>
@@ -198,97 +215,75 @@
     <p>
       These two techniques combined make treeffuser and extremely powerful tool for probabilistic predictions.
     </p>
-    <div class="row g-4 py-1 row-cols-1 row-cols-lg-3">
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#toggles2"></use></svg>
-          -->
-        </div>
+
+
+
+    <div class="feature-table">
+      <!-- Example of a feature item -->
+      <div class="feature-item">
         <div>
           <h3>Extreme flexibility</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <p>
+            Due to the use of conditional diffusions Treeffuser
+            can model, heavy tailed, multimodal, skewed
+            and other complex distributions.
+
         </div>
       </div>
-
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#toggles2"></use></svg>
-          -->
-        </div>
+      <div class="feature-item">
         <div>
-          <h3>Featured title</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <h3> Robustness to misspecification</h3>
+          <p>
+            Treeffuser doesn't require any special configuration to
+            work with any distribution <d-math>p(y|x)</d-math>.
+            It fully adapts to the data avoiding the need for
+            assumptions that may not hold in practice.
+          </p>
         </div>
       </div>
-
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#cpu-fill"></use></svg>
-          -->
-        </div>
+      <div class="feature-item">
         <div>
-          <h3>Featured title</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <h3>Easy to use</h3>
+          <p>
+            Treeffuser adopts the same API as <code>sklearn</code>
+            and using it is a simple as calling <code>model.fit(X,y)</code>
+            and <code>model.sample(X)</code>.
+          </p>
         </div>
       </div>
-
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#tools"></use></svg>
-          -->
-        </div>
+      <div class="feature-item">
         <div>
-          <h3>Extreme flexibility</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <h3>Designed for tabular data</h3>
+          <p>
+            Treeffuser is built on top <code>LightGBM</code>,
+            a fast and efficient implementation of gradient boosted trees
+            has state of the art performance on tabular data problems.
+          </p>
         </div>
       </div>
 
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#tools"></use></svg>
-          -->
-        </div>
+      <div class="feature-item">
         <div>
-          <h3>Featured title</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <h3>Multivariate output</h3>
+          <p>
+            Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
+            modelling of complex correlations between multiple output variables.
+          </p>
         </div>
       </div>
-
-      <div class="col d-flex align-items-start">
-        <div class="icon-square text-body-emphasis bg-body-secondary d-inline-flex align-items-center justify-content-center fs-4 flex-shrink-0 me-3">
-          <!--
-          <svg class="bi" width="1em" height="1em"><use xlink:href="#tools"></use></svg>
-          -->
-        </div>
+      <div class="feature-item">
         <div>
-          <h3>Featured title</h3>
-          <p>Paragraph of text beneath the heading to explain the heading. We'll add onto it with another sentence and probably just keep going until we run out of words.</p>
-          <a href="#" class="btn btn-primary">
-            Primary button
-          </a>
+          <h3>Support for missing data and categorical values</h3>
+          <p>
+            Treeffuser natively implements
+            principled methods for handling missing data
+            at training and inference time, making it easy to use in practice
+            and robust to real world data.
+          </p>
+
         </div>
       </div>
-
+      <!-- Additional feature items would follow the same pattern -->
     </div>
 
 
@@ -311,6 +306,48 @@
       </div>
     </div>
 
+
+    <h2>Next steps</h2>
+    <p>
+      Installing and using Treeffuser is easy and simple.
+      Our package is available on PyPi and can be installed with pip.
+    </p>
+
+    <d-code block language="python">
+      pip install treeffuser
+    </d-code>
+
+    <p>
+      We adhere to the scikit-learn API,
+      so you can use Treeffuser as you would any other scikit-learn model.
+    </p>
+
+
+    <div>
+      <d-code block language="python">
+        from treeffuser import Treeffuser
+
+        # Load some data
+        X_train, X_test, y_train, y_test = ...
+
+        model = Treeffuser()
+        model.fit(X_train, y_train)
+        samples = model.sample(X_test)
+
+        y_samples = model.sample(x, n_samples=100, verbose=True) # y_samples.shape[0] is 100
+
+        # Estimate downstream quantities of interest
+        y_mean = y_samples.mean(axis=0) # conditional mean for each x
+        y_std = y_samples.std(axis=0) # conditional std for each x
+      </d-code>
+    </div>
+
+    <p>
+      We hope you enjoy using Treeffuser!
+      Please check out the paper, the documentation, and the code on GitHub
+      for more information.
+    </p>
+
     <div class="container my-5">
       <div class="row justify-content-center">
           <div class="col-auto">
@@ -330,6 +367,9 @@
           </div>
       </div>
   </div>
+
+
+
 
 
     <p>Article in progress!</p>
