@@ -75,7 +75,7 @@ These samples can be used to compute any downstream estimates of interest.
     y_mean = y_samples.mean(axis=0) # conditional mean for each x
     y_std = y_samples.std(axis=0) # conditional std for each x
 
-For convenience, we also provide a class `Samples` that can estimate standard quantities.
+For convenience, we also provide a class ``Samples`` that can estimate standard quantities.
 
 .. code-block:: python
 
