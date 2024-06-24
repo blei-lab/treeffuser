@@ -18,6 +18,8 @@
 <head>
   <script src="template.v2.js"></script>
   <script src="https://d3js.org/d3.v5.min.js"></script>
+
+
   <link rel="stylesheet" type="text/css" href="css/base.css">
   <link rel="stylesheet" type="text/css" href="css/layout.css">
   <link rel="stylesheet" type="text/css" href="css/title.css">
@@ -25,9 +27,19 @@
   <link rel="stylesheet" type="text/css" href="css/treeffuser.css">
   <link rel="stylesheet" type="text/css" href="css/feature-table.css">
   <link rel="stylesheet" type="text/css" href="css/code.css">
+  <link rel="stylesheet" type="text/css" href="css/flex-list.css">
+  <link rel="stylesheet" type="text/css" href="css/example-cards.css">
+
+
+
+
+
+
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/flickity@2/dist/flickity.min.css">
+
+
 
   <!--
     Dep
@@ -35,16 +47,12 @@
   -->
 
   <style>
-    .fake-img {
-      background: #bbb;
-      border: 1px solid rgba(0, 0, 0, 0.1);
-      box-shadow: 0 0px 4px rgba(0, 0, 0, 0.1);
-      margin-bottom: 12px;
-  }
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta charset="utf8">
 <!--<script src="https://kit.fontawesome.com/18ddf7cd34.js" crossorigin="anonymous"></script>-->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/github.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
 </head>
 
 
@@ -166,7 +174,7 @@
     </p>
 
     <p>We can then use this distribution to compute</p>
-    <ul>
+    <ul class="flex-list">
       <li>The expected value of <d-math>y</d-math>, <d-math>\mathbb{E}[y|x]</d-math>,</li>
       <li>The variance of <d-math>y</d-math>, <d-math>\text{Var}[y|x]</d-math>,</li>
       <li>The probability that <d-math>y</d-math> is greater than some threshold,</li>
@@ -174,11 +182,6 @@
     </ul>
     <p>and many other quantities!</p>
     <div class="fake-img">
-      <p>
-        This should be a cool animation  on the side of a bimodal
-        distribution showing the issues with predicting the mean?
-        Or at least two images?
-      </p>
     </div>
 
 
@@ -215,6 +218,7 @@
     <p>
       These two techniques combined make treeffuser and extremely powerful tool for probabilistic predictions.
     </p>
+
 
 
 
@@ -288,60 +292,60 @@
 
 
     <h2> Example usage </h2>
-    <div class="main-carousel">
-      <div class="carousel-cell">
-        <img src="momentum.png" alt="...">
-            <h5>First slide label</h5>
-            <p>Some representative placeholder content for the first slide.</p>
-      </div>
-      <div class="carousel-cell">
-        <img src="momentum.png" alt="...">
-            <h5>First slide label</h5>
-            <p>Some representative placeholder content for the first slide.</p>
-      </div>
-      <div class="carousel-cell">
-        <img src="momentum.png" alt="...">
-            <h5>First slide label</h5>
-            <p>Some representative placeholder content for the first slide.</p>
+
+  <div class="cards-container">
+    <div class="example-card">
+      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
+      <div class="example-container">
+        <h4><b>John Doe</b></h4>
+        <p>Architect & Engineer</p>
       </div>
     </div>
+    <div class="example-card">
+      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
+      <div class="example-container">
+        <h4><b>John Doe</b></h4>
+        <p>Architect & Engineer</p>
+      </div>
+    </div>
+    <div class="example-card">
+      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
+      <div class="example-container">
+        <h4><b>John Doe</b></h4>
+        <p>Architect & Engineer</p>
+      </div>
+    </div>
+</div>
+
 
 
     <h2>Next steps</h2>
     <p>
       Installing and using Treeffuser is easy and simple.
-      Our package is available on PyPi and can be installed with pip.
+      Our package is available on PyPI and can be installed with pip.
     </p>
 
-    <d-code block language="python">
-      pip install treeffuser
-    </d-code>
+    <pre><code class="language-python">pip install treeffuser</code></pre>
 
     <p>
       We adhere to the scikit-learn API,
       so you can use Treeffuser as you would any other scikit-learn model.
     </p>
-
-
     <div>
-      <d-code block language="python">
-        from treeffuser import Treeffuser
+    <pre><code class="language-python">from treeffuser import Treeffuser
+# Load some data
+X_train, X_test, y_train, y_test = ...
 
-        # Load some data
-        X_train, X_test, y_train, y_test = ...
+model = Treeffuser()
+model.fit(X_train, y_train)
+samples = model.sample(X_test)
 
-        model = Treeffuser()
-        model.fit(X_train, y_train)
-        samples = model.sample(X_test)
+y_samples = model.sample(x, n_samples=100, verbose=True) # y_samples.shape[0] is 100
 
-        y_samples = model.sample(x, n_samples=100, verbose=True) # y_samples.shape[0] is 100
-
-        # Estimate downstream quantities of interest
-        y_mean = y_samples.mean(axis=0) # conditional mean for each x
-        y_std = y_samples.std(axis=0) # conditional std for each x
-      </d-code>
+# Estimate downstream quantities of interest
+y_mean = y_samples.mean(axis=0) # conditional mean for each x
+y_std = y_samples.std(axis=0) # conditional std for each x</code></pre>
     </div>
-
     <p>
       We hope you enjoy using Treeffuser!
       Please check out the paper, the documentation, and the code on GitHub
@@ -367,9 +371,6 @@
           </div>
       </div>
   </div>
-
-
-
 
 
     <p>Article in progress!</p>
@@ -477,6 +478,7 @@
         </script>
         <p>That's it for the example article!</p>
     -->
+
   </d-article>
 
 
@@ -501,6 +503,10 @@
 
   <script src="https://unpkg.com/flickity@2/dist/flickity.pkgd.min.js"></script>
   <script src="js/flickity.js"></script>
+  <!-- and it's easy to individually load additional languages -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python3.min.js"></script>
+  <script>hljs.highlightAll();</script>
+
 
   <!-- Deps
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz" crossorigin="anonymous"></script>
