@@ -127,7 +127,6 @@ dots.enter().append("circle").attr("r", 2.5).attr("cx", function (d) {
     .attr("stroke-width", 0.3);
 
 
-
 var interval;
 var y_conditioned_animation = Y_BAR_INIT;
 
@@ -138,7 +137,7 @@ var y_conditioned_animation = Y_BAR_INIT;
 //     updateGaussian(y);
 // }, 10); // Change the bar position every 1000ms (1 second)
 
-var drag = d3.drag().on("start", function() {
+var drag = d3.drag().on("start", function () {
     interval.stop(); // Stop the interval when the bar is manually dragged
 }).on("drag", function () {
     var y = Math.max(0, Math.min(Y_MAX, yScale.invert(d3.event.y)));
@@ -151,7 +150,7 @@ svgLeft.append("rect")
     .attr("height", height)
     .style("fill", "none")
     .style("pointer-events", "all");
-svgLeft.on("click", function() {
+svgLeft.on("click", function () {
     // Get the y-coordinate of the click event
     // interval.stop();
 
@@ -180,7 +179,6 @@ svgLeft.on("click", function() {
 // });
 
 
-
 var slider = svgLeft.append("line").attr("x1", 0).attr("x2", width).attr("y1", yScale(Y_BAR_INIT)).attr("y2", yScale(Y_BAR_INIT))
     .attr("id", "slider")
     .attr("class", "draggable").call(drag);
@@ -194,7 +192,7 @@ svgLeft.append("text")
 
 
 svgLeft.append("text")
-    .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 10) + ")")
+    .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top + 10) + ")")
     .style("text-anchor", "middle")
     .style("font-family", "Times New Roman")
     .text("y");
@@ -203,7 +201,7 @@ svgLeft.append("text")
 svgLeft.append("text")
     .attr("transform", "rotate(-90)")
     .attr("y", 0 - margin.left + 10)
-    .attr("x",0 - (height / 2))
+    .attr("x", 0 - (height / 2))
     .style("text-anchor", "middle")
     .text("x");
 
@@ -239,7 +237,7 @@ svgRight.append("g")
     .call(yAxis);
 
 svgRight.append("text")
-    .attr("transform", "translate(" + (width/2) + " ," + (height + margin.top + 10) + ")")
+    .attr("transform", "translate(" + (width / 2) + " ," + (height + margin.top + 10) + ")")
     .style("text-anchor", "middle")
     .style("font-family", "Times New Roman")
     .text("y");
@@ -248,7 +246,7 @@ svgRight.append("text")
 svgRight.append("text")
     .attr("transform", "rotate(-90)")
     .attr("y", 0 - margin.left - 3)
-    .attr("x",0 - (height / 2))
+    .attr("x", 0 - (height / 2))
     .attr("dy", "1em")
     .style("text-anchor", "middle")
     .attr("id", "yAxisLabelDensity")
@@ -274,7 +272,7 @@ function updateGaussian(x_conditioned) {
             return yScaleRight(d);
         });
 
-   d3.select("#densityPath")
+    d3.select("#densityPath")
         .datum(y)
         .attr("d", line);
 
