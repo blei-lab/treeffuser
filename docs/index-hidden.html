@@ -220,68 +220,83 @@
     <div class="feature-table">
       <!-- Example of a feature item -->
       <div class="feature-item">
-        <div>
+        <div class="feature-header">
           <h4>Extreme flexibility</h4>
+        </div>
+        <div class="feature-body">
           <p>
             Due to the use of conditional diffusions Treeffuser
             can model, heavy tailed, multimodal, skewed
             and other complex distributions.
+          </p>
+        </div>
+      </div>
+      <div class="feature-item">
+      <div class="feature-header">
+        <h4>Robustness to misspecification</h4>
+      </div>
+      <div class="feature-body">
+        <p>
+          Treeffuser doesn't require any special configuration to
+          work with any distribution <d-math>p(y|x)</d-math>.
+          It fully adapts to the data avoiding the need for
+          assumptions that may not hold in practice.
+        </p>
+      </div>
+    </div>
 
-        </div>
+    <div class="feature-item">
+      <div class="feature-header">
+        <h4>Easy to use</h4>
       </div>
-      <div class="feature-item">
-        <div>
-          <h4> Robustness to misspecification</h4>
-          <p>
-            Treeffuser doesn't require any special configuration to
-            work with any distribution <d-math>p(y|x)</d-math>.
-            It fully adapts to the data avoiding the need for
-            assumptions that may not hold in practice.
-          </p>
-        </div>
+      <div class="feature-body">
+        <p>
+          Treeffuser adopts the same API as <code>sklearn</code>
+          and using it is a simple as calling <code>model.fit(X,y)</code>
+          and <code>model.sample(X)</code>.
+        </p>
       </div>
-      <div class="feature-item">
-        <div>
-          <h4>Easy to use</h4>
-          <p>
-            Treeffuser adopts the same API as <code>sklearn</code>
-            and using it is a simple as calling <code>model.fit(X,y)</code>
-            and <code>model.sample(X)</code>.
-          </p>
-        </div>
-      </div>
-      <div class="feature-item">
-        <div>
-          <h4>Designed for tabular data</h4>
-          <p>
-            Treeffuser is built on top <code>LightGBM</code>,
-            a fast and efficient implementation of gradient boosted trees
-            has state of the art performance on tabular data problems.
-          </p>
-        </div>
-      </div>
+    </div>
 
-      <div class="feature-item">
-        <div>
-          <h4>Multivariate output</h4>
-          <p>
-            Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
-            modelling of complex correlations between multiple output variables.
-          </p>
-        </div>
+    <div class="feature-item">
+      <div class="feature-header">
+        <h4>Designed for tabular data</h4>
       </div>
-      <div class="feature-item">
-        <div>
-          <h4>Support for missing data and categorical values</h4>
-          <p>
-            Treeffuser natively implements
-            principled methods for handling missing data
-            at training and inference time, making it easy to use in practice
-            and robust to real world data.
-          </p>
+      <div class="feature-body">
+    <p>
+      Treeffuser is built on top <code>LightGBM</code>,
+      a fast and efficient implementation of gradient boosted trees
+      has state of the art performance on tabular data problems.
+    </p>
+  </div>
+</div>
 
-        </div>
-      </div>
+<div class="feature-item">
+  <div class="feature-header">
+    <h4>Multivariate output</h4>
+  </div>
+  <div class="feature-body">
+    <p>
+      Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
+      modelling of complex correlations between multiple output variables.
+    </p>
+  </div>
+</div>
+
+<div class="feature-item">
+  <div class="feature-header">
+    <h4>Support for missing data and categorical values</h4>
+  </div>
+  <div class="feature-body">
+    <p>
+      Treeffuser natively implements
+      principled methods for handling missing data
+      at training and inference time, making it easy to use in practice
+      and robust to real world data.
+    </p>
+  </div>
+</div>
+      <!-- Additional feature items would follow the same pattern -->
     </div>
 
 

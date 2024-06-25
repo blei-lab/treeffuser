@@ -1,7 +1,7 @@
 distill-header {
   position: relative;
   height: 60px;
-  background-color: hsl(121, 64%, 22%);
+  background-color: var(--treeffuser-color);
   width: 100%;
   box-sizing: border-box;
   z-index: 2;

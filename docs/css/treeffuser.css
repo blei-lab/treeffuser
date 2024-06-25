@@ -1,3 +1,7 @@
+:root {
+  --treeffuser-color: hsl(121, 64%, 22%);
+}
+
 .teaser {
   grid-column: text;
   width: 100%;
