@@ -1,20 +1,28 @@
 .cards-container {
     display: flex;
-    justify-content: space-between; /* Distributes space between cards */
-    margin: 20px; /* Optional: Adds some space around the container */
+    flex-direction: column; /* Stack the cards vertically */
+    margin: 20px;
   }
 
   .example-card {
-    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2);
+    display: flex; /* Enables flexbox inside each card */
+    align-items: center; /* Aligns the items vertically */
+    box-shadow: 0 4px 8px 0 rgba(0,0,0,0.4);
     transition: 0.3s;
-    width: 30%; /* Adjust the width so three cards fit in a row */
-    margin: 0 10px; /* Adds space between the cards */
+    margin: 10px 0; /* Space between cards */
   }
 
-  .example-card:hover {
-    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.2);
+  .example-card img {
+    width: 150px; /* Fixed width for images */
+    height: auto;
+    margin-right: 20px; /* Space between the image and the text */
   }
 
   .example-container {
+    flex: 1; /* Takes up the remaining space */
     padding: 2px 16px;
+  }
+
+  .example-card:hover {
+    box-shadow: 0 8px 16px 0 rgba(0,0,0,0.4);
   }

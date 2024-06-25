@@ -29,12 +29,7 @@
   <link rel="stylesheet" type="text/css" href="css/code.css">
   <link rel="stylesheet" type="text/css" href="css/flex-list.css">
   <link rel="stylesheet" type="text/css" href="css/example-cards.css">
-
-
-
-
-
-
+  <link rel="stylesheet" type="text/css" href="css/tabs.css">
 
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
   <link rel="stylesheet" href="https://unpkg.com/flickity@2/dist/flickity.min.css">
@@ -226,7 +221,7 @@
       <!-- Example of a feature item -->
       <div class="feature-item">
         <div>
-          <h3>Extreme flexibility</h3>
+          <h4>Extreme flexibility</h4>
           <p>
             Due to the use of conditional diffusions Treeffuser
             can model, heavy tailed, multimodal, skewed
@@ -236,7 +231,7 @@
       </div>
       <div class="feature-item">
         <div>
-          <h3> Robustness to misspecification</h3>
+          <h4> Robustness to misspecification</h4>
           <p>
             Treeffuser doesn't require any special configuration to
             work with any distribution <d-math>p(y|x)</d-math>.
@@ -247,7 +242,7 @@
       </div>
       <div class="feature-item">
         <div>
-          <h3>Easy to use</h3>
+          <h4>Easy to use</h4>
           <p>
             Treeffuser adopts the same API as <code>sklearn</code>
             and using it is a simple as calling <code>model.fit(X,y)</code>
@@ -257,7 +252,7 @@
       </div>
       <div class="feature-item">
         <div>
-          <h3>Designed for tabular data</h3>
+          <h4>Designed for tabular data</h4>
           <p>
             Treeffuser is built on top <code>LightGBM</code>,
             a fast and efficient implementation of gradient boosted trees
@@ -268,7 +263,7 @@
 
       <div class="feature-item">
         <div>
-          <h3>Multivariate output</h3>
+          <h4>Multivariate output</h4>
           <p>
             Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
             modelling of complex correlations between multiple output variables.
@@ -277,7 +272,7 @@
       </div>
       <div class="feature-item">
         <div>
-          <h3>Support for missing data and categorical values</h3>
+          <h4>Support for missing data and categorical values</h4>
           <p>
             Treeffuser natively implements
             principled methods for handling missing data
@@ -287,35 +282,447 @@
 
         </div>
       </div>
-      <!-- Additional feature items would follow the same pattern -->
     </div>
 
 
-    <h2> Example usage </h2>
+    <h3> Competitive performance</h3>
+    Treeffuser has state of the art performance on a variety of benchmarks.
+    And is competitive with other state of the art methods for probabilistic predictions.
+    <div class ="tab-container">
+      <div class="tab">
+        <button class="tablinks" onclick="openTab(event, 'CRPS')">Continuous Ranked Probability Score</button>
+        <button class="tablinks" onclick="openTab(event, 'RMSE')">Root Mean Squared Error</button>
+        <button class="tablinks" onclick="openTab(event, 'MACE')">Mean Absolute Calibration Error</button>
+      </div>
 
-  <div class="cards-container">
-    <div class="example-card">
-      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
-      <div class="example-container">
-        <h4><b>John Doe</b></h4>
-        <p>Architect & Engineer</p>
+      <div id="CRPS" class="tabcontent">
+
+        <h3>CRPS (lower is better) by dataset and method</h3>
+          <table>
+            <tr>
+              <th>dataset</th>
+              <th>N, d<sub>x</sub>, d<sub>y</sub></th>
+              <th>Deep ensembles</th>
+              <th>NGBost (Gaussian)</th>
+              <th>iBUG (XGBoost)</th>
+              <th>Quantile regression</th>
+              <th>DRF</th>
+              <th>Treefuser</th>
+              <th>Treefuser (no tuning)</th>
+            </tr>
+            <tr>
+              <td>bike</td>
+              <td>17379,12,1</td>
+              <td class="highlight">1.61±0.05</td>
+              <td>7.15±0.18</td>
+              <td>2.21±0.04</td>
+              <td>1.85±0.07</td>
+              <td>2.15±0.06</td>
+              <td>1.60±0.05</td>
+              <td>1.64±0.05</td>
+            </tr>
+            <tr>
+              <td>energy</td>
+              <td>768, 8, 2</td>
+              <td>5.00±0.71</td>
+              <td>4.78±0.49</td>
+              <td>NA</td>
+              <td>NA</td>
+              <td>5.43±0.69</td>
+              <td class="highlight">3.07±0.40</td>
+              <td>3.32±0.48</td>
+            </tr>
+            <tr>
+              <td>kin8nm</td>
+              <td>8192, 8, 1</td>
+              <td class="highlight">3.59±0.12</td>
+              <td>9.48±0.29</td>
+              <td>7.14±0.18</td>
+              <td>6.63±0.16</td>
+              <td>9.44±0.20</td>
+              <td>5.89±0.14</td>
+              <td>5.88±0.17</td>
+            </tr>
+            <tr>
+              <td>movies</td>
+              <td>7415, 9, 1</td>
+              <td class="highlight">2.94±0.35</td>
+              <td>X</td>
+              <td>3.18±0.29</td>
+              <td>7.90±0.68</td>
+              <td>5.57±0.61</td>
+              <td>2.68±0.31</td>
+              <td>2.69±0.28</td>
+            </tr>
+            <tr>
+              <td>naval</td>
+              <td>11934,17,1</td>
+              <td>4.11±0.39</td>
+              <td>4.43±0.19</td>
+              <td>4.70±0.16</td>
+              <td>16.86±2.46</td>
+              <td>4.55±0.16</td>
+              <td class="highlight">2.02±0.08</td>
+              <td>2.46±0.07</td>
+            </tr>
+            <tr>
+              <td>news</td>
+              <td>39644,58,1</td>
+              <td>2.53±0.27</td>
+              <td>X</td>
+              <td>3.75±0.43</td>
+              <td>2.32±0.17</td>
+              <td>1.98±0.17</td>
+              <td class="highlight">1.98±0.17</td>
+              <td>1.98±0.16</td>
+            </tr>
+            <tr>
+              <td>power</td>
+              <td>9568, 4, 1</td>
+              <td>2.06±0.10</td>
+              <td>2.01±0.13</td>
+              <td>1.71±0.09</td>
+              <td>5.40±0.12</td>
+              <td>1.90±0.11</td>
+              <td class="highlight">1.49±0.07</td>
+              <td>1.52±0.07</td>
+            </tr>
+            <tr>
+              <td>super.</td>
+              <td>21263,81,1</td>
+              <td>4.89±0.31</td>
+              <td>5.24±0.50</td>
+              <td>4.43±0.24</td>
+              <td>3.79±0.14</td>
+              <td>4.32±0.52</td>
+              <td class="highlight">3.52±0.13</td>
+              <td>3.60±0.15</td>
+            </tr>
+            <tr>
+              <td>wine</td>
+              <td>6497, 12, 1</td>
+              <td class="highlight">3.59±0.10</td>
+              <td>3.82±0.11</td>
+              <td>3.47±0.13</td>
+              <td>3.24±0.14</td>
+              <td>3.30±0.12</td>
+              <td>2.59±0.13</td>
+              <td>2.67±0.13</td>
+            </tr>
+            <tr>
+              <td>yacht</td>
+              <td>308, 6, 1</td>
+              <td>4.86±1.38</td>
+              <td>3.67±1.47</td>
+              <td>3.17±1.13</td>
+              <td>3.53±1.30</td>
+            <td>7.73±2.43</td>
+            <td>3.11±0.99</td>
+            <td class="highlight">3.39±0.97</td>
+            </tr>
+          </table>
+
+          <p>CRPS (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate probabilistic predictions, even with default hyper-parameters (no tuning).</p>
+      </div>
+
+      <div id="RMSE" class="tabcontent">
+        <h3>RMSE (lower is better) by dataset and method</h3>
+        <table>
+          <tr>
+            <th>dataset</th>
+            <th>N, d<sub>x</sub>, d<sub>y</sub></th>
+            <th>Deep ensembles</th>
+            <th>NGBost (Gaussian)</th>
+            <th>iBUG (XGBoost)</th>
+            <th>Quantile regression</th>
+            <th>DRF</th>
+            <th>Treefuser</th>
+            <th>Treefuser (no tuning)</th>
+          </tr>
+          <tr>
+            <td>bike</td>
+            <td>17379,12,1</td>
+            <td>3.70±0.13</td>
+            <td>11.52±0.30</td>
+            <td>4.16±0.10</td>
+            <td>4.63±0.21</td>
+            <td>4.86±0.18</td>
+            <td class="highlight">3.69±0.14</td>
+            <td>3.81±0.15</td>
+          </tr>
+          <tr>
+            <td>energy</td>
+            <td>768, 8, 2</td>
+            <td>11.34±0.28</td>
+            <td>11.41±0.25</td>
+            <td>NA</td>
+            <td>NA</td>
+            <td>13.73±1.69</td>
+            <td class="highlight">8.32±1.35</td>
+            <td>8.79±1.46</td>
+          </tr>
+          <tr>
+            <td>kin8nm</td>
+            <td>8192, 8, 1</td>
+            <td class="highlight">0.64±0.02</td>
+            <td>1.71±0.06</td>
+            <td>1.94±0.06</td>
+            <td>1.23±0.14</td>
+            <td>1.18±0.04</td>
+            <td>1.06±0.03</td>
+            <td>1.06±0.02</td>
+          </tr>
+          <tr>
+            <td>movies</td>
+            <td>7415, 9, 1</td>
+            <td>5.75±1.38</td>
+            <td>X</td>
+            <td>4.87±0.80</td>
+            <td>49.93±0.07</td>
+            <td>1.31±0.47</td>
+            <td class="highlight">2.71±1.36</td>
+            <td>5.17±1.32</td>
+          </tr>
+          <tr>
+            <td>naval</td>
+            <td>11934,17,1</td>
+            <td>13.31±1.90</td>
+            <td>5.50±0.75</td>
+            <td>4.10±0.58</td>
+            <td>15.05±0.58</td>
+            <td>17.37±0.40</td>
+            <td class="highlight">7.75±0.41</td>
+            <td>9.10±0.39</td>
+          </tr>
+          <tr>
+            <td>news</td>
+            <td>39644,58,1</td>
+            <td>1.95±2.66</td>
+            <td>X</td>
+            <td>1.21±0.37</td>
+            <td>1.12±0.40</td>
+            <td>1.08±0.41</td>
+            <td class="highlight">1.10±0.40</td>
+            <td>1.09±0.41</td>
+          </tr>
+          <tr>
+            <td>power</td>
+            <td>9568, 4, 1</td>
+            <td>3.11±0.32</td>
+            <td>3.66±0.35</td>
+            <td>3.16±0.53</td>
+            <td>9.36±0.58</td>
+            <td>3.65±0.35</td>
+            <td class="highlight">2.93±0.30</td>
+            <td>3.02±0.30</td>
+          </tr>
+          <tr>
+            <td>super.</td>
+            <td>21263,81,1</td>
+            <td>11.28±0.74</td>
+            <td>11.25±0.87</td>
+            <td>9.53±0.32</td>
+            <td>9.06±0.58</td>
+            <td>3.87±0.56</td>
+            <td class="highlight">3.50±0.70</td>
+            <td>4.87±0.28</td>
+          </tr>
+          <tr>
+            <td>wine</td>
+            <td>6497, 12, 1</td>
+            <td>1.56±0.17</td>
+            <td>6.85±0.18</td>
+            <td>6.83±0.28</td>
+            <td>6.30±0.28</td>
+            <td>8.24±0.21</td>
+            <td class="highlight">5.88±0.17</td>
+            <td>5.98±0.15</td>
+          </tr>
+          <tr>
+            <td>yacht</td>
+            <td>308, 6, 1</td>
+            <td>1.06±0.46</td>
+            <td>0.85±0.13</td>
+            <td>0.67±0.26</td>
+            <td>1.28±0.79</td>
+            <td>6.34±0.01</td>
+            <td class="highlight">2.01±0.08</td>
+            <td>2.08±0.09</td>
+          </tr>
+        </table>
+        <p>RMSE (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate probabilistic predictions, even with default hyper-parameters (no tuning).</p>
+      </div>
+
+      <div id="MACE" class="tabcontent">
+        <h3>MACE (lower is better) by dataset and method</h3>
+        <table>
+          <tr>
+            <th>dataset</th>
+            <th>N, d<sub>x</sub>, d<sub>y</sub></th>
+            <th>Deep ensembles</th>
+            <th>NGBost (Gaussian)</th>
+            <th>iBUG (XGBoost)</th>
+            <th>Quantile regression</th>
+            <th>DRF</th>
+            <th>Treefuser</th>
+            <th>Treefuser (no tuning)</th>
+          </tr>
+          <tr>
+            <td>bike</td>
+            <td>17379,12,1</td>
+            <td>2.38±0.97</td>
+            <td>17.79±0.68</td>
+            <td>7.68±0.89</td>
+            <td>2.95±0.29</td>
+            <td>3.45±0.43</td>
+            <td class="highlight">1.73±0.62</td>
+            <td>1.86±0.87</td>
+          </tr>
+          <tr>
+            <td>energy</td>
+            <td>768, 8, 2</td>
+            <td>8.08±1.41</td>
+            <td>5.82±1.74</td>
+            <td>NA</td>
+            <td>NA</td>
+            <td>4.54±0.74</td>
+            <td class="highlight">3.11±1.14</td>
+            <td>5.33±1.42</td>
+          </tr>
+          <tr>
+            <td>kin8nm</td>
+            <td>8192, 8, 1</td>
+            <td>2.51±0.50</td>
+            <td>2.75±0.11</td>
+            <td>3.83±1.56</td>
+            <td>4.74±0.93</td>
+            <td>3.87±0.56</td>
+            <td class="highlight">1.36±1.31</td>
+            <td>1.77±0.74</td>
+          </tr>
+          <tr>
+            <td>movies</td>
+            <td>7415, 9, 1</td>
+            <td>19.26±1.13</td>
+            <td>X</td>
+            <td>4.73±1.65</td>
+            <td>4.57±0.94</td>
+            <td>2.87±0.52</td>
+            <td class="highlight">1.34±0.31</td>
+            <td>1.33±0.16</td>
+          </tr>
+          <tr>
+            <td>naval</td>
+            <td>11934,17,1</td>
+            <td>5.29±1.68</td>
+            <td>2.53±0.00</td>
+            <td>3.78±1.56</td>
+            <td>4.75±0.43</td>
+            <td>3.87±0.56</td>
+            <td class="highlight">1.44±1.30</td>
+            <td>1.73±0.14</td>
+          </tr>
+          <tr>
+            <td>news</td>
+            <td>39644,58,1</td>
+            <td>21.53±0.63</td>
+            <td>X</td>
+            <td>13.57±1.40</td>
+            <td>18.96±0.42</td>
+            <td>1.14±0.25</td>
+            <td class="highlight">3.50±0.70</td>
+            <td>4.87±0.28</td>
+          </tr>
+          <tr>
+            <td>power</td>
+            <td>9568, 4, 1</td>
+            <td>2.52±1.18</td>
+            <td>2.53±1.00</td>
+            <td>3.83±1.65</td>
+            <td>4.75±0.93</td>
+            <td>2.87±0.56</td>
+            <td class="highlight">1.36±1.31</td>
+            <td>1.77±0.74</td>
+          </tr>
+          <tr>
+            <td>super.</td>
+            <td>21263,81,1</td>
+            <td>3.19±0.13</td>
+            <td>2.68±0.15</td>
+            <td>3.45±0.77</td>
+            <td>4.86±0.90</td>
+            <td>22.02±1.13</td>
+            <td class="highlight">5.70±0.55</td>
+            <td>5.22±0.69</td>
+          </tr>
+          <tr>
+            <td>wine</td>
+            <td>6497, 12, 1</td>
+            <td>13.25±0.57</td>
+            <td>9.28±0.25</td>
+            <td>8.45±0.20</td>
+            <td>6.28±0.29</td>
+            <td>8.34±0.21</td>
+            <td class="highlight">2.01±0.08</td>
+            <td>2.08±0.09</td>
+          </tr>
+          <tr>
+            <td>yacht</td>
+            <td>308, 6, 1</td>
+            <td>3.19±0.56</td>
+            <td>2.68±0.15</td>
+            <td>3.45±0.77</td>
+            <td>4.86±0.90</td>
+            <td>22.02±1.13</td>
+            <td class="highlight">5.70±0.55</td>
+            <td>5.22±0.69</td>
+          </tr>
+        </table>
+
+        <p>MACE (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser has a competitive calibration error across most datasets.</p>
+
       </div>
     </div>
-    <div class="example-card">
-      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
-      <div class="example-container">
-        <h4><b>John Doe</b></h4>
-        <p>Architect & Engineer</p>
-      </div>
+
+    <h3> Usage Examples </h3>
+
+      <div class="cards-container">
+        <a href="https://arxiv.org/pdf/2406.07658" class="example-card">
+          <img src="imgs/img_avatar.png" alt="Avatar">
+          <div class="example-container">
+            <h4><b> Optimal Inventory Allocation</b></h4>
+            <p>
+              We use Treeffuser to model the distribution of demand for products
+              in a retail store. This allows us to compute the optimal inventory
+              allocation that minimizes the risk of stockouts and waste while maximizing
+              profits.
+            </p>
+
+          </div>
+        </a>
+        <a href="https://arxiv.org/pdf/2406.07658" class="example-card">
+          <img src="imgs/img_avatar.png" alt="Avatar">
+          <div class="example-container">
+            <h4><b> Synthetic Data </b></h4>
+            <p>
+              We demonstrate the effectiveness and flexibility of Treeffuser
+              of treeffuser on Synthetic data with multivariate output,
+              complex varying multimodality, heavy tails and skewness.
+            </p>
+          </div>
+        </a>
+
+        <a href="https://arxiv.org/pdf/2406.07658" class="example-card">
+          <img src="imgs/img_avatar.png" alt="Avatar">
+          <div class="example-container">
+            <h4><b>Some other example</b></h4>
+            <p>
+              Lorem ipsum dolor sit amet, consectetur adipiscing
+              elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
+            </p>
+          </div>
+        </a>
     </div>
-    <div class="example-card">
-      <img src="imgs/img_avatar.png" alt="Avatar" style="width:100%">
-      <div class="example-container">
-        <h4><b>John Doe</b></h4>
-        <p>Architect & Engineer</p>
-      </div>
-    </div>
-</div>
 
 
 
@@ -499,11 +906,10 @@ y_std = y_samples.std(axis=0) # conditional std for each x</code></pre>
 
 
 
-   <!-- Flicky -->
 
-  <script src="https://unpkg.com/flickity@2/dist/flickity.pkgd.min.js"></script>
-  <script src="js/flickity.js"></script>
+
   <!-- and it's easy to individually load additional languages -->
+  <script src="js/tabs.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/python3.min.js"></script>
   <script>hljs.highlightAll();</script>
 
