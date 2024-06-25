@@ -92,7 +92,7 @@
   <d-front-matter>
     <script id='distill-front-matter' type="text/json">{
     "title": "Treeffuser: Probabilistic Predictions with Conditional Diffusions and Gradient Boosted Trees",
-    "description": "Although \" extremely useful for visualizing high-dimensional data, t-SNE plots can sometimes be mysterious or misleading.",
+    "description": "",
     "published": "May 23, 2024",
     "authors": [
       {
@@ -141,9 +141,8 @@
       larger range of step-sizes to be used, and creates its own oscillations. What is going on?</p>
     -->
     <p>
-      Probabilistic predictions provide predictive distributions rather than single point predictions.
-      This is important to quantify uncertainty, compute risk, and detect outliers. Treeffuser is a new method for
-      probabilistic predictions. It is fast, super-flexible, and easy to use.
+      Treeffuser is a new method for probabilistic predictions: it provides predictive distributions rather than single point predictions.
+      Treeffuser is fast, accurate, flexible, and easy to use.
 
     </p>
     <figure class="teaser">
@@ -162,19 +161,19 @@
     <h2>Probabilistic Predictions</h2>
     <p>
       A standard task in many fields is to predict a target variable <d-math>y</d-math> given some input <d-math>x</d-math>.
-      Many algorithms provide point estimates, a single value of <d-math>y</d-math> for each <d-math>x</d-math>.
-      However, for most real world applications it is important to not only have a point estimate, our best guess for <d-math>y</d-math>,
-      but also a measure of uncertainty associated with that estimate.
+      Algorithms usually provide point estimates, a single value of <d-math>y</d-math> for each <d-math>x</d-math>.
+      However, it is important for most real world applications to not only have a point estimate
+      but rather a measure of uncertainty associated with that estimate.
       A natural way to quantify uncertainty is to provide a probability distribution
-      <d-math> p(y|x) </d-math>over <d-math>y</d-math> given <d-math>x</d-math>.
+      <d-math> p(y|x) </d-math> over <d-math>y</d-math> given <d-math>x</d-math>.
     </p>
 
-    <p>We can then use this distribution to compute</p>
+    <p>With this distribution in hand, we can compute many quantities of interest</p>
     <ul class="flex-list">
       <li>The expected value of <d-math>y</d-math>, <d-math>\mathbb{E}[y|x]</d-math>,</li>
       <li>The variance of <d-math>y</d-math>, <d-math>\text{Var}[y|x]</d-math>,</li>
-      <li>The probability that <d-math>y</d-math> is greater than some threshold,</li>
-      <li>The probability that <d-math>y</d-math> is in some interval,</li>
+      <li>The probability that <d-math>y</d-math> is greater than some threshold <d-math>\tau</d-math>, <d-math>\mathbb{P}(y > \tau \mid x)</d-math></li>
+      <li>The probability that <d-math>y</d-math> is in some interval <d-math>I</d-math>, <d-math>\mathbb{P}(y \in I \mid x)</d-math>.</li>
     </ul>
     <p>and many other quantities!</p>
     <div class="fake-img">
@@ -193,13 +192,13 @@
     <h2>Treeffuser</h2>
 
     <p>
-      Treeffuser is a new method for producing such probabilistic predictions.
-      It is estimates <d-math>p(y|x)</d-math> by combining two powerful techniques:
+      Treeffuser is a method for producing such probabilistic predictions.
+      It estimates <d-math>p(y|x)</d-math> by combining two powerful techniques:
     </p>
 
     <ol>
       <li>
-        <b> Conditional diffusions: </b> This gives Treeffuser the ability to model essentially
+        <b> Conditional diffusions: </b> They enable Treeffuser to model essentially
         any distribution <d-math>p(y|x)</d-math> without requiring special assumptions from
         the user.
       </li>
@@ -207,12 +206,12 @@
         <b>
           Gradient boosted trees:
         </b>
-        This makes Treeffuser fast, easy to use and well suited for tabular data problems,
+        They make Treeffuser fast, easy to use and well suited for tabular data problems,
         the most common type of data in the real world.
       </li>
     </ol>
     <p>
-      These two techniques combined make treeffuser and extremely powerful tool for probabilistic predictions.
+      These two techniques combined make treeffuser a powerful tool for probabilistic predictions.
     </p>
 
 
@@ -222,11 +221,11 @@
       <!-- Example of a feature item -->
       <div class="feature-item">
         <div class="feature-header">
-          <h4>Extreme flexibility</h4>
+          <h4>Flexibility</h4>
         </div>
         <div class="feature-body">
           <p>
-            Due to the use of conditional diffusions Treeffuser
+            With conditional diffusions, Treeffuser
             can model, heavy tailed, multimodal, skewed
             and other complex distributions.
           </p>
@@ -238,9 +237,10 @@
       </div>
       <div class="feature-body">
         <p>
-          Treeffuser doesn't require any special configuration to
+          Achille: this is repetitive with the last one. Do you want to instead talk about how good the defaults are?
+          Treeffuser does not require any special configuration to
           work with any distribution <d-math>p(y|x)</d-math>.
-          It fully adapts to the data avoiding the need for
+          It adapts to the data avoiding the need for
           assumptions that may not hold in practice.
         </p>
       </div>
@@ -252,8 +252,7 @@
       </div>
       <div class="feature-body">
         <p>
-          Treeffuser adopts the same API as <code>sklearn</code>
-          and using it is a simple as calling <code>model.fit(X,y)</code>
+          Treeffuser adopts the API of <code>sklearn</code>. To use it, simply call <code>model.fit(X,y)</code>
           and <code>model.sample(X)</code>.
         </p>
       </div>
@@ -313,7 +312,7 @@
 
       <div id="CRPS" class="tabcontent">
 
-        <h3>CRPS (lower is better) by dataset and method</h3>
+<!--        <h3>CRPS by dataset and method (lower is better)</h3>-->
           <table>
             <tr>
               <th>dataset</th>
@@ -438,11 +437,15 @@
             </tr>
           </table>
 
-          <p>CRPS (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate probabilistic predictions, even with default hyper-parameters (no tuning).</p>
+          <figcaption>CRPS by dataset and method (lower is better). X indicates the method failed to run, and NA
+            that the method is not directly applicable to multivariate outputs. Standard deviations are measured with
+            10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most
+            accurate probabilistic predictions, even with default hyper-parameters (no tuning).
+          </figcaption>
       </div>
 
       <div id="RMSE" class="tabcontent">
-        <h3>RMSE (lower is better) by dataset and method</h3>
+<!--        <h3>RMSE by dataset and method (lower is better)</h3>-->
         <table>
           <tr>
             <th>dataset</th>
@@ -566,11 +569,16 @@
             <td>2.08±0.09</td>
           </tr>
         </table>
-        <p>RMSE (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate probabilistic predictions, even with default hyper-parameters (no tuning).</p>
+        <figcaption>
+          RMSE by dataset and method (lower is better). X indicates the method failed to run, and NA that the method
+          is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold
+          cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate
+          probabilistic predictions, even with default hyper-parameters (no tuning).
+        </figcaption>
       </div>
 
       <div id="MACE" class="tabcontent">
-        <h3>MACE (lower is better) by dataset and method</h3>
+<!--        <h3>MACE by dataset and method (lower is better)</h3>-->
         <table>
           <tr>
             <th>dataset</th>
@@ -695,8 +703,11 @@
           </tr>
         </table>
 
-        <p>MACE (lower is better) by dataset and method. X indicates the method failed to run, and NA that the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser has a competitive calibration error across most datasets.</p>
-
+        <figcaption>MACE by dataset and method (lower is better). X indicates the method failed to run, and NA that
+          the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold
+          cross-validation. For each dataset, the two best methods are bolded. Treefuser has a competitive calibration
+          error across most datasets.
+        </figcaption>
       </div>
     </div>
 
