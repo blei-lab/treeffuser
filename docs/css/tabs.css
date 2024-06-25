@@ -50,6 +50,13 @@
   background-color: #e3e2e2;
 }
 
+.tabcontent .table-container {
+    overflow-x: auto;
+}
+.tabcontent td {
+  font-size: 14px;
+}
+
 
 /*!* Optional: Add this to make the tab contents animated *!*/
 /*.tabcontent {*/
