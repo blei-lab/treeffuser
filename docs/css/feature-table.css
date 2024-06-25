@@ -38,13 +38,15 @@
 }
 
 .feature-header {
-    padding: 10px 15px 0;
+    padding: 10px 10px 0;
     margin-bottom: 0;
     background-color: rgba(0, 0, 0, .03);
     border-bottom: 1px solid rgba(0, 0, 0, .125);
 }
 
-.feature-item h3 {
-    font-size: 18px;
-    margin: 0 0 10px;
+.feature-item h4 {
+    font-size: 15px;
+    margin: 0px 5px 10px;
+    font-weight: 600;
+    text-align: center;
 }

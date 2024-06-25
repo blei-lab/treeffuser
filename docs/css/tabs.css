@@ -21,7 +21,6 @@
   outline: none;
   cursor: pointer;
   padding: 14px 16px;
-  transition: 0.3s;
   font-size: 17px;
 }
 
@@ -40,10 +39,22 @@
   border-top: none;
 }
 
-/* Optional: Add this to make the tab contents animated */
-.tabcontent {
-  animation: fadeEffect 1s; /* Fading effect takes 1 second */
+.tabcontent th {
+  line-height: 17px;
 }
+
+.tabcontent tr:nth-child(even) {
+  background-color: #f6f6f6;
+}
+.tabcontent tr:hover {
+  background-color: #e3e2e2;
+}
+
+
+/*!* Optional: Add this to make the tab contents animated *!*/
+/*.tabcontent {*/
+/*  animation: fadeEffect 1s; !* Fading effect takes 1 second *!*/
+/*}*/
 
 @keyframes fadeEffect {
   from {opacity: 0;}
@@ -53,5 +64,4 @@
 .highlight {
   font-weight: bold;
   color: black;
-  background-color: white;
 }
