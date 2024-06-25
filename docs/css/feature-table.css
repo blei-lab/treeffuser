@@ -4,6 +4,12 @@
     gap: 20px;
     margin-bottom: 20px;
 }
+/* only one column in smaller screens */
+@media (max-width: 768px) {
+    .feature-table {
+        grid-template-columns: 1fr;
+    }
+}
 
 .feature-item {
     background: #fff;
