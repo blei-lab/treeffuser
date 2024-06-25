@@ -1,8 +1,8 @@
 // Create SVG containers
 var figure1 = d3.select("figure1");
 
-var margin = {top: 30, right: 30, bottom: 60, left: 60},
-    width = 460 - margin.left - margin.right,
+var margin = {top: 30, right: 30, bottom: 45, left: 40},
+    width = 380 - margin.left - margin.right,
     height = 300 - margin.top - margin.bottom;
 
 var X_MAX = 10;
@@ -131,23 +131,43 @@ dots.enter().append("circle").attr("r", 2.5).attr("cx", function (d) {
 var interval;
 var y_conditioned_animation = Y_BAR_INIT;
 
-interval = d3.interval(function() {
-    y_conditioned_animation = (y_conditioned_animation + 0.005) % Y_MAX;
-    var y = y_conditioned_animation;
-    slider.attr("y1", yScale(y)).attr("y2", yScale(y));
-    d3.select("#sliderText").attr("y", yScale(y) - 5).text("x = " + y.toFixed(2));
-    updateGaussian(y);
-    d3.select("#yAxisLabelDensity").text("p(y | x = " + y.toFixed(2) + " )");
-}, 10); // Change the bar position every 1000ms (1 second)
+// interval = d3.interval(function() {
+//     y_conditioned_animation = (y_conditioned_animation + 0.005) % Y_MAX;
+//     var y = y_conditioned_animation;
+//     slider.attr("y1", yScale(y)).attr("y2", yScale(y));
+//     updateGaussian(y);
+// }, 10); // Change the bar position every 1000ms (1 second)
+
 var drag = d3.drag().on("start", function() {
     interval.stop(); // Stop the interval when the bar is manually dragged
 }).on("drag", function () {
     var y = Math.max(0, Math.min(Y_MAX, yScale.invert(d3.event.y)));
-    d3.select(this).attr("y1", yScale(y)).attr("y2", yScale(y));
-    d3.select("#sliderText").attr("y", yScale(y) - 5).text("x = " + y.toFixed(2));
+    slider.attr("y1", yScale(y)).attr("y2", yScale(y));
     updateGaussian(y);
-    d3.select("#yAxisLabelDensity").text("p(y | x = " + y.toFixed(2) + " )");
 });
+
+svgLeft.append("rect")
+    .attr("width", width)
+    .attr("height", height)
+    .style("fill", "none")
+    .style("pointer-events", "all");
+svgLeft.on("click", function() {
+    // Get the y-coordinate of the click event
+    // interval.stop();
+
+    var coords = d3.mouse(this);
+    var y = coords[1];
+    console.log(y);
+
+    // Convert the y-coordinate to the corresponding value in the data domain
+    var yData = Math.max(0, Math.min(Y_MAX, yScale.invert(y)));
+
+    // Update the position of the bar
+    slider.attr("y1", yScale(yData)).attr("y2", yScale(yData));
+    updateGaussian(yData);
+});
+
+// svgLeft.call(drag);
 //
 // // Add a horizontal line (slider) that can be dragged up and down
 // var drag = d3.drag().on("drag", function () {
@@ -184,7 +204,6 @@ svgLeft.append("text")
     .attr("transform", "rotate(-90)")
     .attr("y", 0 - margin.left + 10)
     .attr("x",0 - (height / 2))
-    .attr("dy", "1em")
     .style("text-anchor", "middle")
     .text("x");
 
@@ -228,7 +247,7 @@ svgRight.append("text")
 // Add Y Axis label
 svgRight.append("text")
     .attr("transform", "rotate(-90)")
-    .attr("y", 0 - margin.left + 10)
+    .attr("y", 0 - margin.left - 3)
     .attr("x",0 - (height / 2))
     .attr("dy", "1em")
     .style("text-anchor", "middle")
@@ -239,6 +258,9 @@ svgRight.append("text")
 // Function to update the Gaussian density plot
 function updateGaussian(x_conditioned) {
     // draw gaussian density from x = 0 to x = 10 with mean y and std 1
+    d3.select("#sliderText").attr("y", yScale(x_conditioned) - 5).text("x = " + x_conditioned.toFixed(2));
+    d3.select("#yAxisLabelDensity").text("p(y | x = " + x_conditioned.toFixed(2) + " )");
+
     var x = d3.range(0, 10, 0.01);
     var y = x.map(function (y) {
         return branchingMixtureDensity(y, x_conditioned);
