@@ -103,7 +103,14 @@ function branchingMixtureDensity(y, x, x_splits = [0, 0.33, 0.66], scale = 0.075
     const locs = [x].concat(x_splits.slice(0, idx).map(split => 2 * split - x));
     const scales = new Array(locs.length).fill(scale);
     let densities = locs.map((loc, i) => normalDensity(y, loc, scales[i]));
-    return d3.mean(densities);
+    if (densities.length === 1) {
+        return densities[0];
+    }
+    if (densities.length === 2) {
+        return (densities[0] * 2 + densities[1])/3;
+    } else
+
+    return d3.sum(densities)/3;
 }
 
 
