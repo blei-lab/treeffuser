@@ -150,7 +150,7 @@ distill-footer {
     grid-template-columns: [screen-start] 1fr
     [page-start kicker-start] 30px
     [middle-start] 30px
-    [text-start kicker-end] 90px 90px 90px 90px 90px 90px 90px 90px
+    [text-start kicker-end] 80px 80px 80px 80px 80px 80px 80px 80px
     [text-end gutter-start] 30px
     [middle-end] 30px
     [page-end gutter-end] 1fr
