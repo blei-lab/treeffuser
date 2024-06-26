@@ -15,6 +15,6 @@
   .flex-list li::before {
     content: '•'; /* Unicode character for a bullet */
     color: #333; /* Bullet color */
-    font-size: 30px; /* Bullet size */
-
+    font-weight: bold;
+    margin-right: 5px;
   }
