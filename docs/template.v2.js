@@ -9014,7 +9014,7 @@ p small {
   font-weight: 300;
   padding: 2rem 0;
   border-top: 1px solid rgba(0, 0, 0, 0.1);
-  background-color: hsl(180, 5%, 15%); /*hsl(200, 60%, 15%);*/
+  background-color: var(--treeffuser-color);
   text-align: left;
   contain: content;
 }
@@ -9055,26 +9055,17 @@ p small {
   text-decoration: none;
 }
 
+.footer-container a {
+  color: rgba(255, 255, 255, 0.8);
+  margin-right: 6px;
+  text-decoration: none;
+}
+
+
 </style>
 
 <div class='footer-container'>
-
-  <a href="/" class="logo">
-    ${logo}
-    Distill
-  </a> is dedicated to clear explanations of machine learning
-
-  <div class="nav">
-    <a href="https://distill.pub/about/">About</a>
-    <a href="https://distill.pub/journal/">Submit</a>
-    <a href="https://distill.pub/prize/">Prize</a>
-    <a href="https://distill.pub/archive/">Archive</a>
-    <a href="https://distill.pub/rss.xml">RSS</a>
-    <a href="https://github.com/distillpub">GitHub</a>
-    <a href="https://twitter.com/distillpub">Twitter</a>
-    &nbsp;&nbsp;&nbsp;&nbsp; ISSN 2476-0757
-  </div>
-
+  This website was built using the <a href="https://distill.pub/guide">Distill template.</a><br>
 </div>
 
 `;
