@@ -40,6 +40,10 @@
   padding: 15px;
 }
 
+.feature-body p {
+  margin: 0;
+}
+
 .feature-icon {
   font-size: 24px;
   color: #555;
