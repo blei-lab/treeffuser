@@ -328,9 +328,18 @@
   And is competitive with other state of the art methods for probabilistic predictions.
   <div class="tab-container">
     <div class="tab">
-      <button class="tablinks" onclick="openTab(event, 'CRPS')">Continuous Ranked Probability Score</button>
-      <button class="tablinks" onclick="openTab(event, 'RMSE')">Root Mean Squared Error</button>
-      <button class="tablinks" onclick="openTab(event, 'MACE')">Mean Absolute Calibration Error</button>
+      <button class="tablinks" onclick="openTab(event, 'CRPS')">
+        <div class="large-screen">Continuous Ranked Probability Score</div>
+        <div class="small-screen">CRPS</div>
+      </button>
+      <button class="tablinks" onclick="openTab(event, 'RMSE')">
+        <div class="large-screen">Root Mean Squared Error</div>
+        <div class="small-screen">RMSE</div>
+      </button>
+      <button class="tablinks" onclick="openTab(event, 'MACE')">
+        <div class="large-screen">Mean Absolute Calibration Error</div>
+        <div class="small-screen">MACE</div>
+      </button>
     </div>
 
     <div id="CRPS" class="tabcontent">

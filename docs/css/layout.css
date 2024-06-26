@@ -229,3 +229,15 @@ d-article aside {
     grid-column: gutter;
   }
 }
+
+@media (max-width: 768px) {
+  .large-screen {
+    display: none;
+  }
+}
+
+@media (min-width: 768px) {
+  .small-screen {
+    display: none;
+  }
+}
