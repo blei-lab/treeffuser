@@ -1,9 +1,10 @@
 .feature-table {
   display: grid;
   grid-template-columns: repeat(3, 1fr); /* Three columns in larger screens */
-  gap: 20px;
+  gap: 10px;
   margin-bottom: 20px;
 }
+
 
 /* only one column in smaller screens */
 @media (max-width: 768px) {
@@ -15,7 +16,7 @@
 .feature-item {
   background: #fff;
   border: 1px solid #ccc;
-  border-radius: 8px;
+  border-radius: 5px;
   position: relative;
 }
 
@@ -42,6 +43,7 @@
 
 .feature-body p {
   margin: 0;
+  text-align: left;
 }
 
 .feature-icon {

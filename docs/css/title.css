@@ -28,7 +28,7 @@ d-title {
 
 d-title h1 {
   grid-column: text;
-  font-size: 25px;
+  font-size: 30px;
   font-weight: 700;
   line-height: 1.1em;
   margin: 0 0 0.5rem;
@@ -36,7 +36,7 @@ d-title h1 {
 
 @media (min-width: 768px) {
   d-title h1 {
-    font-size: 40px;
+    font-size: 45px;
   }
 }
 
