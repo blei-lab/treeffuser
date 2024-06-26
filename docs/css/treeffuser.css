@@ -7,15 +7,15 @@
   width: 100%;
 }
 
-#figure1  .draggable {
+#figure1 .draggable {
   cursor: grab;
 }
 
-#figure1  .draggable:active {
+#figure1 .draggable:active {
   cursor: grabbing;
 }
 
-#figure1  .draggable.dragging {
+#figure1 .draggable.dragging {
   cursor: grabbing;
 }
 

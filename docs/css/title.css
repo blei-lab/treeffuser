@@ -20,7 +20,7 @@ d-title {
   overflow-x: hidden;
 }
 
-@media(min-width: 768px) {
+@media (min-width: 768px) {
   d-title {
     padding: 2rem 0 1.5rem;
   }
@@ -34,7 +34,7 @@ d-title h1 {
   margin: 0 0 0.5rem;
 }
 
-@media(min-width: 768px) {
+@media (min-width: 768px) {
   d-title h1 {
     font-size: 40px;
   }

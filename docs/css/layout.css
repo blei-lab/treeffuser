@@ -53,7 +53,7 @@ distill-footer {
   grid-column-gap: 8px;
 }
 
-@media(min-width: 768px) {
+@media (min-width: 768px) {
   .base-grid,
   distill-header,
   d-title,
@@ -79,7 +79,7 @@ distill-footer {
   }
 }
 
-@media(min-width: 1000px) {
+@media (min-width: 1000px) {
   .base-grid,
   distill-header,
   d-title,
@@ -107,7 +107,7 @@ distill-footer {
   }
 }
 
-@media(min-width: 1180px) {
+@media (min-width: 1180px) {
   .base-grid,
   distill-header,
   d-title,
@@ -135,7 +135,7 @@ distill-footer {
   }
 }
 
-@media(min-width: 1400px) {
+@media (min-width: 1400px) {
   .base-grid,
   distill-header,
   d-title,
@@ -162,8 +162,6 @@ distill-footer {
     grid-column-gap: 32px;
   }
 }
-
-
 
 
 .base-grid {
@@ -222,7 +220,7 @@ d-article aside {
   color: rgba(0, 0, 0, 0.6)
 }
 
-@media(min-width: 768px) {
+@media (min-width: 768px) {
   aside {
     grid-column: gutter;
   }
