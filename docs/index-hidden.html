@@ -233,15 +233,14 @@
       </div>
       <div class="feature-item">
       <div class="feature-header">
-        <h4>Robustness to misspecification</h4>
+        <h4>Minimal Tuning</h4>
       </div>
       <div class="feature-body">
         <p>
-          Achille: this is repetitive with the last one. Do you want to instead talk about how good the defaults are?
-          Treeffuser does not require any special configuration to
-          work with any distribution <d-math>p(y|x)</d-math>.
-          It adapts to the data avoiding the need for
-          assumptions that may not hold in practice.
+
+          Treeffuser does not require any special configuration
+          and works out of the box on many datasets with the default
+          hyper-parameters.
         </p>
       </div>
     </div>
@@ -303,7 +302,7 @@
     <h3> Competitive performance</h3>
     Treeffuser has state of the art performance on a variety of benchmarks.
     And is competitive with other state of the art methods for probabilistic predictions.
-    <div class ="tab-container">
+    <div id="id:table" class ="tab-container">
       <div class="tab">
         <button class="tablinks" onclick="openTab(event, 'CRPS')">Continuous Ranked Probability Score</button>
         <button class="tablinks" onclick="openTab(event, 'RMSE')">Root Mean Squared Error</button>
