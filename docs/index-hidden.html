@@ -165,15 +165,17 @@
       However, it is important for most real world applications to not only have a point estimate
       but rather a measure of uncertainty associated with that estimate.
       A natural way to quantify uncertainty is to provide a probability distribution
-      <d-math> p(y|x) </d-math> over <d-math>y</d-math> given <d-math>x</d-math>.
+      <d-math> p(y \mid x) </d-math> of <d-math>y</d-math> given <d-math>x</d-math>.
     </p>
 
-    <p>With this distribution in hand, we can compute many quantities of interest</p>
+    <p>
+      With the distribution <d-math> p(y \mid x) </d-math> in hand, we can compute many quantities about <d-math>y</d-math>:
+    </p>
     <ul class="flex-list">
-      <li>The expected value of <d-math>y</d-math>, <d-math>\mathbb{E}[y|x]</d-math>,</li>
-      <li>The variance of <d-math>y</d-math>, <d-math>\text{Var}[y|x]</d-math>,</li>
-      <li>The probability that <d-math>y</d-math> is greater than some threshold <d-math>\tau</d-math>, <d-math>\mathbb{P}(y > \tau \mid x)</d-math></li>
-      <li>The probability that <d-math>y</d-math> is in some interval <d-math>I</d-math>, <d-math>\mathbb{P}(y \in I \mid x)</d-math>.</li>
+      <li>The expected value: <d-math>\mathbb{E}[y \mid x]</d-math>,</li>
+      <li>The variance: <d-math>\text{Var}[y \mid x]</d-math>,</li>
+      <li>The probability to exceed a threshold <d-math>\tau</d-math>: <d-math>\mathbb{P}(y > \tau \mid x)</d-math>,</li>
+      <li>The probability to belong to an interval <d-math>I</d-math>: <d-math>\mathbb{P}(y \in I \mid x)</d-math>.</li>
     </ul>
     <p>and many other quantities!</p>
     <div class="fake-img">
@@ -246,6 +248,18 @@
       </div>
     </div>
 
+      <div class="feature-item">
+  <div class="feature-header">
+    <h4>Multivariate output</h4>
+  </div>
+  <div class="feature-body">
+    <p>
+      Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
+      modelling of complex correlations between multiple output variables.
+    </p>
+  </div>
+</div>
+
     <div class="feature-item">
       <div class="feature-header">
         <h4>Easy to use</h4>
@@ -267,18 +281,6 @@
       Treeffuser is built on top <code>LightGBM</code>,
       a fast and efficient implementation of gradient boosted trees
       has state of the art performance on tabular data problems.
-    </p>
-  </div>
-</div>
-
-<div class="feature-item">
-  <div class="feature-header">
-    <h4>Multivariate output</h4>
-  </div>
-  <div class="feature-body">
-    <p>
-      Treeffuser supports multivariate output <d-math> y</d-math>, allowing for the
-      modelling of complex correlations between multiple output variables.
     </p>
   </div>
 </div>
