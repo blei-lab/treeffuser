@@ -156,86 +156,66 @@
     Treeffuser is a new method for probabilistic predictions: it provides predictive distributions rather than single
     point predictions.
     Treeffuser is fast, accurate, flexible, and easy to use.
-
   </p>
-  <figure class="teaser" style="margin-bottom: 0;">
-    <div id="figure1">
-    </div>
-    <script src="js/figure1.js"></script>
-    <figcaption>Treeffuser</figcaption>
-  </figure>
 </d-title>
 
 <d-byline></d-byline>
 
 
 <d-article>
-  <h2>Probabilistic Predictions</h2>
+<!--  <h2>Probabilistic Predictions</h2>-->
   <p>
     A standard task in many fields is to predict a target variable
     <d-math>y</d-math>
     given some input
-    <d-math>x</d-math>
-    .
+    <d-math>x</d-math>.
     Algorithms usually provide point estimates, a single value of
     <d-math>y</d-math>
     for each
-    <d-math>x</d-math>
-    .
+    <d-math>x</d-math>.
     However, it is important for most real world applications to not only have a point estimate
     but rather a measure of uncertainty associated with that estimate.
     A natural way to quantify uncertainty is to provide a probability distribution
-    <d-math> p(y \mid x)</d-math>
-    of
-    <d-math>y</d-math>
-    given
-    <d-math>x</d-math>
-    .
+    <d-math> p(y | x)</d-math> of <d-math>y</d-math> given <d-math>x</d-math>.
+    This is the task of probabilistic prediction.
   </p>
 
   <p>
     With the distribution
-    <d-math> p(y \mid x)</d-math>
+    <d-math> p(y | x)</d-math>
     in hand, we can compute many quantities about
     <d-math>y</d-math>
     :
   </p>
   <ul class="flex-list">
     <li>The expected value:
-      <d-math>\mathbb{E}[y \mid x]</d-math>
-      ,
+      <d-math>\mathbb{E}[y | x]</d-math>,
     </li>
     <li>The variance:
-      <d-math>\text{Var}[y \mid x]</d-math>
-      ,
+      <d-math>\text{Var}[y | x]</d-math>,
     </li>
-    <li>The probability to exceed a threshold
-      <d-math>\tau</d-math>
-      :
-      <d-math>\mathbb{P}(y > \tau \mid x)</d-math>
-      ,
+    <li>The probability to exceed a threshold:
+      <d-math>\mathbb{P}(y > \tau | x)</d-math>,
     </li>
-    <li>The probability to belong to an interval
-      <d-math>I</d-math>
-      :
-      <d-math>\mathbb{P}(y \in I \mid x)</d-math>
-      .
+    <li>The probability to belong to an interval:
+      <d-math>\mathbb{P}(y \in I | x)</d-math>.
     </li>
   </ul>
   <p>and many other quantities!</p>
   <div class="fake-img">
   </div>
-
-
   <p>
     The main difficulty is that in practice we don't have access to
-    <d-math>p(y|x)</d-math>
-    but only to a dataset of samples from this distribution.
-    How does one go about estimating
-    <d-math>p(y|x)</d-math>
-    from a dataset?
+    <d-math>p(y|x)</d-math> but only to a dataset of samples from this distribution.
+    How does one go about estimating <d-math>p(y|x)</d-math> from a dataset?
   </p>
 
+  <figure class="teaser" style="margin-bottom: 0;">
+    <div id="figure1">
+    </div>
+    <script src="js/figure1.js"></script>
+    <figcaption>Treeffuser</figcaption>
+  </figure>
 
   <h2>Treeffuser</h2>
 
