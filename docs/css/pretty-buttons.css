@@ -1,9 +1,9 @@
 .button-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 5vh; /* Adjust the height as needed, or use padding for vertical alignment */
-    gap: 15px; /* Space between buttons */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 5vh; /* Adjust the height as needed, or use padding for vertical alignment */
+  gap: 15px; /* Space between buttons */
 }
 
 
@@ -18,7 +18,7 @@
   color: rgba(0, 0, 0, 0.85);
   cursor: pointer;
   display: inline-flex;
-  font-family: system-ui,-apple-system,system-ui,"Helvetica Neue",Helvetica,Arial,sans-serif;
+  font-family: system-ui, -apple-system, system-ui, "Helvetica Neue", Helvetica, Arial, sans-serif;
   font-size: 16px;
   font-weight: 600;
   justify-content: center;
@@ -57,6 +57,5 @@
 
 /* Icons */
 .button-6 .fas, .button-6 .fab {
-    margin-right: 6px;
+  margin-right: 6px;
 }
-
