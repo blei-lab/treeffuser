@@ -343,20 +343,18 @@
     </div>
 
     <div id="CRPS" class="tabcontent">
-
-      <!--        <h3>CRPS by dataset and method (lower is better)</h3>-->
       <div class="table-container">
         <table>
           <tr>
             <th>dataset</th>
             <th>N, d<sub>x</sub>, d<sub>y</sub></th>
             <th>Deep ensembles</th>
-            <th>NGBost (Gaussian)</th>
-            <th>iBUG (XGBoost)</th>
+            <th>NGBost Gaussian</th>
+            <th>iBUG XGBoost</th>
             <th>Quantile regression</th>
             <th>DRF</th>
-            <th>Treefuser</th>
-            <th>Treefuser (no tuning)</th>
+            <th>Treeffuser</th>
+            <th>Treeffuser no&nbsp;tuning</th>
           </tr>
           <tr>
             <td>bike</td>
@@ -471,7 +469,8 @@
         </table>
       </div>
 
-      <figcaption>CRPS by dataset and method (lower is better). X indicates the method failed to run, and NA
+      <figcaption>Continuous Ranked Probability Score (CRPS) by dataset and method (lower is better). X indicates the
+        method failed to run, and NA
         that the method is not directly applicable to multivariate outputs. Standard deviations are measured with
         10-fold cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most
         accurate probabilistic predictions, even with default hyper-parameters (no tuning).
@@ -479,19 +478,18 @@
     </div>
 
     <div id="RMSE" class="tabcontent">
-      <!--        <h3>RMSE by dataset and method (lower is better)</h3>-->
       <div class="table-container">
         <table>
           <tr>
             <th>dataset</th>
             <th>N, d<sub>x</sub>, d<sub>y</sub></th>
             <th>Deep ensembles</th>
-            <th>NGBost (Gaussian)</th>
-            <th>iBUG (XGBoost)</th>
+            <th>NGBost Gaussian</th>
+            <th>iBUG XGBoost</th>
             <th>Quantile regression</th>
             <th>DRF</th>
-            <th>Treefuser</th>
-            <th>Treefuser (no tuning)</th>
+            <th>Treeffuser</th>
+            <th>Treeffuser no&nbsp;tuning</th>
           </tr>
           <tr>
             <td>bike</td>
@@ -606,7 +604,8 @@
         </table>
       </div>
       <figcaption>
-        RMSE by dataset and method (lower is better). X indicates the method failed to run, and NA that the method
+        Root Mean Squared Error (RMSE) by dataset and method (lower is better). X indicates the method failed to run,
+        and NA that the method
         is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold
         cross-validation. For each dataset, the two best methods are bolded. Treefuser provides the most accurate
         probabilistic predictions, even with default hyper-parameters (no tuning).
@@ -614,19 +613,18 @@
     </div>
 
     <div id="MACE" class="tabcontent">
-      <!--        <h3>MACE by dataset and method (lower is better)</h3>-->
       <div class="table-container">
         <table>
           <tr>
             <th>dataset</th>
             <th>N, d<sub>x</sub>, d<sub>y</sub></th>
             <th>Deep ensembles</th>
-            <th>NGBost (Gaussian)</th>
-            <th>iBUG (XGBoost)</th>
+            <th>NGBost Gaussian</th>
+            <th>iBUG XGBoost</th>
             <th>Quantile regression</th>
             <th>DRF</th>
-            <th>Treefuser</th>
-            <th>Treefuser (no tuning)</th>
+            <th>Treeffuser</th>
+            <th>Treeffuser no&nbsp;tuning</th>
           </tr>
           <tr>
             <td>bike</td>
@@ -741,7 +739,8 @@
         </table>
       </div>
 
-      <figcaption>MACE by dataset and method (lower is better). X indicates the method failed to run, and NA that
+      <figcaption>Mean Absolute Calibration Error (MACE) by dataset and method (lower is better). X indicates the method
+        failed to run, and NA that
         the method is not directly applicable to multivariate outputs. Standard deviations are measured with 10-fold
         cross-validation. For each dataset, the two best methods are bolded. Treefuser has a competitive calibration
         error across most datasets.
