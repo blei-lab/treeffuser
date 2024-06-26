@@ -808,9 +808,7 @@ X_train, X_test, y_train, y_test = ...
 
 model = Treeffuser()
 model.fit(X_train, y_train)
-samples = model.sample(X_test)
-
-y_samples = model.sample(x, n_samples=100, verbose=True) # y_samples.shape[0] is 100
+y_samples = model.sample(x, n_samples=100) # y_samples.shape[0] is 100
 
 # Estimate downstream quantities of interest
 y_mean = y_samples.mean(axis=0) # conditional mean for each x
