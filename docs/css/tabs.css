@@ -12,6 +12,7 @@
   overflow: hidden;
   border: 1px solid #ccc;
   background-color: #f1f1f1;
+  display: flex;
 }
 
 .tab button {
@@ -22,6 +23,7 @@
   cursor: pointer;
   padding: 14px 16px;
   font-size: 17px;
+  flex-grow: 1;
 }
 
 .tab button:hover {
