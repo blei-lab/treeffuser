@@ -26,6 +26,7 @@ extensions = [
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",  # If using Google or NumPy style docstrings
     "sphinx.ext.viewcode",  # To include source code links
+    "sphinx.ext.githubpages",  # Creates .nojekyll making "_" folders with css styles accessible
 ]
 
 autoclass_content = "both"  # display doc both from a class docstring and its __init__ methods
@@ -43,5 +44,5 @@ source_suffix = {  # use Markdown files with extensions other than .md
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
 html_theme = "furo"  # "alabaster"
-html_static_path = ["_static"]
-html_favicon = "_static/logo.svg"
+html_static_path = ["static"]
+html_favicon = "static/logo.svg"
