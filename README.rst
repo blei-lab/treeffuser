@@ -11,6 +11,9 @@ Treeffuser
      <a href="https://arxiv.org/abs/2406.07658">
        <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="Static Badge" />
      </a>
+     <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html">
+       <img src="https://img.shields.io/badge/docs-passing-green" alt="Static Badge" />
+     </a>
    </div>
 
 
