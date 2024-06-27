@@ -22,7 +22,6 @@ release = "0.1.3"
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
 extensions = [
-    # "recommonmark",
     "myst_parser",
     "sphinx.ext.autodoc",
     "sphinx.ext.napoleon",  # If using Google or NumPy style docstrings

@@ -6,7 +6,8 @@
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
-BUILDDIR      = build
+BUILDDIR      = .# set build directory to root to shorten GitHub Pages URL
+
 
 # Put it first so that "make" without argument is like "make help".
 help:
