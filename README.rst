@@ -3,7 +3,7 @@ Treeffuser
 ====================
 
 .. image:: https://badge.fury.io/py/treeffuser.svg
-    :target: https://badge.fury.io/py/treeffuse
+    :target: https://badge.fury.io/py/treeffuser
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
 It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
