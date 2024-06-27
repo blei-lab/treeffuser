@@ -1,7 +1,0 @@
-treeffuser.scaler module
-========================
-
-.. automodule:: treeffuser.scaler
-   :members:
-   :undoc-members:
-   :show-inheritance:

@@ -1,7 +1,0 @@
-treeffuser
-==========
-
-.. toctree::
-   :maxdepth: 4
-
-   treeffuser
