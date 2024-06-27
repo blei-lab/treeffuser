@@ -1,6 +1,15 @@
 ====================
 Treeffuser
 ====================
+.. raw:: html
+
+    <div style="text-align: center;">
+        <a href="https://badge.fury.io/py/treeffuser">
+            <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" style="display: inline-block;"/>
+        </a>
+        <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" style="display: inline-block;"/>
+    </div>
+
 
 .. image:: https://badge.fury.io/py/treeffuser.svg
     :target: https://badge.fury.io/py/treeffuser
