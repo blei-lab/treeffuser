@@ -48,6 +48,7 @@ html_static_path = ["static"]
 html_favicon = "static/logo.svg"
 html_logo = "static/logo.svg"
 html_title = " "
+# html_additional_pages = {"index": "getting-started.html"}  # set custom landing page
 
 # Change colors of Furo theme
 html_theme_options = {
