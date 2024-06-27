@@ -3,21 +3,23 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to treeffuser's documentation!
-======================================
+treeffuser
+==========
+Welcome to `treeffuser` documentation!
+
+`treeffuser` forms probabilistic predictions using conditional diffusions and gradient-boosted trees.
+
 
 .. toctree::
    :maxdepth: 2
-   :caption: Contents:
 
    Getting started<getting-started.rst>
    Tutorials<tutorials.rst>
    modules
    Release notes<release-notes.rst>
 
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`
+.. indices and tables
+.. ==================
+.. * :ref:`genindex`
+.. * :ref:`modindex`
+.. * :ref:`search`

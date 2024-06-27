@@ -46,3 +46,15 @@ source_suffix = {  # use Markdown files with extensions other than .md
 html_theme = "furo"  # "alabaster"
 html_static_path = ["static"]
 html_favicon = "static/logo.svg"
+html_logo = "static/logo.svg"
+html_title = " "
+
+# Change colors of Furo theme
+html_theme_options = {
+    "light_css_variables": {
+        #         "color-background-secondary": "#145c15",  # see --treffuser-color in docs/css/treeffuser.css
+        "color-brand-primary": "#145c15",
+        "color-brand-content": "#145c15",
+        # "color-foreground-primary": "#145c15",
+    },
+}

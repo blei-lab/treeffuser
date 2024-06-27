@@ -6,7 +6,7 @@
 SPHINXOPTS    ?=
 SPHINXBUILD   ?= sphinx-build
 SOURCEDIR     = source
-BUILDDIR      = parmigiana# set build directory to root to shorten GitHub Pages URL
+BUILDDIR      = site# set build directory to root to shorten GitHub Pages URL
 
 
 # Put it first so that "make" without argument is like "make help".
