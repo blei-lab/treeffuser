@@ -1,3 +1,9 @@
+Getting started
+User Guide
+API reference
+Development
+Release notes
+
 Create a docs folder
 
 # Set up Jekyll
@@ -90,6 +96,11 @@ sh
 Copy code
 sphinx-build -b html sphinx/source sphinx/build/html
 
+# Alternatively run make html
+make html
+pip install furo
+
+
 # Running Sphinx
 Build and Serve Sphinx Documentation: Unlike Jekyll, Sphinx doesn’t have a built-in server for live previews, so you build the HTML with Sphinx and view it by opening the HTML files directly or setting up a simple HTTP server:
 bash
@@ -97,3 +108,18 @@ Copy code
 cd build
 python -m http.server
 This serves the Sphinx-generated documentation at a URL like http://localhost:8000.
+
+# Furo theme
+pip install furo
+
+Add the following to conf.py
+html_theme = "furo"  # "alabaster"
+
+# Sphinx to generate automatically markdown files
+https://www.sphinx-doc.org/en/master/usage/markdown.html
+
+# Jekyll
+Build and serve your Jekyll site locally to see your documentation:
+sh
+Copy code
+bundle exec jekyll serve

@@ -1,0 +1,7 @@
+treeffuser.sde.parameter\_schedule module
+=========================================
+
+.. automodule:: treeffuser.sde.parameter_schedule
+   :members:
+   :undoc-members:
+   :show-inheritance:
