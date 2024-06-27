@@ -40,6 +40,8 @@ source_suffix = {  # use Markdown files with extensions other than .md
     ".md": "markdown",
 }
 
+add_module_names = False
+
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 

@@ -1,10 +1,10 @@
-Treeffuser
-==========
+Samples
+=======
 
 Module contents
 ---------------
 
-.. automodule:: treeffuser.treeffuser
+.. automodule:: treeffuser.samples
    :members:
    :undoc-members:
    :show-inheritance:
