@@ -11,7 +11,7 @@ from skopt.space import Real
 
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.ngboost._gaussian_mixtures import build_gaussian_mixture_model
-from treeffuser.scaler import ScalerMixedTypes
+from treeffuser._scaler import ScalerMixedTypes
 
 MAX_MINIBATCH_SIZE = 50_000
 MAX_VALIDATION_SIZE = 20_000
