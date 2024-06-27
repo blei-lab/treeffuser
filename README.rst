@@ -1,16 +1,14 @@
 ====================
 Treeffuser
 ====================
-.. raw:: html
-    <div style="text-align: center;">
-        <a href="https://badge.fury.io/py/treeffuser">
-            <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" style="display: inline-block;"/>
-        </a>
-        <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" style="display: inline-block;"/>
-        <a href="https://arxiv.org/abs/2406.07658">
-            <img src="https://img.shields.io/badge/arXiv-2406.07658-b31b1b.svg" alt="arXiv" style="display: inline-block;"/>
-        </a>
-    </div>
+
+.. image:: https://badge.fury.io/py/treeffuser.svg
+    :target: https://badge.fury.io/py/treeffuser
+.. image:: https://img.shields.io/pypi/dm/treeffuser
+   :alt: PyPI - Downloads
+.. image:: https://img.shields.io/badge/arXiv-2406.07658-red?link=https%3A%2F%2Farxiv.org%2Fabs%2F2406.07658
+   :alt: Static Badge
+
 
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
