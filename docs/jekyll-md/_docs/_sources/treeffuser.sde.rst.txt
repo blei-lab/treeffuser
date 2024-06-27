@@ -1,0 +1,23 @@
+treeffuser.sde package
+======================
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   treeffuser.sde.base_sde
+   treeffuser.sde.base_solver
+   treeffuser.sde.diffusion_sdes
+   treeffuser.sde.initialize
+   treeffuser.sde.parameter_schedule
+   treeffuser.sde.solvers
+
+Module contents
+---------------
+
+.. automodule:: treeffuser.sde
+   :members:
+   :undoc-members:
+   :show-inheritance:

@@ -1,0 +1,7 @@
+treeffuser.treeffuser module
+============================
+
+.. automodule:: treeffuser.treeffuser
+   :members:
+   :undoc-members:
+   :show-inheritance:

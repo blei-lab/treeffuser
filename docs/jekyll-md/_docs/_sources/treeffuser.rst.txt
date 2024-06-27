@@ -1,0 +1,27 @@
+treeffuser package
+==================
+
+Subpackages
+-----------
+
+.. toctree::
+   :maxdepth: 4
+
+   treeffuser.sde
+
+Submodules
+----------
+
+.. toctree::
+   :maxdepth: 4
+
+   treeffuser.scaler
+   treeffuser.treeffuser
+
+Module contents
+---------------
+
+.. automodule:: treeffuser
+   :members:
+   :undoc-members:
+   :show-inheritance:
