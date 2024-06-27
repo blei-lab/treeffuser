@@ -8,6 +8,11 @@ Treeffuser
             <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" style="display: inline-block;"/>
         </a>
         <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" style="display: inline-block;"/>
+
+        <a href="https://arxiv.org/abs/2406.07658">
+            <img src="https://img.shields.io/badge/arxiv?logo=arxiv" alt="arXiv" style="display: inline-block;"/>
+        </a>
+        <img alt="Static Badge" src="https://img.shields.io/badge/arxiv?logo=arxiv&link=https%3A%2F%2Farxiv.org%2Fabs%2F2406.07658">
     </div>
 
 
