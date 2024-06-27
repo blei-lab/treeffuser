@@ -11,7 +11,9 @@ Welcome to treeffuser's documentation!
    :caption: Contents:
 
    Getting started<getting-started.rst>
+   Tutorials<tutorials.rst>
    modules
+   Release notes<release-notes.rst>
 
 Indices and tables
 ==================
