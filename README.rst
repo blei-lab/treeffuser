@@ -8,8 +8,11 @@ Treeffuser
 .. image:: https://img.shields.io/pypi/dm/treeffuser
    :alt: PyPI - Downloads
 
-.. image:: https://img.shields.io/badge/%20arxiv-red?logo=arxiv&link=https%3A%2F%2Farxiv.org%2Fabs%2F2406.07658
-   :alt: Static Badge
+.. raw:: html
+    <a href="https://arxiv.org/abs/2406.07658">
+        <img src="https://img.shields.io/badge/%20arxiv-red?logo=arxiv&link=https%3A%2F%2Farxiv.org%2Fabs%2F2406.07658" alt="Static Badge">
+    </a>
+
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
 It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
