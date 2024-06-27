@@ -10,6 +10,7 @@ Welcome to treeffuser's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+   Getting started<getting-started.rst>
    modules
 
 Indices and tables

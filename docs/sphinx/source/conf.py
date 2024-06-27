@@ -7,7 +7,8 @@
 import sys
 from pathlib import Path
 
-sys.path.insert(0, Path.resolve()("../../src/"))
+path_to_package = Path("../../src/")
+sys.path.insert(0, path_to_package.resolve())
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
