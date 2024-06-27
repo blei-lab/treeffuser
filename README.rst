@@ -2,19 +2,18 @@
 Treeffuser
 ====================
 .. raw:: html
-
-   <div style="text-align: center;">
-     <a href="https://badge.fury.io/py/treeffuser">
-       <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" />
-     </a>
-     <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" />
-     <a href="https://arxiv.org/abs/2406.07658">
-       <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="Static Badge" />
-     </a>
-     <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html">
-       <img src="https://img.shields.io/badge/docs-passing-green" alt="Static Badge" />
-     </a>
-   </div>
+    <div style="text-align: center;">
+    <a href="https://badge.fury.io/py/treeffuser" style="text-decoration: none;">
+        <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" />
+    </a>
+    <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" />
+    <a href="https://arxiv.org/abs/2406.07658" style="text-decoration: none;">
+        <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="Static Badge" />
+    </a>
+    <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" style="text-decoration: none;">
+        <img src="https://img.shields.io/badge/docs-passing-green" alt="Static Badge" />
+    </a>
+    </div>
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
 It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
