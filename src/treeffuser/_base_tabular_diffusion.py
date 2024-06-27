@@ -42,17 +42,17 @@ def _check_array(array: ndarray[float]):
 
     # Cast floats
     try:
-        if array.dtype != np.float32:
+        if not np.issubdtype(array.dtype, np.floating):
             array = np.asarray(array, dtype=np.float32)
             warnings.warn(
-                "Input array is not float32; it has been recast to float32.",
+                "Input array is not float; it has been recast to float32.",
                 CastFloat32Warning,
                 stacklevel=2,
             )
     except ValueError as e:
         # Raise the ValueError preserving the original exception context, see B904 from flake8-bugbear
         raise ValueError(
-            "Input array is not float32 and cannot be converted to float32."
+            "Input array is not float and cannot be converted to float32."
         ) from e  #
 
     return array
@@ -221,7 +221,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         X, _ = self._validate_data(X=X, validate_y=False)
 
-        y_samples = self._sample_raw(X, n_samples, n_parallel, n_steps, seed, verbose)
+        y_samples = self._sample_without_validation(
+            X, n_samples, n_parallel, n_steps, seed, verbose
+        )
 
         # Ensure output aligns with original shape provided by user
         if self._y_original_ndim == 1:
@@ -229,7 +231,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         return y_samples
 
-    def _sample_raw(
+    def _sample_without_validation(
         self,
         X: Float[ndarray, "batch x_dim"],
         n_samples: int,
@@ -357,12 +359,14 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         """
         n_samples = n_samples_increment = 10
 
-        mean_prev = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose).mean(axis=0)
+        mean_prev = self._sample_without_validation(
+            X=X, n_samples=n_samples, verbose=verbose
+        ).mean(axis=0)
         norm_prev = np.sqrt((mean_prev**2).sum(axis=1))
         max_change = np.inf
 
         while max_change > tol and n_samples < max_samples:
-            sum_increment = self._sample_raw(
+            sum_increment = self._sample_without_validation(
                 X=X,
                 n_samples=n_samples_increment,
                 verbose=verbose,
@@ -426,9 +430,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         X, _ = self._validate_data(X=X, validate_y=False)
 
-        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
-        n_samples, batch, _ = y_samples.shape
+        batch = y_samples.shape[1]
 
         kdes = []
         for i in range(batch):
@@ -489,7 +493,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
         verbose: bool = False,
     ) -> float:
-        y_samples = self._sample_raw(X=X, n_samples=n_samples, verbose=verbose)
+        y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
         def fit_and_evaluate_kde(y_train, y_test):
             kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
