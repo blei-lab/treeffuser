@@ -1,23 +1,28 @@
 ====================
 Treeffuser
 ====================
-.. raw:: html
 
-    <div style="text-align: center;">
-        
-        <a href="https://badge.fury.io/py/treeffuser">
-            <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version" /></a>
+|github-stars| |pypi-version| |pypi-downloads| |arxiv| |docs|
 
-        <a href="https://badge.fury.io/py/treeffuser">
-        <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads" /></a>
+.. |github-stars| image:: https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub
+   :target: https://github.com/blei-lab/treeffuser/stargazers
+   :alt: GitHub repo stars
 
-        <a href="https://arxiv.org/abs/2406.07658">
-            <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="Static Badge" /></a>
+.. |pypi-version| image:: https://badge.fury.io/py/treeffuser.svg
+   :target: https://badge.fury.io/py/treeffuser
+   :alt: PyPI version
 
-        <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html">
-            <img src="https://img.shields.io/badge/docs-passing-green" alt="Static Badge" /></a>
-    </div>
+.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/treeffuser
+   :target: https://badge.fury.io/py/treeffuser
+   :alt: PyPI - Downloads
 
+.. |arxiv| image:: https://img.shields.io/badge/arXiv-2406.07658-red
+   :target: https://arxiv.org/abs/2406.07658
+   :alt: arXiv
+
+.. |docs| image:: https://img.shields.io/badge/docs-passing-green
+   :target: https://blei-lab.github.io/treeffuser/docs/getting-started.html
+   :alt: Documentation
 
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
