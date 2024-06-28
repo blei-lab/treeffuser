@@ -2,27 +2,24 @@
 Treeffuser
 ====================
 
-|github-stars| |pypi-version| |pypi-downloads| |arxiv| |docs|
+.. raw:: html
 
-.. |github-stars| image:: https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub
-   :target: https://github.com/blei-lab/treeffuser/stargazers
-   :alt: GitHub repo stars
-
-.. |pypi-version| image:: https://badge.fury.io/py/treeffuser.svg
-   :target: https://badge.fury.io/py/treeffuser
-   :alt: PyPI version
-
-.. |pypi-downloads| image:: https://img.shields.io/pypi/dm/treeffuser
-   :target: https://badge.fury.io/py/treeffuser
-   :alt: PyPI - Downloads
-
-.. |arxiv| image:: https://img.shields.io/badge/arXiv-2406.07658-red
-   :target: https://arxiv.org/abs/2406.07658
-   :alt: arXiv
-
-.. |docs| image:: https://img.shields.io/badge/docs-passing-green
-   :target: https://blei-lab.github.io/treeffuser/docs/getting-started.html
-   :alt: Documentation
+   <a href="https://github.com/blei-lab/treeffuser/stargazers" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub" alt="GitHub repo stars"></a>
+   
+   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+       <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
+   
+   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads"></a>
+   
+   <a href="https://arxiv.org/abs/2406.07658" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="arXiv"></a>
+   
+   <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/badge/docs-passing-green" alt="Documentation"></a>
+   <br/>
+   <br/>
 
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
