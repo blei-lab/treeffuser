@@ -2,6 +2,26 @@
 Treeffuser
 ====================
 
+.. raw:: html
+
+   <a href="https://github.com/blei-lab/treeffuser/stargazers" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub" alt="GitHub repo stars"></a>
+
+   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+       <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
+
+   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads"></a>
+
+   <a href="https://arxiv.org/abs/2406.07658" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="arXiv"></a>
+
+   <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" target="_blank" rel="noopener noreferrer">
+       <img src="https://img.shields.io/badge/docs-passing-green" alt="Documentation"></a>
+   <br/>
+   <br/>
+
+
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
 It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
 Treeffuser can model conditional distributions ``p(y|x)`` that are arbitrarily complex (e.g., multimodal, heteroscedastic, non-gaussian, heavy-tailed, etc.).
