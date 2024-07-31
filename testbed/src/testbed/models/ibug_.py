@@ -4,6 +4,7 @@ from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
 from skopt.space import Integer
+from skopt.space import Real
 from xgboost import XGBRegressor
 
 from testbed.models import ProbabilisticModel
@@ -14,10 +15,13 @@ class IBugXGBoost(ProbabilisticModel):
     IBug wrapper for XGBoost.
     """
 
-    def __init__(self, k=100, seed=0):
+    def __init__(self, k=100, n_estimators=100, max_depth=2, learning_rate=0.1, seed=0):
         super().__init__(seed)
         self.model = None
         self.k = k
+        self.n_estimators = n_estimators
+        self.max_depth = max_depth
+        self.learning_rate = learning_rate
 
     def fit(
         self,
@@ -42,6 +46,9 @@ class IBugXGBoost(ProbabilisticModel):
 
         # train GBRT model
         self.gbrt_model = XGBRegressor(
+            n_estimators=self.n_estimators,
+            max_depth=self.max_depth,
+            learning_rate=self.learning_rate,
             reg_alpha=0,
             scale_pos_weight=1,
             base_score=0.5,
@@ -78,4 +85,7 @@ class IBugXGBoost(ProbabilisticModel):
         """
         return {
             "k": Integer(20, 150),
+            "n_estimators": Integer(10, 1000),
+            "learning_rate": Real(0.01, 0.5, prior="log-uniform"),
+            "max_depth": Integer(1, 10),
         }
