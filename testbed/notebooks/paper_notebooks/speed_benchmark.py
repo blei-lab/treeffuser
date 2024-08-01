@@ -20,6 +20,7 @@ import os
 import time
 from jaxtyping import Float
 import pandas as pd
+import pickle
 
 # make plots pretty
 sns.set_theme()
@@ -28,6 +29,10 @@ N_ATTEMPTS = 2
 FILE_NAME_TRAIN_TIMES = "train_times.pdf"
 FILE_NAME_SAMPLE_TIMES = "sample_times.csv"
 FILE_NAME_M5_SUBSET = "m5_subset.pdf"
+FILE_NAME_DATAPOINT_PER_DATASET = "datapoint_per_dataset.pkl"
+FILE_NAME_DATAPOINT_PER_FRACTION = "datapoint_per_fraction.pkl"
+ATTEMPT_LOAD_DATAPOINTS = False
+
 N_SUBSETS = 10
 
 
@@ -193,8 +198,11 @@ def make_table_for_sample_times(datapoints: List[_Datapoint], save_pth: str):
     df.to_latex(save_pth.replace(".csv", ".tex"), index=False)
 
 
-def create_a_datapoint_per_dataset(dataset_names: List[str] = None) -> List[_Datapoint]:
-    # remove m5 subset / not uci
+def create_a_datapoint_per_dataset(
+    dataset_names: List[str] = None,
+    ) -> List[_Datapoint]:
+
+    # remove m5 subset / not uciml datasets
     datapoints = []
     for dataset_name in dataset_names:
         dp = compute_fit_and_sample_time(dataset_name)
@@ -223,6 +231,13 @@ def create_a_datapoint_per_fraction_of_dataset(
     return datapoints
 
 
+def get_pkls(pkl_name: str):
+    try:
+        with open(pkl_name, "rb") as f:
+            return pickle.load(f)
+    except FileNotFoundError:
+        return None
+
 if __name__ == "__main__":
     args = parse_args()
     if not os.path.exists(args.out_dir):
@@ -231,9 +246,14 @@ if __name__ == "__main__":
     dataset_names = list(list_data().keys())
     dataset_names = [name for name in dataset_names if name in NAMES_TO_PLOT.keys()]
 
-    datapoints = create_a_datapoint_per_dataset(dataset_names)
+    datapoints = get_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_DATASET))
+    if datapoints is None or not ATTEMPT_LOAD_DATAPOINTS:
+        datapoints = create_a_datapoint_per_dataset(dataset_names)
     plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES))
     make_table_for_sample_times(datapoints, os.path.join(args.out_dir, FILE_NAME_SAMPLE_TIMES))
 
-    datapoints = create_a_datapoint_per_fraction_of_dataset("m5_subset", N_SUBSETS)
+
+    datapoints = get_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION))
+    if datapoints is None or not ATTEMPT_LOAD_DATAPOINTS:
+        datapoints = create_a_datapoint_per_fraction_of_dataset("m5_subset", N_SUBSETS)
     plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET))
