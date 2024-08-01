@@ -34,6 +34,7 @@ N_SUBSETS = 10
 # Simply to match the paper (we could run on all but it would take too long)
 
 NAMES_TO_PLOT = {
+    "kin8nm": "kin8nm",
     "m5_subset": "m5",
     "bike": "bike",
     "energy": "energy",
@@ -141,15 +142,8 @@ def compute_fit_and_sample_time(dataset_name: str) -> _Datapoint:
         A _Datapoint object containing the results of the computation.
         See the _Datapoint class for more information.
     """
-    subset = np.random.randint(50, 100)
     data = get_data(dataset_name)
     x, y = data["x"], data["y"]
-    print(f"Shape of x: {x.shape}")
-    print(f"Shape of y: {y.shape}")
-
-    x = x[:subset]
-    y = y[:subset]
-
     # convert to float
     x = x.astype(np.float32)
     y = y.astype(np.float32)
@@ -216,8 +210,6 @@ def create_a_datapoint_per_fraction_of_dataset(
 
     x = x.astype(np.float32)
     y = y.astype(np.float32)
-    x = x[:1000]
-    y = y[:1000]
     datapoints = []
     fractions = np.linspace(0.1, 1, n_fractions)
 
