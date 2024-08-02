@@ -23,9 +23,9 @@ import pandas as pd
 import pickle
 
 # make plots pretty
-sns.set_theme()
 
-N_ATTEMPTS = 2
+
+N_ATTEMPTS = 5
 FILE_NAME_TRAIN_TIMES = "train_times.pdf"
 FILE_NAME_SAMPLE_TIMES = "sample_times.csv"
 FILE_NAME_M5_SUBSET = "m5_subset.pdf"
@@ -96,6 +96,8 @@ def make_datapoint_from_dataset(
     t_fits = []
     t_samples = []
     n_sampled = None
+
+
     for _ in range(N_ATTEMPTS):
         t_start = time.time()
         model = Treeffuser()
@@ -237,6 +239,9 @@ def get_pkls(pkl_name: str):
             return pickle.load(f)
     except FileNotFoundError:
         return None
+def save_pkls(pkl_name: str, data):
+    with open(pkl_name, "wb") as f:
+        pickle.dump(data, f)
 
 if __name__ == "__main__":
     args = parse_args()
@@ -249,6 +254,8 @@ if __name__ == "__main__":
     datapoints = get_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_DATASET))
     if datapoints is None or not ATTEMPT_LOAD_DATAPOINTS:
         datapoints = create_a_datapoint_per_dataset(dataset_names)
+        save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_DATASET), datapoints)
+
     plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES))
     make_table_for_sample_times(datapoints, os.path.join(args.out_dir, FILE_NAME_SAMPLE_TIMES))
 
@@ -256,4 +263,6 @@ if __name__ == "__main__":
     datapoints = get_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION))
     if datapoints is None or not ATTEMPT_LOAD_DATAPOINTS:
         datapoints = create_a_datapoint_per_fraction_of_dataset("m5_subset", N_SUBSETS)
+        save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION), datapoints)
+
     plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET))
