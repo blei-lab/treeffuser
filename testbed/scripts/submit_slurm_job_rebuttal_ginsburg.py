@@ -38,22 +38,22 @@ model_names = [
 
 
 datasets = [
-    # "bike",
-    # "boston",
-    # "communities",  # contains NaN
-    # "energy",  # y is 2d
-    # "facebook",
+    "bike",
+    "boston",
+    "communities",  # contains NaN
+    "energy",  # y is 2d
+    "facebook",
     "kin8nm",
-    "msd",  # very big X (463715, 90)
-    # "naval",
-    # "news",
-    # "power",
-    # "protein",
-    # "superconductor",
-    "wave",  # very big
-    # "wine",
-    # "yacht",
-    # "movies",
+    # "msd",  # very big X (463715, 90)
+    "naval",
+    "news",
+    "power",
+    "protein",
+    "superconductor",
+    # "wave",  # very big
+    "wine",
+    "yacht",
+    "movies",
 ]
 
 
@@ -71,7 +71,7 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project ale-test-ibug-rebuttal"
+        f" --wandb_project ale-ibug-rebuttal"
         f" --n_iter_bayes_opt 25"
     )
     return tmp

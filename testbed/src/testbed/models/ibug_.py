@@ -84,7 +84,7 @@ class IBugXGBoost(ProbabilisticModel):
         Return the search space for parameters of the model.
         """
         return {
-            "k": Integer(20, 150),
+            "k": Integer(20, 250),
             "n_estimators": Integer(10, 1000),
             "learning_rate": Real(0.01, 0.5, prior="log-uniform"),
             "max_depth": Integer(1, 10),
