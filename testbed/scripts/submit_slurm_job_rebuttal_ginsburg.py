@@ -71,8 +71,7 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        # f" --wandb_project crps-bayesopt-2"
-        f" --wandb_project point_prediction"
+        f" --wandb_project ale-test-ibug-rebuttal"
         f" --n_iter_bayes_opt 25"
     )
     return tmp
