@@ -6,7 +6,7 @@ template = """#!/bin/sh
 #SBATCH --account=stats
 #SBATCH -c 4
 #SBATCH --time=11:59:00
-#SBATCH --mem-per-cpu=8gb
+#SBATCH --mem-per-cpu=24gb
 #SBATCH --export=ALL
 
 module load anaconda
@@ -43,16 +43,16 @@ datasets = [
     # "communities",  # contains NaN
     # "energy",  # y is 2d
     # "facebook",
-    # "kin8nm",
-    # "msd",  # very big X (463715, 90)
+    "kin8nm",
+    "msd",  # very big X (463715, 90)
     # "naval",
     # "news",
     # "power",
     # "protein",
     # "superconductor",
-    # "wave", # very big
+    "wave",  # very big
     # "wine",
-    "yacht",
+    # "yacht",
     # "movies",
 ]
 
