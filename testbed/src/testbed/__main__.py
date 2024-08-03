@@ -112,6 +112,11 @@ def get_model(
 
         return IBugXGBoost
 
+    if model_name == "ibug_kde":
+        from testbed.models.ibug_kde_ import IBugXGBoostKDE
+
+        return IBugXGBoostKDE
+
     if model_name == "drf":
         from testbed.models.drf_ import DistributionalRandomForest
 
