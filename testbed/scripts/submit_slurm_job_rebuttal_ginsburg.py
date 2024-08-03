@@ -6,7 +6,7 @@ template = """#!/bin/sh
 #SBATCH --account=stats
 #SBATCH -c 4
 #SBATCH --time=11:59:00
-#SBATCH --mem-per-cpu=24gb
+#SBATCH --mem-per-cpu=12gb
 #SBATCH --export=ALL
 
 module load anaconda
@@ -26,6 +26,7 @@ split_idx = list(range(10))
 model_names = [
     # "ngboost",
     "ibug",
+    "ibug_kde",
     # "treeffuser",
     # "deep_ensemble",
     # "quantile_regression_tree",
@@ -40,8 +41,8 @@ model_names = [
 datasets = [
     "bike",
     "boston",
-    "communities",  # contains NaN
-    "energy",  # y is 2d
+    # "communities",  # contains NaN
+    # "energy",  # y is 2d
     "facebook",
     "kin8nm",
     # "msd",  # very big X (463715, 90)
@@ -71,7 +72,7 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project ale-ibug-rebuttal"
+        f" --wandb_project ale-ibug-gaussian-and-kde"
         f" --n_iter_bayes_opt 25"
     )
     return tmp
