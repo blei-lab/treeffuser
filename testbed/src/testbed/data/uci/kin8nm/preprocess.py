@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+from testbed.data.utils import _assign_k_splits
 
 
 def main(path_raw_dataset_dir: Path):
@@ -19,9 +20,17 @@ def main(path_raw_dataset_dir: Path):
     x = df.drop(columns=["y"]).values
     categorical = []
 
+    k_fold_splits = _assign_k_splits(x.shape[0], 10, 0)
+
     # Save preprocessed data
     np.save(
-        path_raw_dataset_dir.parent / "data.npy", {"x": x, "y": y, "categorical": categorical}
+        path_raw_dataset_dir.parent / "data.npy",
+        {
+            "x": x,
+            "y": y,
+            "categorical": categorical,
+            "k_fold_splits": k_fold_splits,
+        },
     )
 
 
