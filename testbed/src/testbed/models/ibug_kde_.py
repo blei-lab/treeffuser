@@ -10,7 +10,7 @@ from xgboost import XGBRegressor
 
 from testbed.models import ProbabilisticModel
 
-_BANDWIDTH_SEARCH_SPACE = np.logspace(-2, 10, 10)
+_BANDWIDTH_SEARCH_SPACE = np.logspace(-4, 3, 10)
 
 
 class IBugXGBoostKDE(ProbabilisticModel):
@@ -28,6 +28,10 @@ class IBugXGBoostKDE(ProbabilisticModel):
         self.max_depth = max_depth
         self.learning_rate = learning_rate
 
+        # For scaling
+        self.mu = None
+        self.sigma = None
+
     def fit(
         self,
         X: Float[ndarray, "batch x_dim"],
@@ -36,6 +40,12 @@ class IBugXGBoostKDE(ProbabilisticModel):
         """
         Fit the model to the data.
         """
+        self.mu = np.mean(y, axis=0)
+        self.sigma = np.std(y, axis=0)
+
+        # Normalize y
+        y = (y - self.mu) / self.sigma
+
 
         if y.shape[1] > 1:
             raise ValueError("IBugXGBoost only accepts 1 dimensional y values.")
@@ -75,6 +85,7 @@ class IBugXGBoostKDE(ProbabilisticModel):
         """
         # predict mean and variance for unseen instances
         location, scale = self.model.pred_dist(X)
+        location = location * self.sigma + self.mu
         return location.reshape(-1, 1)
 
     def sample(
@@ -100,6 +111,7 @@ class IBugXGBoostKDE(ProbabilisticModel):
             samples.append(kde.sample(n_samples, random_state=seed))
 
         samples = np.array(samples).transpose(1, 0, 2)
+        samples = samples * self.sigma + self.mu
         assert samples.shape == (n_samples, len(X), 1)
         return samples
 
