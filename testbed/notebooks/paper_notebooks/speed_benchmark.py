@@ -23,7 +23,7 @@ import pandas as pd
 import pickle
 
 # make plots pretty
-
+sns.set(style="whitegrid")
 
 N_ATTEMPTS = 5
 FILE_NAME_TRAIN_TIMES = "train_times.pdf"
@@ -31,7 +31,7 @@ FILE_NAME_SAMPLE_TIMES = "sample_times.csv"
 FILE_NAME_M5_SUBSET = "m5_subset.pdf"
 FILE_NAME_DATAPOINT_PER_DATASET = "datapoint_per_dataset.pkl"
 FILE_NAME_DATAPOINT_PER_FRACTION = "datapoint_per_fraction.pkl"
-ATTEMPT_LOAD_DATAPOINTS = False
+ATTEMPT_LOAD_DATAPOINTS = True
 
 N_SUBSETS = 10
 
@@ -43,7 +43,7 @@ NAMES_TO_PLOT = {
     "m5_subset": "m5",
     "bike": "bike",
     "energy": "energy",
-    "kin8nm": ".",
+    "kin8nm": "kin8nm",
     "movies": "movies",
     "naval": "naval",
     "news": "news",
@@ -105,12 +105,13 @@ def make_datapoint_from_dataset(
         t_fit = time.time() - t_start
         print(f"Time taken to fit model on {dataset_name}: {t_fit}")
 
-        x_to_sample = x[: min(1000, len(x))]
+        x_to_sample = np.concatenate([x, x, x, x, x, x ])
+        x_to_sample = x_to_sample[: 1000]
         n_sampled = len(x_to_sample)
 
         t_start = time.time()
-        model.sample(x_to_sample, n_samples=1)
-        t_sample = time.time() - t_start
+        _ = model.sample(x_to_sample, n_samples=1)
+        t_sample = (time.time() - t_start)
         print(f"Time taken to sample from model on {dataset_name}: {t_sample}")
 
         t_fits.append(t_fit)
@@ -160,7 +161,9 @@ def compute_fit_and_sample_time(dataset_name: str) -> _Datapoint:
     return make_datapoint_from_dataset(dataset_name, x, y)
 
 
-def plot_train_times(datapoints: List[_Datapoint], save_pth: str):
+def plot_train_times(datapoints: List[_Datapoint], save_pth: str, annotate=True):
+    # array with color for each datapoint
+    colors = sns.color_palette("tab10", n_colors=len(datapoints))
     # Extract data for plotting
     x = [dp.dataset_shape[0] for dp in datapoints]
     y = [dp.fit_time_mean for dp in datapoints]
@@ -169,11 +172,16 @@ def plot_train_times(datapoints: List[_Datapoint], save_pth: str):
 
     # Create scatter plot
     plt.figure(figsize=(10, 6))
-    plt.errorbar(x, y, yerr=yerr, fmt="o", capsize=5, capthick=1, ecolor="red")
+    for i in range(len(datapoints)):
+        plt.errorbar(x[i], y[i], yerr=yerr[i], fmt="o", capsize=5, capthick=1, ecolor="red", color=colors[i], label=labels[i])
+
 
     # Annotate each point with the dataset name and shape
-    for i, label in enumerate(labels):
-        plt.annotate(label, (x[i], y[i]), textcoords="offset points", xytext=(5, 10))
+    if annotate:
+        for i, label in enumerate(labels):
+            plt.annotate(label, (x[i], y[i]), textcoords="offset points", xytext=(5, 10))
+    else:
+        plt.legend()
 
     # Add titles and labels
     plt.title("Training Times vs. Dataset Size")
@@ -181,9 +189,14 @@ def plot_train_times(datapoints: List[_Datapoint], save_pth: str):
     plt.ylabel("Mean Training Time (seconds)")
     plt.grid(True)
     plt.tight_layout()
+    # set x lim
+    plt.xlim(0, 1.2 * max(x))
+    plt.ylim(0, 1.2 * max(y))
 
     # Save plot
     plt.savefig(save_pth)
+    # save also png
+    plt.savefig(save_pth.replace(".pdf", ".png"), dpi=200)
 
 
 def make_table_for_sample_times(datapoints: List[_Datapoint], save_pth: str):
@@ -256,7 +269,7 @@ if __name__ == "__main__":
         datapoints = create_a_datapoint_per_dataset(dataset_names)
         save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_DATASET), datapoints)
 
-    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES))
+    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES), annotate=False)
     make_table_for_sample_times(datapoints, os.path.join(args.out_dir, FILE_NAME_SAMPLE_TIMES))
 
 
@@ -265,4 +278,4 @@ if __name__ == "__main__":
         datapoints = create_a_datapoint_per_fraction_of_dataset("m5_subset", N_SUBSETS)
         save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION), datapoints)
 
-    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET))
+    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET), annotate=True)
