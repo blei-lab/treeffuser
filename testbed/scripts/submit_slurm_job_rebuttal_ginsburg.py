@@ -25,7 +25,7 @@ evaluation_mode = "bayes_opt"
 split_idx = list(range(10))
 model_names = [
     # "ngboost",
-    "ibug",
+    # "ibug",
     "ibug_kde",
     # "treeffuser",
     # "deep_ensemble",
@@ -72,7 +72,7 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project ale-ibug-gaussian-and-kde"
+        f" --wandb_project ale-ibug-kde-new"
         f" --n_iter_bayes_opt 25"
     )
     return tmp
