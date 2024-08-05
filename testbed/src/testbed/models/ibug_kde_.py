@@ -46,7 +46,6 @@ class IBugXGBoostKDE(ProbabilisticModel):
         # Normalize y
         y = (y - self.mu) / self.sigma
 
-
         if y.shape[1] > 1:
             raise ValueError("IBugXGBoost only accepts 1 dimensional y values.")
 
