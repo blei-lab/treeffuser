@@ -26,14 +26,14 @@ split_idx = list(range(10))
 model_names = [
     # "ngboost",
     # "ibug",
-    "ibug_kde",
-    # "treeffuser",
+    # "ibug_kde",
+    "treeffuser",
     # "deep_ensemble",
     # "quantile_regression_tree",
     # "mc_dropout",
     # "card",
-    # "ppm_lightgbm",
-    # "ppm_xgboost",
+    "ppm_lightgbm",
+    "ppm_xgboost",
     # "ppm_mlp",
 ]
 
@@ -72,7 +72,7 @@ def get_cmd(
         f" --split_idx {split_idx}"
         f" --datasets {dataset}"
         f" --evaluation_mode {evaluation_mode}"
-        f" --wandb_project ale-ibug-kde-new"
+        f" --wandb_project ale-ppm"
         f" --n_iter_bayes_opt 25"
     )
     return tmp
