@@ -14,6 +14,7 @@ from typing import Optional
 from typing import Type
 import sys
 from typing import Tuple
+from typing import Union
 
 import namesgenerator
 import numpy as np
@@ -49,7 +50,7 @@ os.environ["WANDB_CONSOLE"] = "off"
 
 def get_model(
     model_name: Optional[str] = None, return_available_models: bool = False
-) -> List[str] | Type[ProbabilisticModel]:
+) -> Union[List[str], Type[ProbabilisticModel]]:
     # noinspection PyListCreation
     available_models = []
 
