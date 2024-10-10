@@ -320,6 +320,9 @@ class Samples:
         """
         return self._samples
 
+    def __str__(self) -> str:
+        return str(self._samples)
+
     def __getitem__(self, key):
         """
         Prevent the user from removing the first or second dimension of the samples.
