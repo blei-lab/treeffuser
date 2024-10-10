@@ -1,28 +1,49 @@
 .cards-container {
   display: flex;
-  flex-direction: column; /* Stack the cards vertically */
+  flex-direction: column;
+  /* Stack the cards vertically */
   margin: 20px;
 }
 
 .example-card {
-  display: flex; /* Enables flexbox inside each card */
-  align-items: center; /* Aligns the items vertically */
+  display: flex;
+  /* Enables flexbox inside each card */
+  align-items: center;
+  /* Aligns the items vertically */
   box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.4);
   transition: 0.3s;
-  margin: 10px 0; /* Space between cards */
+  margin: 10px 0;
+  /* Space between cards */
 }
 
 .example-card img {
-  width: 150px; /* Fixed width for images */
+  width: 150px;
+  /* Fixed width for images */
   height: auto;
-  margin-right: 20px; /* Space between the image and the text */
+  margin-right: 20px;
+  /* Space between the image and the text */
 }
 
 .example-container {
-  flex: 1; /* Takes up the remaining space */
+  flex: 1;
+  /* Takes up the remaining space */
   padding: 2px 16px;
 }
 
 .example-card:hover {
   box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.4);
+}
+
+.title-with-links {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: nowrap;
+  /* Prevents wrapping to the next line */
+}
+
+.links a {
+  margin-left: 10px;
+  white-space: nowrap;
+  /* Prevents the text in links from wrapping */
 }
