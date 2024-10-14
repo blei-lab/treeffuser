@@ -113,8 +113,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         List[int],
     ]:
         """
-        If X is a DataFrame, convert it to numpy array and auto-detect categorical columns.
-        Reshape X and/or y to adhere to the (batch, n_dim) convention
+        If X is a DataFrame:
+            - convert it to numpy array and auto-detect categorical columns.
+            - store the column names at fit time and ensure they are the same at predict time.
+        If X is a numpy array:
+            Reshape X and/or y to adhere to the (batch, n_dim) convention
         """
         if validate_X:
             if X is None:
@@ -513,7 +516,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._validate_data(X=X, validate_y=False)
+        X, _, _ = self._validate_data(X=X, validate_y=False)
 
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
