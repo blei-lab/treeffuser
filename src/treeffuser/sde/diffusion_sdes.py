@@ -1,8 +1,6 @@
+from __future__ import annotations
+
 import abc
-from typing import Dict
-from typing import Optional
-from typing import Type
-from typing import Union
 
 import numpy as np
 from jaxtyping import Float
@@ -44,7 +42,7 @@ class DiffusionSDE(BaseSDE):
         return 1.0
 
     @abc.abstractmethod
-    def get_hyperparams(self) -> Dict:
+    def get_hyperparams(self) -> dict:
         """
         Return a dictionary with the hyperparameters of the SDE.
 
@@ -55,8 +53,8 @@ class DiffusionSDE(BaseSDE):
 
     @abc.abstractmethod
     def sample_from_theoretical_prior(
-        self, shape: tuple[int, ...], seed: Optional[int] = None
-    ) -> Float[ndarray, "*shape"]:
+        self, shape: tuple[int, ...], seed: int | None = None
+    ) -> Float[ndarray, *shape]:
         """
         Sample from the theoretical distribution that p_T(y) converges to.
 
@@ -114,7 +112,7 @@ class DiffusionSDE(BaseSDE):
         """
 
         def kernel_density_fn(
-            y: Float[ndarray, "batch_ y_dim"], t: Union[float, Float[np.ndarray, "batch_ 1"]]
+            y: Float[ndarray, "batch_ y_dim"], t: float | Float[np.ndarray, "batch_ 1"]
         ):
             if isinstance(t, float):
                 t = np.ones_like(y) * t
@@ -159,7 +157,7 @@ def _register_diffusion_sde(name: str):
     return _register
 
 
-def get_diffusion_sde(name: Optional[str] = None) -> Union[Type[DiffusionSDE], dict]:
+def get_diffusion_sde(name: str | None = None) -> type[DiffusionSDE] | dict:
     """
     Function to retrieve a registered diffusion SDE by its name.
 
@@ -237,9 +235,7 @@ class VESDE(DiffusionSDE):
 
     def drift_and_diffusion(
         self, y: Float[ndarray, "batch y_dim"], t: Float[ndarray, "batch 1"]
-    ) -> Union[
-        tuple[Float[ndarray, "batch y_dim"], float, Float[ndarray, "batch y_dim"], float]
-    ]:
+    ) -> tuple[Float[ndarray, "batch y_dim"], float, Float[ndarray, "batch y_dim"], float]:
         hyperparam = self.hyperparam_schedule(t)
         hyperparam_prime = self.hyperparam_schedule.get_derivative(t)
         drift = 0.0
@@ -247,7 +243,7 @@ class VESDE(DiffusionSDE):
         return drift, diffusion
 
     def sample_from_theoretical_prior(
-        self, shape: tuple[int, ...], seed: Optional[int] = None
+        self, shape: tuple[int, ...], seed: int | None = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
         # This assumes that hyperparam_max is large enough
         rng = np.random.default_rng(seed)
@@ -328,7 +324,7 @@ class VPSDE(DiffusionSDE):
         return drift, diffusion
 
     def sample_from_theoretical_prior(
-        self, shape: tuple[int, ...], seed: Optional[int] = None
+        self, shape: tuple[int, ...], seed: int | None = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
         # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)
@@ -411,7 +407,7 @@ class SubVPSDE(DiffusionSDE):
         return drift, diffusion
 
     def sample_from_theoretical_prior(
-        self, shape: tuple[int, ...], seed: Optional[int] = None
+        self, shape: tuple[int, ...], seed: int | None = None
     ) -> Float[ndarray, "batch x_dim y_dim"]:
         # Assume that hyperparam_max is large enough so that the SDE has converged to N(0,1).
         rng = np.random.default_rng(seed)

@@ -1,14 +1,8 @@
-"""
-This should be the main file corresponding to the project.
-"""
+from __future__ import annotations
 
 import abc
 import warnings
-from typing import List
 from typing import Literal
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import einops
 import numpy as np
@@ -98,13 +92,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def _validate_data(
         self,
-        X: Optional[ndarray] = None,
-        y: Optional[ndarray] = None,
+        X: ndarray | None = None,
+        y: ndarray | None = None,
         validate_X: bool = True,
         validate_y: bool = True,
-    ) -> Tuple[
-        Optional[Float[ndarray, "batch x_dim"]], Optional[Float[ndarray, "batch y_dim"]]
-    ]:
+    ) -> tuple[Float[ndarray, "batch x_dim"] | None, Float[ndarray, "batch y_dim"] | None]:
         """Reshape X and/or y to adhere to the (batch, n_dim) convention, and cast them as flows."""
         if validate_X and X is not None:
             X = _check_array(X)
@@ -118,7 +110,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
-        cat_idx: Optional[List[int]] = None,
+        cat_idx: list[int] | None = None,
     ):
         """
         Fit the conditional diffusion model to the tabular data (X, y).
@@ -393,9 +385,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         n_samples: int = 100,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
-    ) -> List[KernelDensity]:
+    ) -> list[KernelDensity]:
         """
         Estimate the distribution of the predicted responses for the given input data `X` using Gaussian
         KDEs from `sklearn.neighbors.KernelDensity`.
@@ -448,7 +440,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 10,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
     ) -> float:
         """
@@ -490,7 +482,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 10,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
     ) -> float:
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
