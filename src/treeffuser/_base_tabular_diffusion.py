@@ -180,7 +180,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         n_samples: int,
         n_parallel: int = 10,
-        n_steps: int = 100,
+        n_steps: int = 50,
         seed=None,
         verbose: bool = False,
     ) -> Float[ndarray, "n_samples batch y_dim"]:
