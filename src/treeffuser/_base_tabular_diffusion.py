@@ -204,7 +204,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
             y = _check_array(y)
 
-        return X, y
+        return X, y, self._x_cat_idx
 
     def fit(
         self,
@@ -246,7 +246,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         # store the original number of dimensions of the response
         # before reshaping the data so as to ensure that predictions
         # have the same shape as the user-inputted response
-        X, y = self._preprocess_and_validate_data(X=X, y=y, cat_idx=cat_idx, reset=True)
+        X, y, cat_idx = self._preprocess_and_validate_data(
+            X=X, y=y, cat_idx=cat_idx, reset=True
+        )
 
         x_transformed = self._x_scaler.fit_transform(X, cat_idx=cat_idx)
         y_transformed = self._y_scaler.fit_transform(y)
@@ -303,7 +305,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
+        X, _, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
 
         y_samples = self._sample_without_validation(
             X, n_samples, n_parallel=n_parallel, n_steps=n_steps, seed=seed, verbose=verbose
@@ -419,7 +421,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
+        X, _, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
         y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
 
         if self._y_original_ndim == 1:
