@@ -252,7 +252,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         y_samples = []
         x_batched = None
 
-        pbar = tqdm(total=n_samples, disable=~verbose)
+        pbar = tqdm(total=n_samples, disable=not verbose)
         while n_samples_sampled < n_samples:
             batch_size_samples = min(n_parallel, n_samples - n_samples_sampled)
             y_batch = self.sde.sample_from_theoretical_prior(
