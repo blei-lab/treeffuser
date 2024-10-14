@@ -566,7 +566,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, y = self._preprocess_and_validate_data(X=X, y=y)
+        X, y, _ = self._preprocess_and_validate_data(X=X, y=y)
 
         return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
 
