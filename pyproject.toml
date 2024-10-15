@@ -53,6 +53,7 @@ ignore = [
     "F722", # Syntax error (issue with jaxtyping)
     "F821", # Issue with jax typing
     "PT006", # flake8-pytest-style fixture-final-use
+    "UP037", # do not remove quotes around annotations (when __future__.annotations is imported)
 ]
 line-length = 95
 lint.select = [
