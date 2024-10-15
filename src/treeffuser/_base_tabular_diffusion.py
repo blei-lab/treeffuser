@@ -65,6 +65,32 @@ def _check_array(array: ndarray[float]):
 ###################################################
 
 
+def _ensure_numerical_columns(X: pd.DataFrame):
+    """
+    Convert the categorical columns of a DataFrame to numerical columns.
+    Raise an error if the columns are not numerical or categorical.
+    Copy the DataFrame to avoid modifying the original, but only if necessary.
+    """
+    X_has_been_copied = False
+    for c in X.columns:
+        if not isinstance(X[c].dtype, pd.CategoricalDtype) and not np.issubdtype(
+            X[c].dtype, np.number
+        ):
+            raise ValueError(
+                f"Dtypes of columns in `X` must be int, float, bool or category. "
+                f"Column {c} has dtype {X[c].dtype}."
+                f"Convert the column to a numerical dtype or a category, e.g.,"
+                f"X['{c}'] = X['{c}'].astype('category')."
+            )
+        if isinstance(X[c].dtype, pd.CategoricalDtype):
+            if X_has_been_copied is False:
+                # copy the DataFrame to avoid modifying the original
+                X = X.copy()
+                X_has_been_copied = True
+            X[c] = X[c].cat.codes
+    return X
+
+
 class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     """
     Abstract class for the tabular diffusions. Every particular
@@ -158,23 +184,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                     X.columns.get_loc(col) for col in X.select_dtypes("category").columns
                 ]
                 # check dtype of columns and convert categorical columns to numerical
-                X_has_been_copied = False
-                for c in X.columns:
-                    if not isinstance(X[c].dtype, pd.CategoricalDtype) and not np.issubdtype(
-                        X[c].dtype, np.number
-                    ):
-                        raise ValueError(
-                            f"Dtypes of columns in `X` must be int, float, bool or category. "
-                            f"Column {c} has dtype {X[c].dtype}."
-                            f"Convert the column to a numerical dtype or a category, e.g.,"
-                            f"X['{c}'] = X['{c}'].astype('category')."
-                        )
-                    if isinstance(X[c].dtype, pd.CategoricalDtype):
-                        if X_has_been_copied is False:
-                            # copy the DataFrame to avoid modifying the original
-                            X = X.copy()
-                            X_has_been_copied = True
-                        X[c] = X[c].cat.codes
+                X = _ensure_numerical_columns(X)
                 # at that point, X contains only numerical columns
                 if reset_data_schema:
                     # store the columns of the DataFrame
