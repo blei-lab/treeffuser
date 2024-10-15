@@ -106,18 +106,43 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         cat_idx: Optional[List[int]] = None,
         validate_X: bool = True,
         validate_y: bool = True,
-        reset: bool = False,
+        reset_data_schema: bool = False,
     ) -> Tuple[
         Optional[Float[ndarray, "batch x_dim"]],
         Optional[Float[ndarray, "batch y_dim"]],
         List[int],
     ]:
         """
-        If X is a DataFrame:
-            - convert it to numpy array and auto-detect categorical columns.
-            - store the column names at fit time and ensure they are the same at predict time.
-        If X is a numpy array:
-            Reshape X and/or y to adhere to the (batch, n_dim) convention
+        Preprocess and validate the input data by methods like `fit`, `predict`, `sample`, ...
+        (1) It transforms the different possible inputs (pandas, numpy) into numpy arrays.
+        (2) It checks and convert the shapes to be 2d arrays. (3) It detects categorical columns
+        in DataFrames. (4) It ensure that the input in `predict` has the same shape/columns as the
+        input in `fit` (see parameter `reset` below).
+
+        Parameters
+        ----------
+        X : np.ndarray or pd.DataFrame, optional
+            Input data with shape (batch, x_dim).
+        y : np.ndarray or pd.Series or pd.DataFrame, optional
+            Target data with shape (batch, y_dim) or (batch).
+        cat_idx : List[int], optional
+            If X is a np.ndarray, list of indices of categorical features in X.
+            If X is a DataFrame, setting `cat_idx` will raise an error. Instead, ensure that the
+            categorical columns have dtype `category`, and they will be automatically detected as
+            categorical features. E.g., X['column_name'] = X['column_name'].astype('category').
+        validate_X : bool, optional
+            If True, validate the input data `X` and raise an error if no `X` is provided.
+            Default is True.
+        validate_y : bool, optional
+            If True, validate the target data `y` and raise an error if no `y` is provided.
+            Default is True.
+        reset_data_schema : bool, optional
+            If True, reset the cached schema of X and y (their shape, the name of the columns,
+            the categorical indices).
+            If False, check that X and y have the same shape and columns as the cached properties.
+            It should be set to True when `_preprocess_and_validate_data` is called from the `fit`
+            method and False when called from `predict` or `sample`, to ensure that the prediction
+            data is consistent with the training data. Default is False.
         """
         if validate_X:
             if X is None:
@@ -151,7 +176,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                             X_has_been_copied = True
                         X[c] = X[c].cat.codes
                 # at that point, X contains only numerical columns
-                if reset:
+                if reset_data_schema:
                     # store the columns of the DataFrame
                     self._x_dataframe_columns = X.columns
                     self._x_cat_idx = cat_idx
@@ -179,7 +204,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                 else:
                     cat_idx = []
 
-                if reset:
+                if reset_data_schema:
                     self._x_cat_idx = cat_idx
             else:
                 raise TypeError(
@@ -200,7 +225,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                     f"Received {type(y).__name}."
                 )
 
-            if reset:
+            if reset_data_schema:
                 # store the original number of dimensions of the response
                 self._y_original_ndim = y.ndim
                 self._y_dim = y.shape[1] if y.ndim > 1 else 1
@@ -250,7 +275,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         # before reshaping the data so as to ensure that predictions
         # have the same shape as the user-inputted response
         X, y, cat_idx = self._preprocess_and_validate_data(
-            X=X, y=y, cat_idx=cat_idx, reset=True
+            X=X, y=y, cat_idx=cat_idx, reset_data_schema=True
         )
 
         x_transformed = self._x_scaler.fit_transform(X, cat_idx=cat_idx)
