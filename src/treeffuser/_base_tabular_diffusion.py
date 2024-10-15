@@ -102,7 +102,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     def _preprocess_and_validate_data(
         self,
         X: Optional[Union[ndarray, pd.DataFrame]] = None,
-        y: Optional[Union[ndarray, pd.Series]] = None,
+        y: Optional[Union[ndarray, pd.Series, pd.DataFrame]] = None,
         cat_idx: Optional[List[int]] = None,
         validate_X: bool = True,
         validate_y: bool = True,
@@ -192,11 +192,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if validate_y:
             if y is None:
                 raise ValueError("Target data `y` cannot be None.")
-            if isinstance(y, pd.Series):
+            if isinstance(y, pd.Series) or isinstance(y, pd.DataFrame):
                 y = y.values
             elif not isinstance(y, np.ndarray):
                 raise TypeError(
-                    "Target data `y` must be a numpy array or a pandas Series."
+                    "Target data `y` must be a numpy array, a pandas Series or a pandas DataFrame."
                     f"Received {type(y).__name}."
                 )
 
@@ -212,7 +212,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     def fit(
         self,
         X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
-        y: Union[Float[ndarray, "batch y_dim"], pd.Series],
+        y: Union[Float[ndarray, "batch y_dim"], pd.Series, pd.DataFrame],
         cat_idx: Optional[List[int]] = None,
     ):
         """
@@ -222,13 +222,13 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         ----------
         X : np.ndarray or pd.DataFrame
             Input data with shape (batch, x_dim).
-        y : np.ndarray or pd.Series
+        y : np.ndarray or pd.Series or pd.DataFrame
             Target data with shape (batch, y_dim).
         cat_idx : List[int], optional
             If X is a np.ndarray, list of indices of categorical features in X.
             If X is a DataFrame, setting `cat_idx` will raise an error. Instead, ensure that the
             categorical columns have dtype `category`, and they will be automatically detected as
-            categorical features.
+            categorical features. E.g., X['column_name'] = X['column_name'].astype('category').
             Default is None.
 
         Returns

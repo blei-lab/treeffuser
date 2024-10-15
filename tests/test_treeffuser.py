@@ -141,6 +141,11 @@ def test_dataframe_input():
     with pytest.raises(ValueError, match="`cat_idx` should not be provided when"):
         model.fit(X=df, y=y, cat_idx=[1])
 
+    # giving a dataframe for y
+    y = pd.DataFrame({"a:": y.flatten(), "b": y.flatten()})
+    model.fit(X=df, y=y)
+    assert model._y_dim == 2
+
 
 def fit_and_validate_model(
     x_train, y_train, x_test, y_test, n_samples=10**2, flatten_x=False, flatten_y=False
