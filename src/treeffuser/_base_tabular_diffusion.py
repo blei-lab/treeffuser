@@ -1,14 +1,8 @@
-"""
-This should be the main file corresponding to the project.
-"""
+from __future__ import annotations
 
 import abc
 import warnings
-from typing import List
 from typing import Literal
-from typing import Optional
-from typing import Tuple
-from typing import Union
 
 import einops
 import numpy as np
@@ -127,16 +121,14 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def _preprocess_and_validate_data(
         self,
-        X: Optional[Union[ndarray, pd.DataFrame]] = None,
-        y: Optional[Union[ndarray, pd.Series, pd.DataFrame]] = None,
-        cat_idx: Optional[List[int]] = None,
+        X: ndarray | pd.DataFrame | None = None,
+        y: ndarray | pd.Series | pd.DataFrame | None = None,
+        cat_idx: list[int] | None = None,
         validate_X: bool = True,
         validate_y: bool = True,
         reset_data_schema: bool = False,
-    ) -> Tuple[
-        Optional[Float[ndarray, "batch x_dim"]],
-        Optional[Float[ndarray, "batch y_dim"]],
-        List[int],
+    ) -> tuple[
+        Float[ndarray, "batch x_dim"] | None, Float[ndarray, "batch y_dim"] | None, list[int]
     ]:
         """
         Preprocess and validate the input data by methods like `fit`, `predict`, `sample`, ...
@@ -221,7 +213,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
                     "Input data `X` must be a numpy array or a pandas DataFrame."
                     f"Reveived {type(X).__name}."
                 )
-
             X = _check_array(X)
 
         if validate_y:
@@ -246,9 +237,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def fit(
         self,
-        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
-        y: Union[Float[ndarray, "batch y_dim"], pd.Series, pd.DataFrame],
-        cat_idx: Optional[List[int]] = None,
+        X: Float[ndarray, "batch x_dim"] | pd.DataFrame,
+        y: Float[ndarray, "batch y_dim"] | pd.Series | pd.DataFrame,
+        cat_idx: list[int] | None = None,
     ):
         """
         Fit the conditional diffusion model to the tabular data (X, y).
@@ -300,7 +291,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def sample(
         self,
-        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
+        X: Float[ndarray, "batch x_dim"] | pd.DataFrame,
         n_samples: int,
         n_parallel: int = 10,
         n_steps: int = 50,
@@ -418,7 +409,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def predict(
         self,
-        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
+        X: Float[ndarray, "batch x_dim"] | pd.DataFrame,
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
@@ -516,9 +507,9 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self,
         X: Float[ndarray, "batch x_dim"],
         n_samples: int = 100,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
-    ) -> List[KernelDensity]:
+    ) -> list[KernelDensity]:
         """
         Estimate the distribution of the predicted responses for the given input data `X` using Gaussian
         KDEs from `sklearn.neighbors.KernelDensity`.
@@ -551,7 +542,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _, _ = self._validate_data(X=X, validate_y=False)
+        X, _, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
 
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
@@ -571,7 +562,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 10,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
     ) -> float:
         """
@@ -613,7 +604,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         X: Float[ndarray, "batch x_dim"],
         y: Float[ndarray, "batch y_dim"],
         n_samples: int = 10,
-        bandwidth: Union[float, Literal["scott", "silverman"]] = 1.0,
+        bandwidth: float | Literal["scott", "silverman"] = 1.0,
         verbose: bool = False,
     ) -> float:
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
