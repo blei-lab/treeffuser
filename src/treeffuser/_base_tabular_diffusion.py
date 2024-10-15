@@ -12,6 +12,7 @@ from typing import Union
 
 import einops
 import numpy as np
+import pandas as pd
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.base import BaseEstimator
@@ -64,6 +65,32 @@ def _check_array(array: ndarray[float]):
 ###################################################
 
 
+def _ensure_numerical_columns(X: pd.DataFrame):
+    """
+    Convert the categorical columns of a DataFrame to numerical columns.
+    Raise an error if the columns are not numerical or categorical.
+    Copy the DataFrame to avoid modifying the original, but only if necessary.
+    """
+    X_has_been_copied = False
+    for c in X.columns:
+        if not isinstance(X[c].dtype, pd.CategoricalDtype) and not np.issubdtype(
+            X[c].dtype, np.number
+        ):
+            raise ValueError(
+                f"Dtypes of columns in `X` must be int, float, bool or category. "
+                f"Column {c} has dtype {X[c].dtype}."
+                f"Convert the column to a numerical dtype or a category, e.g.,"
+                f"X['{c}'] = X['{c}'].astype('category')."
+            )
+        if isinstance(X[c].dtype, pd.CategoricalDtype):
+            if X_has_been_copied is False:
+                # copy the DataFrame to avoid modifying the original
+                X = X.copy()
+                X_has_been_copied = True
+            X[c] = X[c].cat.codes
+    return X
+
+
 class BaseTabularDiffusion(BaseEstimator, abc.ABC):
     """
     Abstract class for the tabular diffusions. Every particular
@@ -79,6 +106,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         self.sde_initialize_from_data = sde_initialize_from_data
         self.score_model = None
         self._is_fitted = False
+        self._x_dataframe_columns = None
         self._x_scaler = None
         self._x_dim = None
         self._x_cat_idx = None
@@ -97,28 +125,129 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         Return the score model.
         """
 
-    def _validate_data(
+    def _preprocess_and_validate_data(
         self,
-        X: Optional[ndarray] = None,
-        y: Optional[ndarray] = None,
+        X: Optional[Union[ndarray, pd.DataFrame]] = None,
+        y: Optional[Union[ndarray, pd.Series, pd.DataFrame]] = None,
+        cat_idx: Optional[List[int]] = None,
         validate_X: bool = True,
         validate_y: bool = True,
+        reset_data_schema: bool = False,
     ) -> Tuple[
-        Optional[Float[ndarray, "batch x_dim"]], Optional[Float[ndarray, "batch y_dim"]]
+        Optional[Float[ndarray, "batch x_dim"]],
+        Optional[Float[ndarray, "batch y_dim"]],
+        List[int],
     ]:
-        """Reshape X and/or y to adhere to the (batch, n_dim) convention, and cast them as flows."""
-        if validate_X and X is not None:
+        """
+        Preprocess and validate the input data by methods like `fit`, `predict`, `sample`, ...
+        (1) It transforms the different possible inputs (pandas, numpy) into numpy arrays.
+        (2) It checks and convert the shapes to be 2d arrays. (3) It detects categorical columns
+        in DataFrames. (4) It ensure that the input in `predict` has the same shape/columns as the
+        input in `fit` (see parameter `reset` below).
+
+        Parameters
+        ----------
+        X : np.ndarray or pd.DataFrame, optional
+            Input data with shape (batch, x_dim).
+        y : np.ndarray or pd.Series or pd.DataFrame, optional
+            Target data with shape (batch, y_dim) or (batch).
+        cat_idx : List[int], optional
+            If X is a np.ndarray, list of indices of categorical features in X.
+            If X is a DataFrame, setting `cat_idx` will raise an error. Instead, ensure that the
+            categorical columns have dtype `category`, and they will be automatically detected as
+            categorical features. E.g., X['column_name'] = X['column_name'].astype('category').
+        validate_X : bool, optional
+            If True, validate the input data `X` and raise an error if no `X` is provided.
+            Default is True.
+        validate_y : bool, optional
+            If True, validate the target data `y` and raise an error if no `y` is provided.
+            Default is True.
+        reset_data_schema : bool, optional
+            If True, reset the cached schema of X and y (their shape, the name of the columns,
+            the categorical indices).
+            If False, check that X and y have the same shape and columns as the cached properties.
+            It should be set to True when `_preprocess_and_validate_data` is called from the `fit`
+            method and False when called from `predict` or `sample`, to ensure that the prediction
+            data is consistent with the training data. Default is False.
+        """
+        if validate_X:
+            if X is None:
+                raise ValueError("Input data `X` cannot be None.")
+            if isinstance(X, pd.DataFrame):
+                if cat_idx is not None and cat_idx != []:
+                    raise ValueError(
+                        "Categorical indices `cat_idx` should not be provided when `X` is a DataFrame."
+                        "Instead, ensure that the categorical columns have dtype `category`."
+                        "E.g., X['column_name'] = X['column_name'].astype('category')."
+                    )
+                cat_idx = [
+                    X.columns.get_loc(col) for col in X.select_dtypes("category").columns
+                ]
+                # check dtype of columns and convert categorical columns to numerical
+                X = _ensure_numerical_columns(X)
+                # at that point, X contains only numerical columns
+                if reset_data_schema:
+                    # store the columns of the DataFrame
+                    self._x_dataframe_columns = X.columns
+                    self._x_cat_idx = cat_idx
+                    self._x_dim = X.shape[1]
+                else:
+                    # check coherence of the input data with the training data
+                    # ensure the columns of the DataFrame are the same as the ones used during training
+                    if not all(col in X.columns for col in self._x_dataframe_columns):
+                        raise ValueError(
+                            "Column names in `X` are not present in the DataFrame but were present during training."
+                            f"{set(self._x_dataframe_columns) - set(X.columns)}"
+                        )
+                    # reorder the columns of the DataFrame to match the order of the training data
+                    X = X[self._x_dataframe_columns]
+                X = X.values
+
+            elif isinstance(X, np.ndarray):
+                if cat_idx is not None:
+                    for idx in cat_idx:
+                        if idx < 0 or idx >= X.shape[1]:
+                            raise ValueError(
+                                f"Invalid indices in `cat_idx`: {idx} is not in "
+                                f"[0, {X.shape[1]}-1] (the shape of X)."
+                            )
+                else:
+                    cat_idx = []
+
+                if reset_data_schema:
+                    self._x_cat_idx = cat_idx
+            else:
+                raise TypeError(
+                    "Input data `X` must be a numpy array or a pandas DataFrame."
+                    f"Reveived {type(X).__name}."
+                )
+
             X = _check_array(X)
 
-        if validate_y and y is not None:
+        if validate_y:
+            if y is None:
+                raise ValueError("Target data `y` cannot be None.")
+            if isinstance(y, pd.Series) or isinstance(y, pd.DataFrame):
+                y = y.values
+            elif not isinstance(y, np.ndarray):
+                raise TypeError(
+                    "Target data `y` must be a numpy array, a pandas Series or a pandas DataFrame."
+                    f"Received {type(y).__name}."
+                )
+
+            if reset_data_schema:
+                # store the original number of dimensions of the response
+                self._y_original_ndim = y.ndim
+                self._y_dim = y.shape[1] if y.ndim > 1 else 1
+
             y = _check_array(y)
 
-        return X, y
+        return X, y, self._x_cat_idx
 
     def fit(
         self,
-        X: Float[ndarray, "batch x_dim"],
-        y: Float[ndarray, "batch y_dim"],
+        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
+        y: Union[Float[ndarray, "batch y_dim"], pd.Series, pd.DataFrame],
         cat_idx: Optional[List[int]] = None,
     ):
         """
@@ -126,12 +255,16 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         Parameters
         ----------
-        X : np.ndarray
+        X : np.ndarray or pd.DataFrame
             Input data with shape (batch, x_dim).
-        y : np.ndarray
+        y : np.ndarray or pd.Series or pd.DataFrame
             Target data with shape (batch, y_dim).
         cat_idx : List[int], optional
-            List of indices of categorical features in X. Default is None.
+            If X is a np.ndarray, list of indices of categorical features in X.
+            If X is a DataFrame, setting `cat_idx` will raise an error. Instead, ensure that the
+            categorical columns have dtype `category`, and they will be automatically detected as
+            categorical features. E.g., X['column_name'] = X['column_name'].astype('category').
+            Default is None.
 
         Returns
         -------
@@ -143,13 +276,6 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
         but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
-        if cat_idx is not None:
-            for idx in cat_idx:
-                if idx < 0 or idx >= X.shape[1]:
-                    raise ValueError(
-                        f"Invalid indices in `cat_idx`: {idx} is not in "
-                        f"[0, {X.shape[1]}-1] (the shape of X)."
-                    )
         self.sde = self.get_new_sde()
         self.score_model = self.get_new_score_model()
         self._x_scaler = ScalerMixedTypes()
@@ -158,14 +284,11 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         # store the original number of dimensions of the response
         # before reshaping the data so as to ensure that predictions
         # have the same shape as the user-inputted response
-        self._y_original_ndim = y.ndim
-        X, y = self._validate_data(X=X, y=y)
-
-        self._y_dim = y.shape[1]
-        x_transformed = self._x_scaler.fit_transform(
-            X,
-            cat_idx=cat_idx,
+        X, y, cat_idx = self._preprocess_and_validate_data(
+            X=X, y=y, cat_idx=cat_idx, reset_data_schema=True
         )
+
+        x_transformed = self._x_scaler.fit_transform(X, cat_idx=cat_idx)
         y_transformed = self._y_scaler.fit_transform(y)
 
         if self.sde_initialize_from_data:
@@ -177,7 +300,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def sample(
         self,
-        X: Float[ndarray, "batch x_dim"],
+        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
         n_samples: int,
         n_parallel: int = 10,
         n_steps: int = 50,
@@ -189,7 +312,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         Parameters
         ----------
-        X : np.ndarray
+        X : np.ndarray or pd.DataFrame
             Input data with shape (batch, x_dim).
         n_samples : int
             Number of samples to draw for each input.
@@ -220,10 +343,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._validate_data(X=X, validate_y=False)
+        X, _, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
 
         y_samples = self._sample_without_validation(
-            X, n_samples, n_parallel, n_steps, seed, verbose
+            X, n_samples, n_parallel=n_parallel, n_steps=n_steps, seed=seed, verbose=verbose
         )
 
         # Ensure output aligns with original shape provided by user
@@ -295,7 +418,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
     def predict(
         self,
-        X: Float[ndarray, "batch x_dim"],
+        X: Union[Float[ndarray, "batch x_dim"], pd.DataFrame],
         tol: float = 1e-3,
         max_samples: int = 100,
         verbose: bool = False,
@@ -308,7 +431,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
 
         Parameters
         ----------
-        X : Float[ndarray, "batch x_dim"]
+        X : Float[ndarray, "batch x_dim"] or pd.DataFrame
             Input data with shape (batch, x_dim).
         tol : float, optional
             Tolerance for the stopping criterion based on the relative change in the mean estimate. Default is 1e-3.
@@ -333,11 +456,10 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         The method handles 2D inputs (["batch x_dim"], ["batch y_dim"]) by convention,
         but also works with 1D inputs (["batch"]) for single-dimensional data.
         """
-        X, _ = self._validate_data(X=X, validate_y=False)
-
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
+        X, _, _ = self._preprocess_and_validate_data(X=X, validate_y=False)
         y_preds = self._predict_from_sample(X, tol, max_samples, verbose)
 
         if self._y_original_ndim == 1:
@@ -429,7 +551,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, _ = self._validate_data(X=X, validate_y=False)
+        X, _, _ = self._validate_data(X=X, validate_y=False)
 
         y_samples = self._sample_without_validation(X=X, n_samples=n_samples, verbose=verbose)
 
@@ -482,7 +604,7 @@ class BaseTabularDiffusion(BaseEstimator, abc.ABC):
         if not self._is_fitted:
             raise ValueError("The model has not been fitted yet.")
 
-        X, y = self._validate_data(X=X, y=y)
+        X, y, _ = self._preprocess_and_validate_data(X=X, y=y)
 
         return self._compute_nll_from_sample(X, y, n_samples, bandwidth, verbose)
 
