@@ -54,7 +54,7 @@ class DiffusionSDE(BaseSDE):
     @abc.abstractmethod
     def sample_from_theoretical_prior(
         self, shape: tuple[int, ...], seed: int | None = None
-    ) -> Float[ndarray, *shape]:
+    ) -> Float[ndarray, "*shape"]:
         """
         Sample from the theoretical distribution that p_T(y) converges to.
 

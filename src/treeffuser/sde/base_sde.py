@@ -67,7 +67,7 @@ class ReverseSDE(BaseSDE):
         sde: BaseSDE,
         t_reverse_origin: float,
         score_fn: Callable[
-            [Float[ndarray, "batch y_dim"], Float[ndarray, batch]], Float[ndarray, batch]
+            [Float[ndarray, "batch y_dim"], Float[ndarray, "batch"]], Float[ndarray, "batch"]
         ],
     ):
         self.sde = sde
