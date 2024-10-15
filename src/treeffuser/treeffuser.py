@@ -1,7 +1,6 @@
-from typing import List
+from __future__ import annotations
+
 from typing import Literal
-from typing import Optional
-from typing import Union
 
 from treeffuser._base_tabular_diffusion import BaseTabularDiffusion
 from treeffuser._score_models import LightGBMScoreModel
@@ -15,7 +14,7 @@ class Treeffuser(BaseTabularDiffusion):
         self,
         n_repeats: int = 30,
         n_estimators: int = 3000,
-        early_stopping_rounds: Optional[int] = 50,
+        early_stopping_rounds: int | None = 50,
         eval_percent: float = 0.1,
         num_leaves: int = 31,
         max_depth: int = -1,
@@ -28,11 +27,11 @@ class Treeffuser(BaseTabularDiffusion):
         n_jobs: int = -1,
         sde_name: str = "vesde",
         sde_initialize_from_data: bool = False,
-        sde_hyperparam_min: Optional[Union[float, Literal["default"]]] = None,
-        sde_hyperparam_max: Optional[Union[float, Literal["default"]]] = None,
-        seed: Optional[int] = None,
+        sde_hyperparam_min: float | Literal["default"] | None = None,
+        sde_hyperparam_max: float | Literal["default"] | None = None,
+        seed: int | None = None,
         verbose: int = 0,
-        extra_lightgbm_params: Optional[dict] = None,
+        extra_lightgbm_params: dict | None = None,
     ):
         """
         n_repeats : int
@@ -139,7 +138,7 @@ class Treeffuser(BaseTabularDiffusion):
         return score_model
 
     @property
-    def n_estimators_true(self) -> List[int]:
+    def n_estimators_true(self) -> list[int]:
         """
         The number of estimators that are actually used in the models (after early stopping),
         one for each dimension of the score (i.e. the dimension of y).

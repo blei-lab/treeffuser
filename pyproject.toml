@@ -23,7 +23,7 @@ python = "^3.9"
 numpy = "^1.24"
 jaxtyping = "^0.2.19"
 einops = "^0.8.0"
-scipy = "^1.13.1"
+scipy = "^1.13"
 tqdm = "^4.66.4"
 lightgbm = "^4.3.0"
 ml-collections = "^0.1.1"
@@ -53,6 +53,7 @@ ignore = [
     "F722", # Syntax error (issue with jaxtyping)
     "F821", # Issue with jax typing
     "PT006", # flake8-pytest-style fixture-final-use
+    "UP037", # do not remove quotes around annotations (when __future__.annotations is imported)
 ]
 line-length = 95
 lint.select = [
