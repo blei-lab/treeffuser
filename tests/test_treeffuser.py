@@ -112,6 +112,41 @@ def test_categorical():
         model.fit(X=X, y=y, cat_idx=cat_idx)
 
 
+def test_dataframe_input():
+    """Basic test for DataFrame input support."""
+    n = 10**3
+    rng = np.random.default_rng(seed=0)
+
+    X_noncat = rng.uniform(low=1, high=2, size=(n, 1))
+    X_cat = rng.choice(1, size=(n, 1))
+    y = rng.normal(loc=X_noncat + 2 * X_cat, scale=1, size=(n, 1))
+
+    import pandas as pd
+
+    df = pd.DataFrame({"X_noncat": X_noncat.flatten(), "X_cat": X_cat.flatten()})
+    model = Treeffuser()
+
+    # not setting X_cat as categorical
+    model.fit(X=df, y=y)
+    assert model._x_cat_idx == []
+    assert model._x_dim == 2
+
+    # setting X_cat as categorical
+    df["X_cat"] = df["X_cat"].astype("category")
+    model.fit(X=df, y=y)
+    assert model._x_cat_idx == [1]
+    assert model._x_dim == 2
+
+    # check error is raised if cat_idx is given when X is a DataFrame
+    with pytest.raises(ValueError, match="`cat_idx` should not be provided when"):
+        model.fit(X=df, y=y, cat_idx=[1])
+
+    # giving a dataframe for y
+    y = pd.DataFrame({"a:": y.flatten(), "b": y.flatten()})
+    model.fit(X=df, y=y)
+    assert model._y_dim == 2
+
+
 def fit_and_validate_model(
     x_train, y_train, x_test, y_test, n_samples=10**2, flatten_x=False, flatten_y=False
 ):
