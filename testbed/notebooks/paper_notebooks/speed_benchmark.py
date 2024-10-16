@@ -22,8 +22,18 @@ from jaxtyping import Float
 import pandas as pd
 import pickle
 
+from matplotlib import rcParams
+
+
 # make plots pretty
 sns.set(style="whitegrid")
+# sns set font for presentations and such
+sns.set_context("talk")
+
+# Set the font to Arial
+rcParams["font.family"] = "sans-serif"
+rcParams["font.sans-serif"] = ["Arial"]  # Use Arial if available
+
 
 N_ATTEMPTS = 5
 FILE_NAME_TRAIN_TIMES = "train_times.pdf"
@@ -97,7 +107,6 @@ def make_datapoint_from_dataset(
     t_samples = []
     n_sampled = None
 
-
     for _ in range(N_ATTEMPTS):
         t_start = time.time()
         model = Treeffuser()
@@ -105,13 +114,13 @@ def make_datapoint_from_dataset(
         t_fit = time.time() - t_start
         print(f"Time taken to fit model on {dataset_name}: {t_fit}")
 
-        x_to_sample = np.concatenate([x, x, x, x, x, x ])
-        x_to_sample = x_to_sample[: 1000]
+        x_to_sample = np.concatenate([x, x, x, x, x, x])
+        x_to_sample = x_to_sample[:1000]
         n_sampled = len(x_to_sample)
 
         t_start = time.time()
         _ = model.sample(x_to_sample, n_samples=1)
-        t_sample = (time.time() - t_start)
+        t_sample = time.time() - t_start
         print(f"Time taken to sample from model on {dataset_name}: {t_sample}")
 
         t_fits.append(t_fit)
@@ -171,20 +180,37 @@ def plot_train_times(datapoints: List[_Datapoint], save_pth: str, annotate=True)
     labels = [f"{NAMES_TO_PLOT[dp.dataset_name]}\n{dp.dataset_shape}" for dp in datapoints]
 
     # Create scatter plot
-    plt.figure(figsize=(10, 6))
+    plt.figure(figsize=(15, 9))
     for i in range(len(datapoints)):
-        plt.errorbar(x[i], y[i], yerr=yerr[i], fmt="o", capsize=5, capthick=1, ecolor="red", color=colors[i], label=labels[i])
-
+        plt.errorbar(
+            x[i],
+            y[i],
+            yerr=yerr[i],
+            fmt="o",
+            capsize=5,
+            capthick=1,
+            ecolor="red",
+            color=colors[i],
+            label=labels[i],
+        )
 
     # Annotate each point with the dataset name and shape
     if annotate:
         for i, label in enumerate(labels):
-            plt.annotate(label, (x[i], y[i]), textcoords="offset points", xytext=(5, 10))
+            # make the text not too small
+            plt.annotate(
+                label,
+                (x[i], y[i]),
+                textcoords="offset points",
+                xytext=(5, 13),
+                ha="center",
+                fontsize=18,
+            )
     else:
-        plt.legend()
+        # plot legend but put it
+        plt.legend(loc="lower right", fontsize=18, ncols=2)
 
     # Add titles and labels
-    plt.title("Training Times vs. Dataset Size")
     plt.xlabel("Number of Samples in Dataset")
     plt.ylabel("Mean Training Time (seconds)")
     plt.grid(True)
@@ -192,6 +218,16 @@ def plot_train_times(datapoints: List[_Datapoint], save_pth: str, annotate=True)
     # set x lim
     plt.xlim(0, 1.2 * max(x))
     plt.ylim(0, 1.2 * max(y))
+
+    # Make the font of everything larger
+    plt.tick_params(axis="both", which="major", labelsize=18)
+    plt.tick_params(axis="both", which="minor", labelsize=16)
+    plt.xlabel("Number of Samples in Dataset", fontsize=25)
+    plt.ylabel("Mean Training Time (seconds)", fontsize=25)
+    # plt.title("Training Times vs. Dataset Size", fontsize=28)
+
+    # tight layout
+    plt.tight_layout()
 
     # Save plot
     plt.savefig(save_pth)
@@ -215,7 +251,7 @@ def make_table_for_sample_times(datapoints: List[_Datapoint], save_pth: str):
 
 def create_a_datapoint_per_dataset(
     dataset_names: List[str] = None,
-    ) -> List[_Datapoint]:
+) -> List[_Datapoint]:
 
     # remove m5 subset / not uciml datasets
     datapoints = []
@@ -252,9 +288,12 @@ def get_pkls(pkl_name: str):
             return pickle.load(f)
     except FileNotFoundError:
         return None
+
+
 def save_pkls(pkl_name: str, data):
     with open(pkl_name, "wb") as f:
         pickle.dump(data, f)
+
 
 if __name__ == "__main__":
     args = parse_args()
@@ -269,13 +308,16 @@ if __name__ == "__main__":
         datapoints = create_a_datapoint_per_dataset(dataset_names)
         save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_DATASET), datapoints)
 
-    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES), annotate=False)
+    plot_train_times(
+        datapoints, os.path.join(args.out_dir, FILE_NAME_TRAIN_TIMES), annotate=False
+    )
     make_table_for_sample_times(datapoints, os.path.join(args.out_dir, FILE_NAME_SAMPLE_TIMES))
-
 
     datapoints = get_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION))
     if datapoints is None or not ATTEMPT_LOAD_DATAPOINTS:
         datapoints = create_a_datapoint_per_fraction_of_dataset("m5_subset", N_SUBSETS)
         save_pkls(os.path.join(args.out_dir, FILE_NAME_DATAPOINT_PER_FRACTION), datapoints)
 
-    plot_train_times(datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET), annotate=True)
+    plot_train_times(
+        datapoints, os.path.join(args.out_dir, FILE_NAME_M5_SUBSET), annotate=True
+    )
