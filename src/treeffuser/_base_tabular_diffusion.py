@@ -14,7 +14,6 @@ from sklearn.neighbors import KernelDensity
 from tqdm import tqdm
 
 from treeffuser._score_models import ScoreModel
-from treeffuser._warnings import CastFloat32Warning
 from treeffuser._warnings import ConvergenceWarning
 from treeffuser.scaler import ScalerMixedTypes
 from treeffuser.sde import DiffusionSDE
@@ -39,11 +38,6 @@ def _check_array(array: ndarray[float]):
     if not np.issubdtype(array.dtype, np.floating):
         try:
             array = np.asarray(array, dtype=np.float32)
-            warnings.warn(
-                "Input array is not float; it has been recast to float32.",
-                CastFloat32Warning,
-                stacklevel=2,
-            )
         except ValueError as e:
             # raise the ValueError preserving the original exception context, see B904 from flake8-bugbear
             raise ValueError(
