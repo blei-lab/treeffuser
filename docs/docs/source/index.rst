@@ -20,7 +20,7 @@ Welcome to `treeffuser` documentation!
    Getting started<getting-started.rst>
    Tutorials<tutorials.rst>
    modules
-   Release notes<release-notes.rst>
+   .. Release notes<release-notes.rst>
 
 .. indices and tables
 .. ==================
