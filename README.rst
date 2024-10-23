@@ -8,9 +8,6 @@ Treeffuser
        <img src="https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub" alt="GitHub repo stars"></a>
 
    <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
-       <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
-
-   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
        <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads"></a>
 
    <a href="https://arxiv.org/abs/2406.07658" target="_blank" rel="noopener noreferrer">
@@ -18,6 +15,12 @@ Treeffuser
 
    <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" target="_blank" rel="noopener noreferrer">
        <img src="https://img.shields.io/badge/docs-passing-green" alt="Documentation"></a>
+
+   <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+       <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
+
+    <a href="https://blei-lab.github.io/treeffuser/" target="_blank" rel="noopener noreferrer">
+        <img src="https://img.shields.io/badge/website-visit-blue?label=website" alt="Website"></a>
    <br/>
    <br/>
 
