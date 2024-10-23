@@ -1,4 +1,0 @@
-Release notes
-=============
-
-Coming soon!
