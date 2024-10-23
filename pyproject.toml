@@ -10,6 +10,7 @@ authors = [
 license = "MIT"
 readme = "README.rst"
 packages = [{include = "treeffuser", from= "src"}]
+homepage = "https://blei-lab.github.io/treeffuser/"
 repository = "https://github.com/blei-lab/treeffuser"
 include = [
     "pyproject.toml",
