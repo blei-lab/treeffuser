@@ -1,6 +1,7 @@
 ====================
 Treeffuser
 ====================
+**[Website](https://blei-lab.github.io/treeffuser/)** | **[Documentation](https://blei-lab.github.io/treeffuser/docs/getting-started.html)** | **Published at NeurIPS 2024**
 
 .. raw:: html
 
