@@ -3,14 +3,17 @@ from ibug import IBUGWrapper
 from jaxtyping import Float
 from numpy import ndarray
 from sklearn.model_selection import train_test_split
+from sklearn.neighbors import KernelDensity
 from skopt.space import Integer
 from skopt.space import Real
 from xgboost import XGBRegressor
 
 from testbed.models import ProbabilisticModel
 
+_BANDWIDTH_SEARCH_SPACE = np.logspace(-4, 3, 10)
 
-class IBugXGBoost(ProbabilisticModel):
+
+class IBugXGBoostKDE(ProbabilisticModel):
     """
     IBug wrapper for XGBoost.
     """
@@ -18,10 +21,16 @@ class IBugXGBoost(ProbabilisticModel):
     def __init__(self, k=100, n_estimators=100, max_depth=2, learning_rate=0.1, seed=0):
         super().__init__(seed)
         self.model = None
+        self.best_bandwith = None
+
         self.k = k
         self.n_estimators = n_estimators
         self.max_depth = max_depth
         self.learning_rate = learning_rate
+
+        # For scaling
+        self.mu = None
+        self.sigma = None
 
     def fit(
         self,
@@ -31,11 +40,17 @@ class IBugXGBoost(ProbabilisticModel):
         """
         Fit the model to the data.
         """
+        self.mu = np.mean(y, axis=0)
+        self.sigma = np.std(y, axis=0)
+
+        # Normalize y
+        y = (y - self.mu) / self.sigma
 
         if y.shape[1] > 1:
             raise ValueError("IBugXGBoost only accepts 1 dimensional y values.")
 
         y = y[:, 0]
+        self.k = min(self.k, len(X))  # make sure k is not larger than the number of instances
 
         X_train, X_val, y_train, y_val = train_test_split(
             X,
@@ -58,6 +73,9 @@ class IBugXGBoost(ProbabilisticModel):
         self.model = IBUGWrapper(k=self.k).fit(
             self.gbrt_model, X_train, y_train, X_val=X_val, y_val=y_val
         )
+
+        _, _, _, y_val_neighbor_vals = self.model.pred_dist(X_val, return_kneighbors=True)
+        self.best_bandwith = _find_best_bandwith(y_val_neighbor_vals.T, y_val)
         return self
 
     def predict(self, X: Float[ndarray, "batch x_dim"]) -> Float[ndarray, "batch y_dim"]:
@@ -66,6 +84,7 @@ class IBugXGBoost(ProbabilisticModel):
         """
         # predict mean and variance for unseen instances
         location, scale = self.model.pred_dist(X)
+        location = location * self.sigma + self.mu
         return location.reshape(-1, 1)
 
     def sample(
@@ -74,9 +93,26 @@ class IBugXGBoost(ProbabilisticModel):
         """
         Sample from the probability distribution for each input.
         """
-        location, scale = self.model.pred_dist(X)
-        # sample from a normal distribution
-        return np.random.normal(location, scale, size=(n_samples, len(X)))[..., None]
+        location, scale, _, neighbor_values = self.model.pred_dist(X, return_kneighbors=True)
+        assert location.shape == (len(X),)
+        assert scale.shape == (len(X),)
+        assert neighbor_values.shape == (
+            len(X),
+            self.model.k_,
+        )  # might be different than our k
+
+        samples = []
+        for i in range(len(X)):
+            kde = KernelDensity(
+                bandwidth=self.best_bandwith, algorithm="auto", kernel="gaussian"
+            )
+            kde.fit(neighbor_values[i].reshape(-1, 1))
+            samples.append(kde.sample(n_samples, random_state=seed))
+
+        samples = np.array(samples).transpose(1, 0, 2)
+        samples = samples * self.sigma + self.mu
+        assert samples.shape == (n_samples, len(X), 1)
+        return samples
 
     @staticmethod
     def search_space() -> dict:
@@ -84,8 +120,33 @@ class IBugXGBoost(ProbabilisticModel):
         Return the search space for parameters of the model.
         """
         return {
-            "k": Integer(20, 250),  # ibug runs CV on k by default
+            "k": Integer(20, 250),
             "n_estimators": Integer(10, 1000),
             "learning_rate": Real(0.01, 0.5, prior="log-uniform"),
             "max_depth": Integer(1, 100),
         }
+
+
+def _find_best_bandwith(
+    y_samples: Float[ndarray, "n_samples batch"],
+    y_true: Float[ndarray, "batch"],
+) -> float:
+    batch = y_true.shape[0]
+    assert y_samples.shape == (y_samples.shape[0], batch)
+
+    best_bandwith = 0
+    best_log_prob = -np.inf
+
+    for bandwidth in _BANDWIDTH_SEARCH_SPACE:
+        log_prob = 0
+        for i in range(batch):
+            y_i = y_samples[:, i].reshape(-1, 1)
+            kde = KernelDensity(bandwidth=bandwidth, algorithm="auto", kernel="gaussian")
+            kde.fit(y_i)
+            log_prob += kde.score(y_true[i].reshape(-1, 1))
+
+        if log_prob > best_log_prob:
+            best_log_prob = log_prob
+            best_bandwith = bandwidth
+
+    return best_bandwith
