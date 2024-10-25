@@ -1,36 +1,35 @@
 ====================
 Treeffuser
 ====================
-**`Website <https://blei-lab.github.io/treeffuser/>`_** | **`Documentation <https://blei-lab.github.io/treeffuser/docs/getting-started.html>`_** | **Published at NeurIPS 2024**
+
 .. raw:: html
 
-    <!-- Version and License -->
-    <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
-        <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
-
-    <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
-
-    <!-- Usage and Popularity -->
-    <a href="https://github.com/blei-lab/treeffuser/stargazers" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub" alt="GitHub repo stars"></a>
-
-    <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads"></a>
-
-    <!-- Homepage and Documentation -->
-    <a href="https://blei-lab.github.io/treeffuser/" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/badge/website-visit-blue?label=website" alt="Website"></a>
-
-    <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/badge/docs-passing-green" alt="Documentation"></a>
-
-    <!-- Other Relevant Links -->
-    <a href="https://arxiv.org/abs/2406.07658" target="_blank" rel="noopener noreferrer">
-        <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="arXiv"></a>
-   <br/>
-   <br/>
-
+        <!-- Version and License -->
+        <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+            <img src="https://badge.fury.io/py/treeffuser.svg" alt="PyPI version"></a>
+    
+        <a href="https://opensource.org/licenses/MIT" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/License-MIT-green.svg" alt="License"></a>
+    
+        <!-- Usage and Popularity -->
+        <a href="https://github.com/blei-lab/treeffuser/stargazers" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub" alt="GitHub repo stars"></a>
+    
+        <a href="https://badge.fury.io/py/treeffuser" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/pypi/dm/treeffuser" alt="PyPI - Downloads"></a>
+    
+        <!-- Homepage and Documentation -->
+        <a href="https://blei-lab.github.io/treeffuser/" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/website-visit-blue?label=website" alt="Website"></a>
+    
+        <a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/docs-passing-green" alt="Documentation"></a>
+    
+        <!-- Other Relevant Links -->
+        <a href="https://arxiv.org/abs/2406.07658" target="_blank" rel="noopener noreferrer">
+            <img src="https://img.shields.io/badge/arXiv-2406.07658-red" alt="arXiv"></a>
+       <br/>
+       <br/>
 
 Treeffuser is an easy-to-use package for **probabilistic prediction on tabular data with tree-based diffusion models**.
 It estimates distributions of the form ``p(y|x)`` where ``x`` is a feature vector and ``y`` is a target vector.
@@ -38,7 +37,15 @@ Treeffuser can model conditional distributions ``p(y|x)`` that are arbitrarily c
 
 It is designed to adhere closely to the scikit-learn API and require minimal user tuning.
 
-Treeffuser is detailed in the paper: `Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient-Boosted Trees <https://arxiv.org/abs/2406.07658>`_.
+.. raw:: html
+    
+    <div align="center">
+        <b><a href="https://blei-lab.github.io/treeffuser/">Website</a></b> | 
+        <b><a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html">Documentation</a></b> | 
+      <b><a href="https://arxiv.org/abs/2406.07658">Published at NeurIPS 2024</a></b>
+    </div>
+    <br>
+
 
 Installation
 ============
