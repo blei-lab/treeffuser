@@ -42,7 +42,7 @@ It is designed to adhere closely to the scikit-learn API and require minimal use
     <div align="center">
         <b><a href="https://blei-lab.github.io/treeffuser/">Website</a></b> |
         <b><a href="https://blei-lab.github.io/treeffuser/docs/getting-started.html">Documentation</a></b> |
-      <b><a href="https://arxiv.org/abs/2406.07658">Published at NeurIPS 2024</a></b>
+      <b><a href="https://arxiv.org/abs/2406.07658">Paper (NeurIPS 2024)</a></b>
     </div>
     <br>
 
