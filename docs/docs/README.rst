@@ -24,7 +24,7 @@ To remove previously generated HTML files and clean up build artifacts, first en
 
     chmod +x clear_build.sh
 
-Then run `clear_build.sh`:
+Then run `clear_build.sh`::
 
     ./clear_build.sh
 
