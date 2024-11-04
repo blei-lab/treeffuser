@@ -20,7 +20,7 @@ from torch.optim import Adam
 
 from testbed.models.base_model import ProbabilisticModel
 from testbed.models.lightning_uq_models._data_module import GenericDataModule
-from treeffuser.scaler import ScalerMixedTypes
+from treeffuser._scaler import ScalerMixedTypes
 
 
 class MLP(nn.Module):
