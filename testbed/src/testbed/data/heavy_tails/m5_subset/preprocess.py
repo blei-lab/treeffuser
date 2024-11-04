@@ -7,7 +7,7 @@ import numpy as np
 
 def main(path_raw_dataset_dir: Path):
     # Process the raw data file named temp.csv
-    raw_data_path = path_raw_dataset_dir / "data.pkl"
+    raw_data_path = path_raw_dataset_dir / "dataset.pkl"
 
     with open(raw_data_path, "rb") as f:  # noqa: PTH123
         data = pkl.load(f)  # noqa: S301
