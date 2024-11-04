@@ -27,6 +27,7 @@ extensions = [
     "sphinx.ext.napoleon",  # If using Google or NumPy style docstrings
     "sphinx.ext.viewcode",  # To include source code links
     "sphinx.ext.githubpages",  # Creates .nojekyll making "_" folders with css styles accessible
+    "nbsphinx",  # Adds support to Jupyter notebooks for tutorials
 ]
 
 autoclass_content = "both"  # display doc both from a class docstring and its __init__ methods
@@ -41,6 +42,8 @@ source_suffix = {  # use Markdown files with extensions other than .md
 }
 
 add_module_names = False
+
+nbsphinx_execute = "auto"  # Only executes notebooks without outputs
 
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
