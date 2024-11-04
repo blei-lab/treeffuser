@@ -10,6 +10,7 @@ authors = [
 license = "MIT"
 readme = "README.rst"
 packages = [{include = "treeffuser", from= "src"}]
+homepage = "https://blei-lab.github.io/treeffuser/"
 repository = "https://github.com/blei-lab/treeffuser"
 include = [
     "pyproject.toml",
@@ -28,6 +29,7 @@ tqdm = "^4.66.4"
 lightgbm = "^4.3.0"
 ml-collections = "^0.1.1"
 scikit-learn = "^1.5.0"
+pandas = "^2.0.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "^8.2.2"
