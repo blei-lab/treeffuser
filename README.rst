@@ -60,7 +60,9 @@ You can also install the development version with:
 
 .. code-block:: bash
 
-    pip install git+https://github.com/blei-lab/tree-diffuser.git@main
+    pip install git+https://github.com/blei-lab/treeffuser.git@main
+
+The GitHub repository is located at `https://github.com/blei-lab/treeffuser <https://github.com/blei-lab/treeffuser>`_.
 
 Usage Example
 =============
