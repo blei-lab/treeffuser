@@ -1,0 +1,20 @@
+.flex-list {
+  display: flex;
+  flex-wrap: wrap;
+  list-style: none;
+}
+
+.flex-list li {
+  flex: 1 1 50%;
+  box-sizing: border-box;
+  padding: 5px;
+  margin-bottom: 5px; /* Adds space between rows */
+
+}
+
+.flex-list li::before {
+  content: '•'; /* Unicode character for a bullet */
+  color: #333; /* Bullet color */
+  font-weight: bold;
+  margin-right: 5px;
+}
