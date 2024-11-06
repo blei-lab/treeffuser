@@ -34,6 +34,11 @@ jobs:
       run: |
         pip install -e .
 
+    - name: Copy tutorials to docs (all ipynb files in examples)
+      run: |
+        mkdir -p docs/docs/source/tutorials
+        cp -r examples/*.ipynb docs/docs/source/tutorials
+
     - name: Build documentation
       run: |
         cd docs/docs
