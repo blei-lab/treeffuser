@@ -2,6 +2,7 @@ Tutorials
 =========
 
 .. toctree::
-   :maxdepth: 1
+    :maxdepth: 1
 
-   tutorials/m5-news-vendor-notebook
+    tutorials/README_example
+    tutorials/m5-news-vendor-notebook
