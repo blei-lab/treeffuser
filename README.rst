@@ -133,12 +133,12 @@ If you use Treeffuser or this codebase in your work, please cite the following p
 
 .. code-block:: bibtex
 
-    @article{beltranvelez2024treeffuserprobabilisticpredictionsconditional,
-      title={Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient-Boosted Trees}, 
+    @article{beltranvelez2024treeffuser,
+      title={Treeffuser: Probabilistic Predictions via Conditional Diffusions with Gradient-Boosted Trees},
       author={Nicolas Beltran-Velez and Alessandro Antonio Grande and Achille Nazaret and Alp Kucukelbir and David Blei},
       year={2024},
       eprint={2406.07658},
       archivePrefix={arXiv},
       primaryClass={cs.LG},
-      url={https://arxiv.org/abs/2406.07658}, 
+      url={https://arxiv.org/abs/2406.07658},
    }
