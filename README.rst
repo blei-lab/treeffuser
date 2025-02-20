@@ -129,7 +129,7 @@ Please take a look at the documentation for more information on the available me
 Citing Treeffuser
 =================
 
-If you use Treeffuser or this codebase in your work, please cite the following paper:
+If you use Treeffuser in your work, please cite the following paper:
 
 .. code-block:: bibtex
 
