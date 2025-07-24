@@ -4,7 +4,7 @@
 [![PyPI version](https://badge.fury.io/py/treeffuser.svg)](https://badge.fury.io/py/treeffuser)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![GitHub Stars](https://img.shields.io/github/stars/blei-lab/treeffuser?style=flat&logo=GitHub)](https://github.com/blei-lab/treeffuser/stargazers)
-[![PyPI - Downloads](https://img.shields.io/pypi/dm/treeffuser)](https://pypi.org/project/treeffuser/)
+[![Downloads](https://static.pepy.tech/badge/treeffuser)](https://pepy.tech/project/treeffuser/)
 [![Website](https://img.shields.io/badge/website-visit-blue?label=website)](https://blei-lab.github.io/treeffuser/)
 [![Documentation](https://img.shields.io/badge/docs-passing-green)](https://blei-lab.github.io/treeffuser/docs/getting-started.html)
 [![arXiv](https://img.shields.io/badge/arXiv-2406.07658-red)](https://arxiv.org/abs/2406.07658)
