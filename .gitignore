@@ -80,8 +80,8 @@ docs/_build
 examples/m5/*
 
 # Debug files
-
 *debug*
+!debug.css
 
 # Latex
 *.aux
