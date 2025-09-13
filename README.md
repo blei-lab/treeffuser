@@ -100,7 +100,7 @@ See the documentation for more information on available methods and parameters.
 
 ## FAQ:
 
-**Sampling Speed Issues**: Some users have reported slow sampling speeds. If this is your case you can get significant improvements by reducing either of these two hyper-parameters: `n_estimators` or `early_stopping_rounds`. 
+**Sampling Speed Issues**: Some users have reported slow sampling speeds. If this is your case, you can get significant improvements by reducing either of these two hyper-parameters: `n_estimators` or `early_stopping_rounds`. 
 
 ---
 
