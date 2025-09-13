@@ -98,6 +98,11 @@ y_quantiles = y_samples.sample_quantile(q=[0.05, 0.95])
 
 See the documentation for more information on available methods and parameters.
 
+## FAQ:
+
+*Question*: I am having issues with the speed of the model. What do I do? 
+*Answer*: Some users have reported problems with the sampling speed. If, this is your case reduce either of these two hyper-parameters: `n_estimators` or `early_stopping_rounds`. 
+
 ---
 
 ## Citing Treeffuser
