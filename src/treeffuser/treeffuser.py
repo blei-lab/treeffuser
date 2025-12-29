@@ -30,7 +30,7 @@ class Treeffuser(BaseTabularDiffusion):
         sde_hyperparam_min: float | Literal["default"] | None = None,
         sde_hyperparam_max: float | Literal["default"] | None = None,
         seed: int | None = None,
-        verbose: int = 0,
+        verbose: int = 1,
         extra_lightgbm_params: dict | None = None,
     ):
         """
