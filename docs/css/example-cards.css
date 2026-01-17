@@ -1,0 +1,33 @@
+.example-card {
+  display: flex;
+  align-items: center;
+  box-shadow: 0 4px 8px 0 rgba(0, 0, 0, 0.4);
+  transition: 0.3s;
+  margin: 10px 0;
+  border-radius: 3px;
+}
+
+.example-card img {
+  width: 150px;
+  height: auto;
+  margin-right: 20px;
+}
+
+.example-container {
+  flex: 1;
+  padding: 2px 16px;
+}
+
+.example-card:hover {
+  box-shadow: 0 8px 16px 0 rgba(0, 0, 0, 0.4);
+}
+
+h4 a {
+  margin-left: 10px;
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+h4 a:hover {
+  text-decoration: underline;
+}
