@@ -99,3 +99,6 @@ indent-style="space"
 
 [tool.pytest.ini_options]
 pythonpath = "src"
+filterwarnings = [
+    "ignore:.*force_all_finite.*:FutureWarning",
+]
